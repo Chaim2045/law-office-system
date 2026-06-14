@@ -20,20 +20,30 @@
  *     (any other number, incl. 0 / negative, OR a numeric rate on a non-legal-hourly
  *     service) is a deliberately-ELECTED rate to PRESERVE — it aborts the WHOLE run
  *     (zero writes) and is reported as clientId + code, fail-secure. NEVER stripped.
+ *   • AGGREGATE-DRIFT GUARD: the canonical writer re-derives ALL hours aggregates on
+ *     every write. To keep this migration surgical (touch ONLY plan + the stripped
+ *     rate), a client whose STORED hours aggregates already differ from the canonical
+ *     recompute is SKIPPED + flagged (`AGGREGATE_DRIFT`) — its block-state / hours are
+ *     NOT silently "healed" by the rate strip. Such clients are a separate, audited
+ *     decision. (Removing `ratePerHour` itself cannot change any aggregate — it is not
+ *     an input to calcClientAggregates — so a clean client's hours stay byte-identical.)
  *   • Canonical write path: writeClientWithCanonicalAggregates (the only mandated
- *     `clients` writer) recomputes `plan` (RESTRICTED_KEY → derived) AND the hours
- *     aggregates from the cleaned services[]. Removing `ratePerHour` changes NO hours
- *     aggregate (it is not an input to calcClientAggregates) — hours stay identical.
+ *     `clients` writer) recomputes `plan` (RESTRICTED_KEY → derived). AWAITED inside
+ *     the txn so its internal read+update complete BEFORE the audit set (reads-before-writes).
  *   • Per-client Firestore transaction (the writer is a read-modify-write; a flat
  *     500-batch cannot host it). Cohort is small (~200 clients total). In-txn audit
  *     via logCriticalActionInTxn → audit + mutation commit/abort atomically.
- *   • TOCTOU-safe: the cleaned array is rebuilt from the IN-TRANSACTION read and the
- *     800/anomaly/null-entry checks are re-asserted inside the txn before writing.
+ *   • Concurrency: the cohort is re-verified from the IN-TRANSACTION read (strip set,
+ *     anomaly, null-entry, drift). Firestore optimistic concurrency guarantees no torn
+ *     write under a concurrent timesheet write — the loser retries against fresh state.
+ *     (Prefer a low-activity window for `--apply`, but correctness does not require it.)
  *   • Idempotent: a re-run after `--apply` finds no 800 to strip → no-op.
- *   • Durable local JSON backup of the before-state (clientId + full services[]
- *     snapshot + plan) BEFORE any write. Dir is gitignored (functions/backfill-backups/).
- *   • PII / PUBLIC repo: console + audit log carry clientId + errorCode ONLY — never
- *     client names / idNumber / amounts.
+ *   • Durable local JSON backup of the before-state (clientId + full services[] +
+ *     plan + hours aggregates) BEFORE any write. Dir is gitignored (functions/backfill-backups/).
+ *     Primary DATA rollback = the project's managed Firestore backup / PITR; this JSON
+ *     is the before-state record + audit aid.
+ *   • PII / PUBLIC repo: console + audit log carry clientId + errorCode/counts ONLY —
+ *     never client names / idNumber / amounts.
  *
  * Usage (from functions/, with Admin SDK credentials, supervised by Haim):
  *   node scripts/backfill-strip-legal-hourly-rate.js            # dry-run (default)
@@ -45,7 +55,8 @@ const fs = require('fs');
 const path = require('path');
 const admin = require('firebase-admin');
 
-const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
+const { writeClientWithCanonicalAggregates, _recomputeTotalHours } = require('../shared/client-writer');
+const { calcClientAggregates } = require('../shared/aggregates');
 const { logCriticalActionInTxn } = require('../lib/audit-critical');
 const { SYSTEM_CONSTANTS } = require('../shared/constants');
 // Used for the DRY-RUN plan preview only (the actual write derives plan inside the
@@ -64,8 +75,14 @@ const ACTION = 'BACKFILL_STRIP_LEGAL_HOURLY_RATE';
 const CALLER = 'backfill-strip-legal-hourly-rate';
 const AUDIT_SCHEMA_VERSION = 1;
 
+// The hours-aggregate keys the canonical writer re-derives on every write. The strip
+// must leave ALL of these byte-identical; any pre-existing drift → skip (don't heal).
+const AGGREGATE_KEYS = Object.freeze([
+  'totalHours', 'hoursUsed', 'hoursRemaining', 'minutesUsed', 'minutesRemaining', 'isBlocked', 'isCritical'
+]);
+
 // ─────────────────────────────────────────────────────────────────────────────
-// PURE, TESTABLE CORE (no SDK / no I/O) — exported for the jest suite.
+// PURE, TESTABLE CORE (no I/O) — exported for the jest suite.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -120,7 +137,6 @@ function classifyServices(services) {
 /**
  * Return a copy of services[] with `ratePerHour` removed from exactly the given
  * indices. Every other field of every service (and every other service) is preserved.
- * Shallow-copies only the touched services; untouched services are returned by ref.
  *
  * @param {Array} services
  * @param {number[]} stripIdx
@@ -136,11 +152,93 @@ function buildCleanedServices(services, stripIdx) {
   });
 }
 
+/** Normalized stored hours aggregates from a client doc (matches the writer's reads). */
+function storedAggregates(data) {
+  const d = data || {};
+  return {
+    totalHours: d.totalHours || 0,
+    hoursUsed: d.hoursUsed || 0,
+    hoursRemaining: d.hoursRemaining || 0,
+    minutesUsed: d.minutesUsed || 0,
+    minutesRemaining: d.minutesRemaining || 0,
+    isBlocked: d.isBlocked === true,
+    isCritical: d.isCritical === true
+  };
+}
+
+/** Canonical recompute of the hours aggregates from services[] (what the writer will write). */
+function recomputeAggregates(services) {
+  const list = Array.isArray(services) ? services.filter(Boolean) : [];
+  const totalHours = _recomputeTotalHours(list);
+  const agg = calcClientAggregates(list, totalHours);
+  return {
+    totalHours,
+    hoursUsed: agg.hoursUsed,
+    hoursRemaining: agg.hoursRemaining,
+    minutesUsed: agg.minutesUsed,
+    minutesRemaining: agg.minutesRemaining,
+    isBlocked: agg.isBlocked === true,
+    isCritical: agg.isCritical === true
+  };
+}
+
+/** Names of the aggregate keys that differ between stored and recomputed (empty = no drift). */
+function aggregatesDiff(stored, recomputed) {
+  return AGGREGATE_KEYS.filter((k) => stored[k] !== recomputed[k]);
+}
+
 // Tiny helper: build an Error carrying a safe `.code` (never a raw message in logs).
 function coded(code) {
   const e = new Error(code);
   e.code = code;
   return e;
+}
+
+/**
+ * Migrate ONE client inside an active transaction. Re-verifies the cohort against the
+ * FRESH in-txn read (TOCTOU + drift), then strips via the canonical writer (AWAITED so
+ * its read+update finish before the audit set), then audits atomically.
+ *
+ * @param {FirebaseFirestore.Transaction} tx
+ * @param {FirebaseFirestore.DocumentReference} ref
+ * @returns {Promise<'written'|'noop'>}  'noop' = nothing to strip (migrated concurrently)
+ * @throws coded('CLIENT_VANISHED' | 'ANOMALY_APPEARED' | 'NULL_ENTRY_APPEARED' | 'AGGREGATE_DRIFT_APPEARED')
+ */
+async function migrateClientInTxn(tx, ref) {
+  const snap = await tx.get(ref); // read #1 (all reads precede all writes)
+  if (!snap.exists) throw coded('CLIENT_VANISHED');
+  const data = snap.data() || {};
+  const services = Array.isArray(data.services) ? data.services : [];
+  const { stripIdx, anomalies, hasNullEntry } = classifyServices(services);
+
+  // Re-assert safety against the LIVE doc (it may have changed since discovery).
+  if (anomalies.length > 0) throw coded('ANOMALY_APPEARED');        // a rate was elected meanwhile
+  if (hasNullEntry) throw coded('NULL_ENTRY_APPEARED');
+  if (stripIdx.length === 0) return 'noop';                         // already migrated concurrently → idempotent
+
+  const cleaned = buildCleanedServices(services, stripIdx);
+
+  // Surgical guarantee: the writer re-derives all hours aggregates; refuse to proceed
+  // if the live doc's stored aggregates already drift from canonical (would be a silent
+  // heal/flip unrelated to the rate strip).
+  if (aggregatesDiff(storedAggregates(data), recomputeAggregates(cleaned)).length > 0) {
+    throw coded('AGGREGATE_DRIFT_APPEARED');
+  }
+
+  // Canonical write — recomputes plan + hours aggregates; strips RESTRICTED_KEYS.
+  // AWAITED: the writer's internal read + update must complete before the audit set.
+  // mode:'enforce' = deterministic fail-fast, independent of the live invariant config.
+  // No auditMeta → human lastModifiedBy/At on the client doc is NOT overwritten.
+  await writeClientWithCanonicalAggregates(tx, ref, { services: cleaned }, { caller: CALLER, mode: 'enforce' });
+
+  // Audit AFTER the writer's update (txn.set — a write; all reads already done).
+  // clientId + count only — no names / amounts (PUBLIC repo).
+  logCriticalActionInTxn(tx, ACTION, ACTOR, {
+    clientId: ref.id,
+    servicesStripped: stripIdx.length,
+    schemaVersion: AUDIT_SCHEMA_VERSION
+  });
+  return 'written';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -156,6 +254,7 @@ async function main() {
     affectedClients: 0,
     servicesToStrip: 0,
     skippedNullEntry: 0,
+    skippedAggregateDrift: 0,
     anomalyClients: 0,
     servicesWithNonNumericRate: 0,
     committed: 0,
@@ -163,10 +262,11 @@ async function main() {
     errors: 0
   };
   // Affected clients (LOCAL gitignored backup + the apply work-list):
-  //   { clientId, strippedIndices, beforeServices, beforePlan, afterPlanPreview }
+  //   { clientId, strippedIndices, beforeServices, beforePlan, afterPlanPreview, beforeAggregates }
   const affected = [];
   const anomalies = [];       // { clientId, code } — clientId + code ONLY (no PII)
-  const skipped = [];         // { clientId, code } — null-entry clients (flagged, not migrated)
+  const skipped = [];         // { clientId, code, fields? } — skipped clients (flagged, not migrated)
+  const failures = [];        // { clientId, code } — per-client apply failures
   let cursor = null;
 
   // ─── Phase 1: full read-only discovery (always, both modes) ───
@@ -199,15 +299,27 @@ async function main() {
           continue;
         }
 
+        const cleaned = buildCleanedServices(services, stripIdx);
+        const before = storedAggregates(data);
+        const after = recomputeAggregates(cleaned);
+        const drift = aggregatesDiff(before, after);
+        if (drift.length > 0) {
+          // Stored hours aggregates already diverge from canonical — the strip would
+          // silently re-derive (possibly flip block-state). Surface, do not migrate.
+          counts.skippedAggregateDrift += 1;
+          skipped.push({ clientId: doc.id, code: 'AGGREGATE_DRIFT', fields: drift }); // field NAMES only
+          continue;
+        }
+
         counts.affectedClients += 1;
         counts.servicesToStrip += stripIdx.length;
-        const cleaned = buildCleanedServices(services, stripIdx);
         affected.push({
           clientId: doc.id,
           strippedIndices: stripIdx,
           beforeServices: services,
           beforePlan: data.plan || null,
-          afterPlanPreview: computeClientPlan(cleaned) // dry-run review: what plan BECOMES
+          afterPlanPreview: computeClientPlan(cleaned), // dry-run review: what plan BECOMES
+          beforeAggregates: before                       // == after (drift-free); for rollback/audit
         });
       } catch (err) {
         counts.errors += 1;
@@ -220,10 +332,10 @@ async function main() {
   // ─── Durable local backup of the before-state (BEFORE any write) ───
   const backupDir = path.resolve(__dirname, '../backfill-backups');
   if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
-  const backupFile = path.join(backupDir, `strip-legal-hourly-rate-${counts.scanned}-clients.json`);
+  const backupFile = path.join(backupDir, `strip-legal-hourly-rate-${counts.scanned}clients-${process.pid}.json`);
   fs.writeFileSync(
     backupFile,
-    JSON.stringify({ mode: APPLY ? 'apply' : 'dry-run', counts, affected }, null, 2)
+    JSON.stringify({ mode: APPLY ? 'apply' : 'dry-run', counts, affected, skipped, anomalies }, null, 2)
   );
   console.log(`[backfill-strip-rate] before-state backup written to ${backupFile}`);
 
@@ -239,10 +351,12 @@ async function main() {
   // ─── Report ───
   console.log(
     `\n[backfill-strip-rate] DISCOVERY: ${counts.affectedClients} client(s), ${counts.servicesToStrip} service(s) to strip; ` +
-    `${counts.skippedNullEntry} skipped (null entry); ${counts.servicesWithNonNumericRate} non-numeric rate(s) left as-is.`
+    `skipped ${counts.skippedNullEntry} null-entry + ${counts.skippedAggregateDrift} aggregate-drift; ` +
+    `${counts.servicesWithNonNumericRate} non-numeric rate(s) left as-is.`
   );
-  if (skipped.length > 0) {
-    for (const s of skipped) console.warn(`[backfill-strip-rate] SKIPPED client=${s.clientId} code=${s.code} (resolve malformed services[] manually, then re-run)`);
+  for (const s of skipped) {
+    const extra = s.fields ? ` fields=${s.fields.join(',')}` : '';
+    console.warn(`[backfill-strip-rate] SKIPPED client=${s.clientId} code=${s.code}${extra} (resolve manually, then re-run)`);
   }
 
   if (!APPLY) {
@@ -253,55 +367,37 @@ async function main() {
 
   // ─── Phase 2: APPLY — per-client transaction via the canonical writer + in-txn audit ───
   for (const item of affected) {
-    const clientId = item.clientId;
-    const ref = db.collection(CLIENTS_COLLECTION).doc(clientId);
+    const ref = db.collection(CLIENTS_COLLECTION).doc(item.clientId);
     try {
-      const result = await db.runTransaction(async (tx) => {
-        // (1) Fresh in-txn read — TOCTOU re-verify against the live doc.
-        const snap = await tx.get(ref);
-        if (!snap.exists) throw coded('CLIENT_VANISHED');
-        const data = snap.data() || {};
-        const services = Array.isArray(data.services) ? data.services : [];
-        const { stripIdx, anomalies: svcAnoms, hasNullEntry } = classifyServices(services);
-
-        // Re-assert safety against the LIVE doc (it may have changed since discovery).
-        if (svcAnoms.length > 0) throw coded('ANOMALY_APPEARED');       // a rate was elected meanwhile
-        if (hasNullEntry) throw coded('NULL_ENTRY_APPEARED');
-        if (stripIdx.length === 0) return 'noop';                       // already migrated concurrently → idempotent
-
-        const cleaned = buildCleanedServices(services, stripIdx);
-
-        // (2) Canonical write — recomputes plan + hours aggregates; strips RESTRICTED_KEYS.
-        //     mode:'enforce' is explicit (deterministic fail-fast, no dependency on the
-        //     live system_settings/invariant_enforcement doc). No auditMeta → human
-        //     lastModifiedBy/At on the client doc is NOT overwritten by the migration.
-        writeClientWithCanonicalAggregates(tx, ref, { services: cleaned }, { caller: CALLER, mode: 'enforce' });
-
-        // (3) Audit AFTER the writer's update (txn.set is a write; all reads already done).
-        //     clientId + count only — no names / amounts (PUBLIC repo).
-        logCriticalActionInTxn(tx, ACTION, ACTOR, {
-          clientId,
-          servicesStripped: stripIdx.length,
-          schemaVersion: AUDIT_SCHEMA_VERSION
-        });
-        return 'written';
-      });
-
+      const result = await db.runTransaction((tx) => migrateClientInTxn(tx, ref));
       if (result === 'noop') counts.noopConcurrent += 1;
       else counts.committed += 1;
     } catch (err) {
       counts.errors += 1;
-      console.error(`[backfill-strip-rate] APPLY error client=${clientId} code=${(err && err.code) || 'error'}`);
+      const code = (err && err.code) || 'WRITE_FAILED';
+      failures.push({ clientId: item.clientId, code });
+      console.error(`[backfill-strip-rate] APPLY error client=${item.clientId} code=${code}`);
     }
   }
 
+  if (failures.length > 0) {
+    console.error(`\n[backfill-strip-rate] ${failures.length} client(s) FAILED apply (left un-migrated; re-run after resolving):`);
+    for (const f of failures) console.error(`  client=${f.clientId} code=${f.code}`);
+  }
   console.log(`\n[backfill-strip-rate] APPLY DONE — committed ${counts.committed}, no-op(concurrent) ${counts.noopConcurrent}, errors ${counts.errors}`);
   console.log(`[backfill-strip-rate] SUMMARY — ${JSON.stringify(counts)}`);
   if (counts.errors > 0) process.exitCode = 1;
 }
 
-// Export the pure core for tests; only run main() when invoked directly.
-module.exports = { classifyServices, buildCleanedServices };
+// Export the pure + txn core for tests; only run main() when invoked directly.
+module.exports = {
+  classifyServices,
+  buildCleanedServices,
+  storedAggregates,
+  recomputeAggregates,
+  aggregatesDiff,
+  migrateClientInTxn
+};
 
 if (require.main === module) {
   if (!admin.apps.length) admin.initializeApp();
