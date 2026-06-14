@@ -91,6 +91,20 @@ const SYS_ACTOR = 'sys:cron-export-sales-bq';
 /** Dead-letter collection (MAIN project, CF-only — see firestore.rules). */
 const DEADLETTER_COLLECTION = 'tofes_export_deadletter';
 /**
+ * Forensic-retention horizon for dead-letter docs (days). A Firestore TTL policy
+ * auto-reaps each doc once its `expireAt` field is reached — see
+ * docs/PHASE_2_FOUNDATIONS.md "Retention & TTL".
+ *
+ * Why the TTL targets `expireAt` and NOT `failedAt`: Firestore TTL deletes a doc
+ * when the VALUE of the policy field is reached, and `failedAt` is a
+ * `serverTimestamp()` set to ~now at write time — already in the past — so a policy
+ * on it would purge every dead-letter doc almost immediately and destroy the
+ * forensic window. `expireAt = failedAt + this many days` is the future instant the
+ * policy fires on. 90d = a full quarter of diagnostic history (matches the quarterly
+ * agent-usage routine), surviving holidays/court schedule before triage.
+ */
+const DEADLETTER_RETENTION_DAYS = 90;
+/**
  * The BigQuery table schema — the SSOT for the 19 typed columns (the documented
  * H.0 schema MINUS the omitted `raw_json`). A drift-guard test pins this to the
  * documented column list. Order/types match docs/PHASE_2_FOUNDATIONS.md.
@@ -216,13 +230,21 @@ async function safeRunAudit(payload) {
         logger.error('tofes_bq_export.audit_failed', { errorCode: error.code });
     }
 }
-/** Non-PII dead-letter for a row that failed to map (salesRecordId + errorCode only). */
+/**
+ * Non-PII dead-letter for a row that failed to map (salesRecordId + errorCode only,
+ * plus the forensic timestamps). `expireAt` is the TTL target (see
+ * DEADLETTER_RETENTION_DAYS) — a pure time value, no PII.
+ */
 async function deadLetter(salesRecordId, errorCode) {
     try {
         await admin.firestore().collection(DEADLETTER_COLLECTION).add({
             salesRecordId,
             errorCode,
             failedAt: admin.firestore.FieldValue.serverTimestamp(),
+            // TTL target. serverTimestamp() is a server-resolved sentinel that can't be
+            // arithmetic'd, so expireAt is a client-computed Timestamp. The Firestore TTL
+            // policy is set on THIS field, never on failedAt (already in the past).
+            expireAt: admin.firestore.Timestamp.fromMillis(Date.now() + DEADLETTER_RETENTION_DAYS * 86_400_000),
             schemaVersion: 1
         });
     }

@@ -109,6 +109,67 @@ Dataset `law_office_analytics`, table **`sales_records`** — **synced by H.1.c 
 
 ---
 
+## Retention & TTL (H.1.c follow-up, 2026-06-14)
+
+Two retention gaps flagged at the H.1.c checkpoint (security + completeness) were deferred and are resolved here. Both concern **PII-at-rest under חוק הגנת הפרטיות**. This is the focused retention note only — the full operational bridge runbook is scheduled for **H.9** (`docs/RUNBOOK_TOFES_MECHER_BRIDGE.md`, §8.11).
+
+> Investigated by the security + backend specialists (verdicts folded below); decisions ratified by Haim at the 2026-06-14 checkpoint: **90-day** dead-letter retention, **include** the no-PII payload lock, **set time-travel to 48h**.
+
+### Gap 1 — BigQuery `law_office_analytics.sales_records` retention DECISION
+
+**Decision: retain indefinitely, source-bounded — documented, no table expiration.**
+
+The mirror is a **derived, self-refreshing** dataset, not an independent record-of-truth. `exportSalesToBigQuery` does a full **WRITE_TRUNCATE** reload **every hour** (`schedule: '0 * * * *'`), so the table is *defined* as "whatever tofes-mecher held at the last run" — never "source ∪ history". A record erased at the source disappears from the mirror within **≤1h** (next run). There is **no independent indefinite-accumulation vector**, so the mirror creates **no new retention obligation beyond the one already attaching to the authoritative source** (tofes-mecher `sales_records`, the §10 locked system-of-record). "Indefinite / source-bounded" is therefore a legitimate, **documented** retention decision (the Privacy Authority's expectation is a *documented* decision, not necessarily a short one).
+
+**Liveness contingency (named, not hidden):** the ≤1h deletion-propagation guarantee holds only while the hourly job runs. The handler **throws on any hard failure** → Cloud Scheduler records a failed execution (alertable) — that throw is the enforcement of the propagation SLA. **Console follow-up (recommended, G3):** a Cloud Monitoring alert on the scheduler error-rate. (H.1.c already silently failed every run for ~1 day on the NUMERIC float-noise bug, PR #367 — the alert is what would have caught it.)
+
+**Time-travel mitigation (applied):** BigQuery time-travel (default **168h/7d**, floor **48h/2d**) + a non-configurable **fail-safe (~7d)** mean post-truncate snapshots — i.e. rows **deleted at source** — remain recoverable via `FOR SYSTEM_TIME AS OF` / table-undelete for up to **~14 days**. To shrink that deleted-PII tail, set the dataset to the **48h minimum**:
+
+```bash
+# bq CLI (stable, preferred)
+bq update --max_time_travel_hours=48 law-office-system-e4801:law_office_analytics
+```
+
+This cuts the *configurable* window 7d→2d at zero cost. The **fail-safe ~7d is not configurable** (Google-platform property) → documented as an **accepted residual**. The primary control on *who* can reach the tail in the interim is the **principal-scoped dataset IAM** (Haim/Guy only — Step 4).
+
+**Why NOT a BQ table default-expiration:** wrong tool. The exporter is create-if-not-exists (`table.exists()` → `createTable`), so an expiration that fired would just delete a table the **next hourly run recreates** — a self-healing flap that durably deletes nothing and adds an empty-table race. Rejected.
+
+**H.8 carry-forward (design item, NOT this PR):** the identifying columns (`id_number`/`client_name`/`phone`/`email`) are the time-travel liability. If the H.8 AI-chat queries are aggregate/analytical, evaluate carrying a **salted hash of `id_number`** (the locked join key, DLR §8.2.5 D1) and **dropping `client_name`/`phone`/`email`** from the mirror — so the identifying PII never enters the time-travel/fail-safe tail at all (same instinct as the H.1.c `raw_json` omission, one column-set further). A salted ת"ז hash is still PII-derived → still access-controlled. **Decide at the H.8 checkpoint.**
+
+### Gap 2 — `tofes_export_deadletter`: Firestore TTL + triage runbook
+
+**Config: a Firestore TTL policy on the `expireAt` field, 90-day retention.**
+
+The collection is append-only (one doc per failed-to-map row per hourly run) → bounded by a native TTL. The exporter now stamps **`expireAt = failedAt + 90d`** on every dead-letter write (`DEADLETTER_RETENTION_DAYS`).
+
+> **Why `expireAt`, NOT `failedAt`:** Firestore TTL deletes a doc when the **value** of the policy field is reached. `failedAt` is `serverTimestamp()` (≈now at write) = **already in the past**, so a policy on it would purge every doc almost immediately and destroy the forensic window. `expireAt` is a client-computed future `Timestamp` — the instant the policy fires. (The original deferral note said "TTL on `failedAt`"; that is mechanically wrong — corrected here.)
+
+Enable the policy (one-time, Haim — TTL policies are **not** expressible in `firestore.rules` / `firestore.indexes.json` / `firebase.json`; they are a gcloud/Console field config):
+
+```bash
+gcloud firestore fields ttl update expireAt \
+  --collection-group=tofes_export_deadletter \
+  --project=law-office-system-e4801 \
+  --enable-ttl
+
+# verify it registered:
+gcloud firestore fields ttl describe expireAt \
+  --collection-group=tofes_export_deadletter \
+  --project=law-office-system-e4801
+```
+
+TTL deletion is **best-effort within ~24–72h** of expiry — fine for a diagnostic log; do not treat 90d as exact. The **durable** failure signal is NOT the dead-letter — it is the `TOFES_BQ_EXPORT` `audit_log` run entry + the Scheduler-failure throw. **Those are never TTL'd.** The TTL only reaps the row-level forensic detail.
+
+**PII discipline:** each dead-letter doc is `{ salesRecordId, errorCode, failedAt, expireAt, schemaVersion }` — **no PII** (`salesRecordId` is the 20-char auto-id, an opaque business id; `errorCode` is a static token — the only thrower is `mapDocToRow`'s `'missing_doc_id'`, no value interpolation). A static AST guard (`dead-letter write references NO PII identifier`) now **locks** this — a future edit adding e.g. `idNumber: data.idNumber` to the write fails CI rather than landing PII at rest. So the collection is **safe for a developer to read during triage**.
+
+**Triage runbook (brief):**
+1. Read the collection via the **Firestore Console** (project owner bypasses the `if false` rule) or the Admin SDK — **never a client SDK** (CF-only). Look at `errorCode` + `salesRecordId`.
+2. To inspect the offending sale, call the admin callable **`validateSalesRecordExists(salesRecordId)`** (H.1.b) — it returns the live, field-minimized record (no need to touch tofes-mecher directly).
+3. **Nothing to "re-drive".** Because the export is a full hourly WRITE_TRUNCATE reload, a row fixed by a code change **re-maps automatically on the next run** — the stale dead-letter doc is then orphaned and auto-expires via TTL. Dead-letter entries are **diagnostic only**.
+4. A **recurring `errorCode`** across many rows/runs = a mapper bug (e.g. the NUMERIC-scale class that PR #367 fixed) → fix `mapDocToRow`, redeploy; entries stop and age out.
+
+---
+
 ## ✅ VERIFIED — tofes-mecher `sales_records` schema (2026-06-01, read-only probe)
 
 Confirmed by a one-time **read-only** schema probe against `law-office-sales-form`, using the developer machine's existing Application Default Credentials (NOT the production SA; the probe printed **field names + types + string lengths only — zero PII values**). This SUPERSEDES the earlier inferred assumptions — **two of which were wrong** (marked ❗).

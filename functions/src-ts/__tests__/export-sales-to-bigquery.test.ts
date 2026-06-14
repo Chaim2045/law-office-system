@@ -27,6 +27,8 @@ jest.mock('firebase-admin', () => {
   const firestoreFn = (...args: unknown[]) => defaultFirestore(...(args as []));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (firestoreFn as any).FieldValue = { serverTimestamp: () => 'ts-sentinel' };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (firestoreFn as any).Timestamp = { fromMillis: (ms: number) => ({ __ttlMs: ms }) };
   return {
     app: (name: string) => mockAppLookup(name),
     initializeApp: (...args: unknown[]) => { mockInitializeApp(...args); return { firestore: namedFirestore }; },
@@ -158,6 +160,21 @@ describe('export-sales-to-bigquery — static AST invariants', () => {
   it('writes a run-level audit via logCriticalAction with a sys actor', () => {
     expect(code).toContain('logCriticalAction');
     expect(code).toMatch(/sys:cron-export-sales-bq/);
+  });
+
+  it('dead-letter write references NO PII identifier (payload locked)', () => {
+    // The deadLetter() Firestore write must carry only {salesRecordId, errorCode,
+    // failedAt, expireAt, schemaVersion}. Lock the PII-free property so a future edit
+    // that adds e.g. `idNumber: data.idNumber` to the dead-letter doc fails HERE — not
+    // silently at rest. (security-access-expert condition — enforced, not emergent;
+    // extends the logger.* no-PII guard above to the Firestore write payload.)
+    const fn = code.match(/async function deadLetter\([\s\S]*?\n\}/);
+    expect(fn).not.toBeNull();
+    const body = fn ? fn[0] : '';
+    const forbidden = ['idNumber', 'clientName', 'amountBeforeVat', 'vatAmount', 'amountWithVat', 'amount', 'phone', 'email', 'address', 'clientId'];
+    for (const ident of forbidden) {
+      expect(body).not.toMatch(new RegExp(`\\b${ident}\\b`));
+    }
   });
 });
 
@@ -325,6 +342,12 @@ describe('exportSalesToBigQueryHandler — dead-letter + reconciliation', () => 
     const dl = mockDefaultAdd.mock.calls.map((c) => c[0]).find((d) => 'salesRecordId' in d && !('action' in d));
     expect(dl).toBeDefined();
     expect(dl.errorCode).toBeDefined();
+    // TTL target present + strictly in the future — the policy is on expireAt, NOT the
+    // already-past failedAt. Pins the "never TTL failedAt" invariant (failedAt stays
+    // the 'ts-sentinel' string, so the two are trivially distinguishable in-test).
+    expect(dl.expireAt).toBeDefined();
+    expect(dl.expireAt.__ttlMs).toBeGreaterThan(Date.now());
+    expect(dl.failedAt).toBe('ts-sentinel');
     for (const v of Object.values(PII)) expect(JSON.stringify(dl)).not.toContain(v);
   });
 });
