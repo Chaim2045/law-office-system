@@ -196,7 +196,9 @@ jobs:
   test:
     name: 🧪 Automated Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 25min (was 15): the Firestore-emulator rules deny-suite needs cold-boot
+    # headroom (matches pull-request.yml JOB 5).
+    timeout-minutes: 25
     needs: [code-quality, typescript, security]
 
     steps:
@@ -209,8 +211,25 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
+      # H.3 PR3 (2026-06-14): the deploy pipeline now ALSO runs the Firestore-rules
+      # deny-suite (it previously ran ONLY in pull-request.yml — a push-to-main that
+      # bypassed the PR gate would deploy firestore:rules without the deny tests). A
+      # rules change (this PR adds client_profitability + the first isPartner()
+      # consumer) must have its deny/allow suite gate the deploy, not just the PR.
+      - name: ☕ Setup Java (required by Firestore Emulator)
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: 📦 Install dependencies
         run: npm ci --prefer-offline --no-audit
+
+      - name: 🔒 Verify Firestore Emulator binary is available
+        run: npx firebase --version
+
+      - name: 🔐 Run Firestore Rules tests (emulator)
+        run: npm run test:rules:emulator
 
       - name: 🧪 Run Vitest (root)
         run: npm test
