@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>עלות עובדים | Admin Panel</title>
+
+    <!-- ===== UNIFIED AUTH GUARD (NO PRE-FLIGHT REDIRECT) ===== -->
+    <script>
+        (function() {
+            'use strict';
+            try {
+                var authState = sessionStorage.getItem('authState');
+                if (authState) {
+                    var state = JSON.parse(authState);
+                    var age = Date.now() - (state.timestamp || 0);
+                    window._employeeCostsOptimistic = state.isAuthenticated && age < 5 * 60 * 1000;
+                } else {
+                    window._employeeCostsOptimistic = false;
+                }
+            } catch (e) {
+                window._employeeCostsOptimistic = false;
+            }
+        })();
+    </script>
+
+    <!-- ===== Firebase SDK ===== -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
+
+    <!-- ===== Font Awesome Icons ===== -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- ===== Design System ===== -->
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/employee-costs.css">
+</head>
+
+<body class="admin-page">
+    <!-- ===== Navigation Bar ===== -->
+    <div id="navigationContainer"></div>
+
+    <!-- ===== Main Content ===== -->
+    <main class="dashboard-main">
+        <div id="employee-costs-section" class="dashboard-content">
+            <!-- Employee Costs page (or access-denied state) rendered here by JS -->
+        </div>
+    </main>
+
+    <!-- ===== Loading Overlay ===== -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner-circle"></div>
+            <p class="loading-text">טוען...</p>
+        </div>
+    </div>
+
+    <!-- ===== Core Scripts ===== -->
+    <script src="js/core/firebase.js"></script>
+    <script src="js/core/system-constants.js"></script>
+    <script src="js/core/config-loader.js"></script>
+    <script src="js/core/auth.js"></script>
+    <script src="js/core/constants.js"></script>
+
+    <!-- ===== Auth Guard ===== -->
+    <script src="js/core/auth-guard.js?v=20250103"></script>
+
+    <!-- ===== Navigation Component ===== -->
+    <script src="js/ui/Navigation.js"></script>
+
+    <!-- ===== Data + Modals + Page + Notifications ===== -->
+    <script src="js/managers/DataManager.js"></script>
+    <script src="js/ui/Modals.js"></script>
+    <script src="js/ui/EmployeeCostsPage.js"></script>
+    <script src="js/ui/Notifications.js"></script>
+
+    <!-- ===== Page Initialization ===== -->
+    <script>
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'logoutEvent') {
+                sessionStorage.removeItem('authState');
+                window.location.replace('index.html');
+            }
+        });
+
+        /**
+         * Render a Hebrew access-denied state — used when the authenticated user
+         * is NOT an admin. No cost UI is rendered and getEmployeeCost is NEVER
+         * called in this branch.
+         */
+        function renderAccessDenied() {
+            const section = document.getElementById('employee-costs-section');
+            if (!section) {
+                return;
+            }
+            section.innerHTML = ''
+                + '<div class="ec-access-denied" role="alert">'
+                + '  <i class="fas fa-lock" aria-hidden="true"></i>'
+                + '  <h1>אין הרשאת גישה</h1>'
+                + '  <p>דף זה מיועד למנהלי מערכת בלבד. אם לדעתך זו טעות, פנה למנהל המערכת.</p>'
+                + '  <a class="ec-btn ec-btn--secondary" href="index.html" aria-label="חזרה לדף הבית">חזרה לדף הבית</a>'
+                + '</div>';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('💰 Employee Costs Page - Loading...');
+
+            window.initAuthGuard({
+                pageName: 'employee-costs',
+                timeoutMs: 5000,
+
+                onAuthenticated: async (user) => {
+                    console.log('✅ [Employee Costs] User authenticated, verifying admin role...');
+
+                    if (window.Navigation) {
+                        window.Navigation.init('employee-costs');
+                    }
+
+                    // ════════════════════════════════════════════════════════
+                    // EXPLICIT ADMIN ROLE GATE (render-time)
+                    // ════════════════════════════════════════════════════════
+                    // initAuthGuard only checks AUTHENTICATION. This page shows
+                    // sensitive salary-adjacent PII, so we re-verify the ADMIN
+                    // ROLE from the Firebase ID token claims before rendering any
+                    // cost UI. Mirrors js/core/auth.js checkIfAdmin Layer-1
+                    // (role-only, Pre-H.0.0.E single shape {role:'admin'}).
+                    let isAdmin = false;
+                    try {
+                        const tokenResult = await firebase.auth().currentUser.getIdTokenResult();
+                        const ADMIN_ROLE = (window.ADMIN_PANEL_CONSTANTS
+                            && window.ADMIN_PANEL_CONSTANTS.USER_ROLES
+                            && window.ADMIN_PANEL_CONSTANTS.USER_ROLES.ADMIN) || 'admin';
+                        isAdmin = tokenResult.claims.role === ADMIN_ROLE;
+                    } catch (err) {
+                        // Token read failed — fail CLOSED (treat as non-admin).
+                        console.error('❌ [Employee Costs] Admin role check failed:', err && err.code);
+                        isAdmin = false;
+                    }
+
+                    if (!isAdmin) {
+                        console.warn('🔒 [Employee Costs] Non-admin user blocked from cost UI');
+                        renderAccessDenied();
+                        return;
+                    }
+
+                    console.log('✅ [Employee Costs] Admin verified, loading employees...');
+
+                    // ════════════════════════════════════════════════════════
+                    // Ensure DataManager is ready + the employee list is loaded
+                    // (mirrors workload.html bootstrap). loadUsers() already
+                    // filters out inactive/suspended → active employees only.
+                    // ════════════════════════════════════════════════════════
+                    const section = document.getElementById('employee-costs-section');
+                    try {
+                        if (window.DataManager) {
+                            window.DataManager.init();
+                            const result = await window.DataManager.loadUsers();
+                            if (!result || !result.success) {
+                                throw new Error('load-failed');
+                            }
+                        }
+
+                        if (window.EmployeeCostsPage) {
+                            window.EmployeeCostsPage.init('employee-costs-section');
+                        }
+                        console.log('✅ Employee Costs Page - Ready');
+                    } catch (e) {
+                        console.error('❌ [Employee Costs] Failed to load employees:', e && e.message);
+                        if (section) {
+                            section.innerHTML = ''
+                                + '<div class="ec-load-error" role="alert">'
+                                + '  <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>'
+                                + '  <h1>שגיאה בטעינת נתונים</h1>'
+                                + '  <p>לא ניתן לטעון את רשימת העובדים כעת. בדוק את החיבור לאינטרנט ונסה שוב.</p>'
+                                + '  <button type="button" class="ec-btn ec-btn--secondary" onclick="window.location.reload()" aria-label="רענון הדף">רענון הדף</button>'
+                                + '</div>';
+                        }
+                    }
+                },
+
+                onUnauthenticated: () => {
+                    window.location.replace('index.html');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
