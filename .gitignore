@@ -34,8 +34,10 @@ functions/.env
 # Local backup snapshots (data may include client names, employee emails, taskIds)
 # Pre-migration data backups stay local — managed Firestore backups serve as canonical recovery
 backups/
-# H.2 backfill-cost-per-hour.js write-plan backups — contain employee<->entry email
-# mapping (PII, no cost values). Stay local; never commit (public repo, §2.8).
+# One-time backfill write-plan / before-state backups (PII: employee emails, client
+# services snapshots). Stay local; never commit (public repo, §2.8). Used by:
+#   - backfill-cost-per-hour.js            (H.2 — employee<->entry email mapping)
+#   - backfill-strip-legal-hourly-rate.js  (H.3 — clientId + services[] before-state)
 functions/backfill-backups/
 
 # IDE
