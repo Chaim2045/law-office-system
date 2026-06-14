@@ -2332,7 +2332,10 @@ return;
         data.pricingType = formData.service.pricingType;
         // ✅ שדות חדשים עבור המבנה החדש
         data.legalProcedureName = formData.case.title;  // שם ��הליך המשפטי
-        data.ratePerHour = 800;  // תעריף שעתי ברירת מחדל
+        // H.3 D-B (2026-06-11): אין יותר תעריף 800 קשיח. תעריף שלא נבחר חייב להישאר
+        // נעדר כדי שה-Plan של התיק ידווח pricing_missing (לעולם לא 800×שעות מפוברק).
+        // (דיאלוג זה אינו מסלול היצירה החי — היוצר החי הוא ה-User App; השינוי כאן
+        // למניעת מוקש-drift עתידי, §8.2.5.)
         data.stages = [
           { id: 'stage_a', ...formData.service.stageA },
           { id: 'stage_b', ...formData.service.stageB },

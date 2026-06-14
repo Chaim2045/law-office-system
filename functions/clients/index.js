@@ -153,6 +153,21 @@ exports.createClient = functions.https.onCall(async (data, context) => {
         );
       }
 
+      // H.3 D-B (2026-06-11): תעריף שעתי אופציונלי נבחר (legal-hourly בלבד).
+      // Validate-if-present — תעריף נבחר פגום נדחה (לא מושמט בשקט). כשאינו מסופק,
+      // לא מיושמת ברירת מחדל (ראה בניית השירות למטה — אין יותר `|| 800`).
+      if (
+        data.pricingType === PT.HOURLY &&
+        data.ratePerHour !== undefined &&
+        data.ratePerHour !== null &&
+        (typeof data.ratePerHour !== 'number' || !Number.isFinite(data.ratePerHour) || data.ratePerHour <= 0)
+      ) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'תעריף שעתי חייב להיות מספר חיובי'
+        );
+      }
+
       // בדיקת כל שלב - תלוי בסוג התמחור
       data.stages.forEach((stage, index) => {
         if (!stage.description || stage.description.trim().length < 2) {
@@ -419,7 +434,14 @@ exports.createClient = functions.https.onCall(async (data, context) => {
             type: 'legal_procedure',
             name: sanitizeString(data.legalProcedureName || 'הליך משפטי'),
             pricingType: PT.HOURLY,
-            ratePerHour: data.ratePerHour || 800,
+            // H.3 D-B (2026-06-11): store an hourly rate ONLY when one was explicitly
+            // elected (a positive number). The legacy `|| 800` silent default is REMOVED —
+            // an un-elected rate stays absent so the Plan reports pricing_missing (never a
+            // fabricated 800×hours; mirrors addServiceToClient). Real source: tofes
+            // amountBeforeVat at H.6 (§8.2.5 D1).
+            ...(typeof data.ratePerHour === 'number' && data.ratePerHour > 0
+              ? { ratePerHour: data.ratePerHour }
+              : {}),
             status: 'active',
             stages: stages,
 
