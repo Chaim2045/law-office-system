@@ -252,10 +252,12 @@ service cloud.firestore {
 
     // ✅ tofes_export_deadletter: CF-only operational log (Phase 2 H.1.c).
     // The hourly BigQuery exporter (exportSalesToBigQuery) writes one doc here per
-    // sales_record that fails to map — { salesRecordId, errorCode, failedAt } only,
-    // NEVER PII. Default-deny like employee_costs: nothing reads/writes from a
-    // client SDK; the CF writes via the Admin SDK (bypasses rules). Forensics +
-    // alerting surface only.
+    // sales_record that fails to map — { salesRecordId, errorCode, failedAt,
+    // expireAt, schemaVersion } only, NEVER PII. A Firestore TTL policy on the
+    // `expireAt` field (NOT failedAt — it's already in the past) auto-reaps docs
+    // after 90d; see docs/PHASE_2_FOUNDATIONS.md "Retention & TTL". Default-deny
+    // like employee_costs: nothing reads/writes from a client SDK; the CF writes
+    // via the Admin SDK (bypasses rules). Forensics + alerting surface only.
     match /tofes_export_deadletter/{entryId} {
       allow read, write: if false; // CF-only (Admin SDK)
     }
