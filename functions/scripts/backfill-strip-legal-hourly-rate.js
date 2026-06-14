@@ -20,13 +20,19 @@
  *     (any other number, incl. 0 / negative, OR a numeric rate on a non-legal-hourly
  *     service) is a deliberately-ELECTED rate to PRESERVE — it aborts the WHOLE run
  *     (zero writes) and is reported as clientId + code, fail-secure. NEVER stripped.
- *   • AGGREGATE-DRIFT GUARD: the canonical writer re-derives ALL hours aggregates on
- *     every write. To keep this migration surgical (touch ONLY plan + the stripped
- *     rate), a client whose STORED hours aggregates already differ from the canonical
- *     recompute is SKIPPED + flagged (`AGGREGATE_DRIFT`) — its block-state / hours are
- *     NOT silently "healed" by the rate strip. Such clients are a separate, audited
- *     decision. (Removing `ratePerHour` itself cannot change any aggregate — it is not
- *     an input to calcClientAggregates — so a clean client's hours stay byte-identical.)
+ *   • AGGREGATE-DRIFT GUARD: the canonical writer re-derives the hours aggregates on
+ *     every write. To keep this migration surgical, a client whose STORED primary hour
+ *     quantities or block-state already differ from the canonical recompute —
+ *     totalHours / hoursUsed / isBlocked / isCritical — is SKIPPED + flagged
+ *     (`AGGREGATE_DRIFT`); the rate strip never silently re-derives a case's budget or
+ *     flips its block-state. Pure DERIVATIONS (hoursRemaining / minutesUsed /
+ *     minutesRemaining = ×60 / subtraction of the primaries) are EXCLUDED from the
+ *     guard — they are implied when the primaries match, and comparing them would
+ *     only false-skip legacy docs that never stored a derived field (devils-advocate #1).
+ *     Removing `ratePerHour` itself cannot change any aggregate (not a
+ *     calcClientAggregates input), so a non-drifted client's hours stay identical.
+ *     A HIGH skip count means the cohort needs a separate aggregate-reconciliation pass
+ *     FIRST — watch the dry-run `skippedAggregateDrift` ratio before `--apply`.
  *   • Canonical write path: writeClientWithCanonicalAggregates (the only mandated
  *     `clients` writer) recomputes `plan` (RESTRICTED_KEY → derived). AWAITED inside
  *     the txn so its internal read+update complete BEFORE the audit set (reads-before-writes).
@@ -75,11 +81,19 @@ const ACTION = 'BACKFILL_STRIP_LEGAL_HOURLY_RATE';
 const CALLER = 'backfill-strip-legal-hourly-rate';
 const AUDIT_SCHEMA_VERSION = 1;
 
-// The hours-aggregate keys the canonical writer re-derives on every write. The strip
-// must leave ALL of these byte-identical; any pre-existing drift → skip (don't heal).
+// Full hours-aggregate set — captured in the backup before/after snapshot (audit + rollback aid).
 const AGGREGATE_KEYS = Object.freeze([
   'totalHours', 'hoursUsed', 'hoursRemaining', 'minutesUsed', 'minutesRemaining', 'isBlocked', 'isCritical'
 ]);
+
+// DRIFT-GUARD scope: only the PRIMARY hour quantities + the BEHAVIORAL flags. The strip
+// must never silently change a case's hour budget (totalHours), its logged hours
+// (hoursUsed), or — most importantly — its block/critical state (which gates time entry).
+// The remaining fields (hoursRemaining, minutesUsed, minutesRemaining) are PURE derivations
+// (×60 / subtraction of the primaries): if the 4 guard keys match canonical, the derivations
+// are canonical too, so comparing them adds NO safety and only false-skips legacy docs that
+// never stored a derived field (devils-advocate #1).
+const DRIFT_GUARD_KEYS = Object.freeze(['totalHours', 'hoursUsed', 'isBlocked', 'isCritical']);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PURE, TESTABLE CORE (no I/O) — exported for the jest suite.
@@ -182,9 +196,9 @@ function recomputeAggregates(services) {
   };
 }
 
-/** Names of the aggregate keys that differ between stored and recomputed (empty = no drift). */
+/** Guard-scope keys (primaries + behavioral flags) that differ — empty = safe to strip. */
 function aggregatesDiff(stored, recomputed) {
-  return AGGREGATE_KEYS.filter((k) => stored[k] !== recomputed[k]);
+  return DRIFT_GUARD_KEYS.filter((k) => stored[k] !== recomputed[k]);
 }
 
 // Tiny helper: build an Error carrying a safe `.code` (never a raw message in logs).
@@ -319,7 +333,8 @@ async function main() {
           beforeServices: services,
           beforePlan: data.plan || null,
           afterPlanPreview: computeClientPlan(cleaned), // dry-run review: what plan BECOMES
-          beforeAggregates: before                       // == after (drift-free); for rollback/audit
+          beforeAggregates: before,                      // for rollback/audit
+          afterAggregates: after                         // guard keys == before; derivations may be normalized
         });
       } catch (err) {
         counts.errors += 1;

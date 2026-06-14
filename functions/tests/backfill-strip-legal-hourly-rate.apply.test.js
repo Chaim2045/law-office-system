@@ -102,12 +102,23 @@ describe('migrateClientInTxn — in-txn re-verification branches', () => {
     expect(clientWriter.writeClientWithCanonicalAggregates).not.toHaveBeenCalled();
   });
 
-  test('stored aggregates drift from canonical → throws AGGREGATE_DRIFT_APPEARED, no write', async () => {
-    // Recompute says isBlocked:true, but the stored doc says false → drift.
+  test('BEHAVIORAL drift (recompute would flip isBlocked) → throws AGGREGATE_DRIFT_APPEARED, no write', async () => {
+    // Recompute says isBlocked:true, but the stored doc says false → guard-key drift.
     aggregates.calcClientAggregates.mockReturnValue({ hoursUsed: 0, hoursRemaining: 10, minutesUsed: 0, minutesRemaining: 600, isBlocked: true, isCritical: false });
     const { tx } = makeTx({ services: [legalHourly({ ratePerHour: 800 })], ...HEALTHY_AGG }); // stored isBlocked:false
     await expect(migrateClientInTxn(tx, REF)).rejects.toMatchObject({ code: 'AGGREGATE_DRIFT_APPEARED' });
     expect(clientWriter.writeClientWithCanonicalAggregates).not.toHaveBeenCalled();
+  });
+
+  test('PURE-DERIVATION-only difference (legacy doc missing minutesUsed) does NOT skip → writes', async () => {
+    // Guard keys (totalHours/hoursUsed/isBlocked/isCritical) all match; only a derived
+    // field differs (recompute minutesUsed:150 vs stored 0). Must NOT false-skip.
+    aggregates.calcClientAggregates.mockReturnValue({ hoursUsed: 0, hoursRemaining: 10, minutesUsed: 150, minutesRemaining: 600, isBlocked: false, isCritical: false });
+    const { tx, order } = makeTx({ services: [legalHourly({ ratePerHour: 800 })], totalHours: 10, hoursUsed: 0, hoursRemaining: 10, minutesUsed: 0, minutesRemaining: 600, isBlocked: false, isCritical: false });
+    const result = await migrateClientInTxn(tx, REF);
+    expect(result).toBe('written');
+    expect(order).toEqual(['read', 'writer-update', 'audit-set']);
+    expect(clientWriter.writeClientWithCanonicalAggregates).toHaveBeenCalledTimes(1);
   });
 
   test('doc vanished between discovery and apply → throws CLIENT_VANISHED', async () => {
