@@ -146,6 +146,20 @@ exports.recomputeProfitability = recomputeProfitabilityModule.recomputeProfitabi
 const getProfitabilityModule = require('./lib/profitability/get-profitability');
 exports.getProfitability = getProfitabilityModule.getProfitability;
 
+// Signature-presence check (TS — Phase 2 H.5). Admin-gated v2 onCall: downloads a
+// stored fee-agreement (PDF/image) from Storage (Admin SDK) and asks Claude whether
+// the page VISUALLY contains a client + a lawyer signature (presence, NOT fraud).
+// Returns the two booleans + confidence + Hebrew reasoning + a derived `passed`
+// gate for the future H.6 cutover. AUDIT-FIRST/egress-second (the document is sent
+// to Anthropic only AFTER a non-PII access audit). @anthropic-ai/sdk is lazy-imported.
+// ⚠️ DEPLOY PREREQUISITE: the secret ANTHROPIC_API_KEY must exist in Secret Manager
+// BEFORE any functions deploy, else the WHOLE deploy fails (defineSecret) — same
+// landmine class as TOFES_MECHER_SA_KEY. See docs/PHASE_2_FOUNDATIONS.md.
+// ⚠️ PII EGRESS (H.5 checkpoint): ships as PLUMBING — no live consumer until H.6;
+// a DPA / privacy-law basis is an H.6 prerequisite before wiring to real PROD data.
+const verifySignaturePresenceModule = require('./lib/signatures/verify-signature-presence');
+exports.verifySignaturePresence = verifySignaturePresenceModule.verifySignaturePresence;
+
 // Budget Tasks Functions (imported from ./budget-tasks)
 const budgetTasks = require('./budget-tasks');
 exports.createBudgetTask = budgetTasks.createBudgetTask;

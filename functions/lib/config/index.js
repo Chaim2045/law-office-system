@@ -21,7 +21,7 @@
  * creep. Existing callables keep their literals; new code imports from here.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BIGQUERY_SALES_TABLE = exports.BIGQUERY_DATASET = exports.TOFES_SALES_COLLECTION = exports.TOFES_MECHER_APP_NAME = exports.TOFES_MECHER_SA_KEY_SECRET = exports.REGION = exports.TOFES_MECHER_PROJECT_ID = exports.MAIN_PROJECT_ID = void 0;
+exports.BIGQUERY_SALES_TABLE = exports.SIGNATURE_CONFIDENCE_THRESHOLD = exports.SIGNATURE_CHECK_MAX_TOKENS = exports.SIGNATURE_CHECK_MODEL = exports.ANTHROPIC_API_KEY_SECRET = exports.BIGQUERY_DATASET = exports.TOFES_SALES_COLLECTION = exports.TOFES_MECHER_APP_NAME = exports.TOFES_MECHER_SA_KEY_SECRET = exports.REGION = exports.TOFES_MECHER_PROJECT_ID = exports.MAIN_PROJECT_ID = void 0;
 /** The MAIN Firebase project (this app). Public; already in firebase.json. */
 exports.MAIN_PROJECT_ID = 'law-office-system-e4801';
 /**
@@ -63,6 +63,38 @@ exports.TOFES_SALES_COLLECTION = 'sales_records';
  * the export CODE lands in H.1. See docs/PHASE_2_FOUNDATIONS.md.
  */
 exports.BIGQUERY_DATASET = 'law_office_analytics';
+/**
+ * Name of the GCP Secret Manager secret holding the Anthropic (Claude) API key,
+ * used by the H.5 signature-presence check (and reused by H.8 AI chat). The VALUE
+ * is NEVER in code/repo — set by an admin via
+ * `firebase functions:secrets:set ANTHROPIC_API_KEY` BEFORE the next deploy
+ * (a `defineSecret` that is unset at deploy time fails the WHOLE functions
+ * codebase deploy — same landmine class as TOFES_MECHER_SA_KEY). See
+ * docs/PHASE_2_FOUNDATIONS.md "ANTHROPIC_API_KEY".
+ */
+exports.ANTHROPIC_API_KEY_SECRET = 'ANTHROPIC_API_KEY';
+/**
+ * Claude model for the H.5 signature-presence vision check. Opus 4.8 is the
+ * vision/document-capable default (the claude-api skill mandate). Centralized
+ * here so the model can be retuned (e.g. to a cheaper Sonnet for cost) without
+ * touching the handler. Use ONLY exact model-id strings (no date suffix).
+ */
+exports.SIGNATURE_CHECK_MODEL = 'claude-opus-4-8';
+/**
+ * Max output tokens for the signature check. The response is a tiny structured
+ * object ({2 booleans, confidence, a 1-2 sentence Hebrew reasoning}). 2048 gives
+ * headroom so a dense Hebrew reasoning + the JSON envelope are NOT truncated (a
+ * `max_tokens` cut-off would yield invalid JSON → a failed check; devils-advocate
+ * #2). Still trivial cost, and non-streaming is safe at this size (no timeout).
+ */
+exports.SIGNATURE_CHECK_MAX_TOKENS = 2048;
+/**
+ * Confidence floor (0..1) at which BOTH-signatures-present is treated as a
+ * deterministic `passed: true` for the H.6 cutover gate. The model returns its
+ * own confidence; H.5 derives `passed = clientPresent && lawyerPresent &&
+ * confidence >= this`. Centralized so the gate policy is one tunable constant.
+ */
+exports.SIGNATURE_CONFIDENCE_THRESHOLD = 0.8;
 /**
  * BigQuery table (within BIGQUERY_DATASET) holding the synced sales_records
  * mirror. Created by the H.1.c exporter (create-if-not-exists); H.0 created only
