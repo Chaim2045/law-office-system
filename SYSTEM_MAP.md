@@ -3,6 +3,20 @@
 > Generated: 2026-02-26 16:35:28  
 > Git commit: `ff71201`
 
+> **⚠️ STALE SNAPSHOT (auto-generated 2026-02-26).** This is a point-in-time scan,
+> not a live inventory — it predates the entire H-phase and omits many current
+> Cloud Functions (e.g. `setEmployeeCost`, `getEmployeeCost`, `getProfitability`,
+> `recomputeProfitability`, `aggregateClientProfitability`, `validateSalesRecordExists`,
+> `exportSalesToBigQuery`). Treat it as historical until regenerated.
+>
+> **Correction (H.4, 2026-06-15):** the `approveTaskBudget` / `rejectTaskBudget`
+> entries in §2 (Frontend Calls) below were **never real Cloud Functions** — they
+> are absent from §1 (Backend Functions) because they were never implemented. The
+> frontend call-sites that referenced them (the dead task-approval gate) have been
+> removed: the admin copy was retired in H.4 PR-a (#376) and the user-app
+> `components/task-approval-system/` folder was deleted in H.4 PR-b. Model A (smart
+> budget meter) replaced the approval gate — see `docs/MASTER_PLAN.md` §8.6.
+
 ---
 
 ## 1. Backend Functions

@@ -83,6 +83,20 @@ class NotificationMessages {
         'המשימה נמחקה בהצלחה'
     },
 
+    // Budget-crossing warnings (H.4 PR-b, Model A) — fired once per crossing the
+    // moment a time entry pushes the task across the canonical 85% / 100% budget
+    // thresholds. Hebrew, no emojis (matches success.timeAdded above).
+    warning: {
+      budgetApproaching: (clientName) =>
+        clientName
+          ? `מתקרבים לתקציב המשימה של ${clientName} — נוצלו מעל 85% מהשעות`
+          : 'מתקרבים לתקציב המשימה — נוצלו מעל 85% מהשעות',
+      budgetOver: (clientName) =>
+        clientName
+          ? `חריגת תקציב במשימה של ${clientName} — שקול עדכון תקציב או סיום משימה`
+          : 'חריגת תקציב במשימה — שקול עדכון תקציב או סיום משימה'
+    },
+
     // Error messages
     // NOTE: Functions accept the user-facing message extracted by ActionFlowManager
     // (from error.details.userMessage when backend uses buildAppError, otherwise error.message).

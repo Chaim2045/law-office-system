@@ -35,6 +35,11 @@ import { initAddTaskSystem } from '../components/add-task/index.js';
 import { createTimesheetEntryV2 } from './modules/timesheet-adapter.js';
 import { buildErrorFromResult } from './modules/error-utils.js';
 
+// H.4 PR-b (Model A): moment-of-overrun detector — fires the budget-crossing
+// toast once per crossing at the canonical 85% / 100% thresholds (pure helper,
+// pinned to the admin budget-status.js by a drift-guard test).
+import { detectBudgetCrossing } from './modules/budget-crossing.js';
+
 // System Announcement Ticker - News-style ticker for system announcements
 import SystemAnnouncementTicker from './modules/system-announcement-ticker.js';
 
@@ -2990,6 +2995,12 @@ return;
     // Direct call to Cloud Function - clean and simple with NotificationMessages
     const msgs = window.NotificationMessages.tasks;
 
+    // H.4 PR-b: capture the authoritative post-entry actual (the addTimeToTask
+    // transaction's newActualMinutes) so the budget-crossing toast can fire AFTER
+    // the success message (in onSuccess), with the BEFORE derived as after − this
+    // entry's minutes. Stays null if the CF omits it → no toast (fail-quiet).
+    let budgetActualMinutesAfter = null;
+
     await ActionFlowManager.execute({
       operationKey: `submitTimeEntry_${taskId}`,
       ...msgs.loading.addTime(),
@@ -3009,6 +3020,12 @@ return;
 
         if (!result.success) {
           throw buildErrorFromResult(result, 'שגיאה בהוספת זמן');
+        }
+
+        // Authoritative post-increment total from the CF transaction (used by the
+        // moment-of-overrun toast). Captured before loadData() overwrites task data.
+        if (typeof result.newActualMinutes === 'number') {
+          budgetActualMinutesAfter = result.newActualMinutes;
         }
 
         // Invalidate clients cache so loadData() fetches fresh from Firestore
@@ -3036,8 +3053,49 @@ return;
       closeDelay: 500,
       onSuccess: () => {
         this.closeExpandedCard();
+        // H.4 PR-b: surface a budget-crossing toast AFTER the success message.
+        this._notifyBudgetCrossing(task, workMinutes, budgetActualMinutesAfter);
       }
     });
+  }
+
+  /**
+   * H.4 PR-b (Model A — smart budget meter): show a one-time toast the moment a
+   * time entry pushes a task across the canonical 85% / 100% budget thresholds.
+   * "Once per crossing" is stateless — the BEFORE (authoritative after − this
+   * entry) below the line and the AFTER at/above it. A failure here NEVER affects
+   * the (already-succeeded) time-entry save.
+   * @param {object} task - the budget task (carries estimatedMinutes, clientName)
+   * @param {number} workMinutes - minutes added by this entry
+   * @param {number|null} afterMinutes - authoritative post-entry actual minutes
+   */
+  _notifyBudgetCrossing(task, workMinutes, afterMinutes) {
+    try {
+      if (typeof afterMinutes !== 'number' || !isFinite(afterMinutes)) {
+        return;
+      }
+      const estimatedMinutes = task?.estimatedMinutes;
+      const beforeMinutes = afterMinutes - workMinutes;
+      const crossing = detectBudgetCrossing(beforeMinutes, afterMinutes, estimatedMinutes);
+      if (!crossing) {
+        return;
+      }
+      const warn = window.NotificationMessages?.tasks?.warning;
+      if (!warn) {
+        return;
+      }
+      const clientName = task?.clientName || '';
+      if (crossing === 'over') {
+        window.NotificationSystem?.warning?.(warn.budgetOver(clientName), 5000);
+      } else {
+        window.NotificationSystem?.info?.(warn.budgetApproaching(clientName), 4000);
+      }
+    } catch (err) {
+      // A soft notification must never break the time-entry success path.
+      if (typeof Logger !== 'undefined') {
+        Logger.warn?.('[budget-crossing] toast skipped:', err?.code || 'error');
+      }
+    }
   }
 
   async submitTaskCompletion(taskId) {
