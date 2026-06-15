@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>רווחיות תיקים | Admin Panel</title>
+
+    <!-- ===== UNIFIED AUTH GUARD (NO PRE-FLIGHT REDIRECT) ===== -->
+    <script>
+        (function() {
+            'use strict';
+            try {
+                var authState = sessionStorage.getItem('authState');
+                if (authState) {
+                    var state = JSON.parse(authState);
+                    var age = Date.now() - (state.timestamp || 0);
+                    window._profitabilityOptimistic = state.isAuthenticated && age < 5 * 60 * 1000;
+                } else {
+                    window._profitabilityOptimistic = false;
+                }
+            } catch (e) {
+                window._profitabilityOptimistic = false;
+            }
+        })();
+    </script>
+
+    <!-- ===== Firebase SDK ===== -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
+
+    <!-- ===== Font Awesome Icons ===== -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- ===== Design System ===== -->
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/profitability.css">
+</head>
+
+<body class="admin-page">
+    <!-- ===== Navigation Bar ===== -->
+    <div id="navigationContainer"></div>
+
+    <!-- ===== Main Content ===== -->
+    <main class="dashboard-main">
+        <div id="profitability-section" class="dashboard-content">
+            <!-- Profitability dashboard (or access-denied state) rendered here by JS -->
+        </div>
+    </main>
+
+    <!-- ===== Loading Overlay ===== -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner-circle"></div>
+            <p class="loading-text">טוען...</p>
+        </div>
+    </div>
+
+    <!-- ===== Core Scripts ===== -->
+    <script src="js/core/firebase.js"></script>
+    <script src="js/core/system-constants.js"></script>
+    <script src="js/core/config-loader.js"></script>
+    <script src="js/core/auth.js"></script>
+    <script src="js/core/constants.js"></script>
+
+    <!-- ===== Auth Guard ===== -->
+    <script src="js/core/auth-guard.js?v=20250103"></script>
+
+    <!-- ===== Navigation Component ===== -->
+    <script src="js/ui/Navigation.js"></script>
+
+    <!-- ===== Modals + Pure Formatters + Page + Notifications ===== -->
+    <script src="js/ui/Modals.js"></script>
+    <script src="js/core/profitability-format.js"></script>
+    <script src="js/ui/ProfitabilityPage.js"></script>
+    <script src="js/ui/Notifications.js"></script>
+
+    <!-- ===== Page Initialization ===== -->
+    <script>
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'logoutEvent') {
+                // Tear down the live cost listener before leaving (no live financial
+                // listener should survive a cross-tab logout).
+                if (window.ProfitabilityPage && typeof window.ProfitabilityPage.teardown === 'function') {
+                    window.ProfitabilityPage.teardown();
+                }
+                sessionStorage.removeItem('authState');
+                window.location.replace('index.html');
+            }
+        });
+
+        /**
+         * Render a Hebrew access-denied state — used when the authenticated user
+         * is NOT an admin. NO cost UI is rendered and NO onSnapshot / getProfitability
+         * call is made in this branch.
+         */
+        function renderAccessDenied() {
+            const section = document.getElementById('profitability-section');
+            if (!section) {
+                return;
+            }
+            section.innerHTML = ''
+                + '<div class="pf-access-denied" role="alert">'
+                + '  <i class="fas fa-lock" aria-hidden="true"></i>'
+                + '  <h1>אין הרשאת גישה</h1>'
+                + '  <p>דף זה מיועד למנהלי מערכת בלבד. אם לדעתך זו טעות, פנה למנהל המערכת.</p>'
+                + '  <a class="pf-btn pf-btn--secondary" href="index.html" aria-label="חזרה לדף הבית">חזרה לדף הבית</a>'
+                + '</div>';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('📊 Profitability Dashboard - Loading...');
+
+            window.initAuthGuard({
+                pageName: 'profitability',
+                timeoutMs: 5000,
+
+                onAuthenticated: async (user) => {
+                    console.log('✅ [Profitability] User authenticated, verifying admin role...');
+
+                    if (window.Navigation) {
+                        window.Navigation.init('profitability');
+                    }
+
+                    // ════════════════════════════════════════════════════════
+                    // EXPLICIT ADMIN ROLE GATE (render-time) — fail CLOSED
+                    // ════════════════════════════════════════════════════════
+                    // initAuthGuard only checks AUTHENTICATION. This page shows
+                    // confidential cost/profit data, so we re-verify the ADMIN ROLE
+                    // from the Firebase ID token claims BEFORE attaching the live
+                    // onSnapshot listener or calling any profitability callable.
+                    // The firestore.rules gate is admin||partner, but the UI stays
+                    // ADMIN-ONLY for now (MASTER_PLAN §8.5 D-E) — so this gate is
+                    // role==='admin' (STRICTER than the rule). Mirrors
+                    // employee-costs.html + js/core/auth.js checkIfAdmin Layer-1.
+                    let isAdmin = false;
+                    try {
+                        const tokenResult = await firebase.auth().currentUser.getIdTokenResult();
+                        const ADMIN_ROLE = (window.ADMIN_PANEL_CONSTANTS
+                            && window.ADMIN_PANEL_CONSTANTS.USER_ROLES
+                            && window.ADMIN_PANEL_CONSTANTS.USER_ROLES.ADMIN) || 'admin';
+                        isAdmin = tokenResult.claims.role === ADMIN_ROLE;
+                    } catch (err) {
+                        // Token read failed — fail CLOSED (treat as non-admin).
+                        console.error('❌ [Profitability] Admin role check failed:', err && err.code);
+                        isAdmin = false;
+                    }
+
+                    if (!isAdmin) {
+                        console.warn('🔒 [Profitability] Non-admin user blocked from the dashboard');
+                        renderAccessDenied();
+                        return;
+                    }
+
+                    console.log('✅ [Profitability] Admin verified, loading dashboard...');
+
+                    if (window.ProfitabilityPage) {
+                        // init() loads the clients (for the Plan JOIN) then attaches
+                        // the client_profitability onSnapshot — all AFTER this gate.
+                        window.ProfitabilityPage.init('profitability-section');
+                    }
+                    console.log('✅ Profitability Dashboard - Ready');
+                },
+
+                onUnauthenticated: () => {
+                    window.location.replace('index.html');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
