@@ -33,8 +33,9 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports._FORECAST_SKIP_STATUSES = exports.aggregateClientProfitability = exports.FORECAST_SCHEMA_VERSION = exports.CLIENT_PROFITABILITY_COLLECTION = void 0;
+exports._FORECAST_SKIP_STATUSES = exports.aggregateClientProfitability = exports.FORECAST_MAX_FAILURE_RATE = exports.FORECAST_SCHEMA_VERSION = exports.CLIENT_PROFITABILITY_COLLECTION = void 0;
 exports.computeForecastForClient = computeForecastForClient;
+exports.exceedsFailureThreshold = exceedsFailureThreshold;
 exports.aggregateClientProfitabilityHandler = aggregateClientProfitabilityHandler;
 exports.recomputeProfitabilityForCase = recomputeProfitabilityForCase;
 /**
@@ -84,6 +85,16 @@ exports.recomputeProfitabilityForCase = recomputeProfitabilityForCase;
  * Plan-side expected* numbers stay on `client.plan` (PR1) — PR4 JOINs them by
  * caseNumber; we do NOT snapshot the plan in here (a 2nd copy would drift from the
  * canonical `client.plan`).
+ *
+ * ─── Scale + freshness (devils-advocate hardening) ───────────────────────────
+ * The scheduled run reads the client list once, then reads ONLY each client's own
+ * entries + their cost docs (bounded memory — NOT the whole `timesheet_entry_costs`
+ * collection, which grows one-doc-per-entry forever). The daily run is the SSOT;
+ * `recomputeProfitability` is a best-effort on-demand "refresh now" (last-writer-wins
+ * on a rare overlap, self-heals next run — the cost INPUT changes monthly, so
+ * intra-day drift is immaterial). A SYSTEMIC failure rate (≥ FORECAST_MAX_FAILURE_RATE)
+ * THROWS so Cloud Scheduler alerts — a handful of malformed clients are tolerated
+ * (per-client isolation + logged), but a majority failure must not look green.
  */
 const admin = __importStar(require("firebase-admin"));
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -134,7 +145,12 @@ function computeForecastForClient(caseNumber, services, entries, costByEntryId) 
     let totalEntryCount = 0;
     for (const entry of entries) {
         const effectiveServiceId = String(entry.parentServiceId || entry.serviceId || '');
-        // Mirror Plan's ['archived'] filter — an archived service's entries are out of scope.
+        // Mirror Plan's ['archived'] filter — an archived service's entries are out of
+        // scope. An entry with NO effectiveServiceId is COUNTED (it is real logged time on
+        // the CASE) — the locked "coverage denominator = ALL live entries" choice, and an
+        // intentional divergence from dailyInvariantCheck, which groups by SERVICE and so
+        // drops service-less entries (it cannot attribute them to a service; the case-level
+        // Forecast can, and does).
         if (effectiveServiceId.length > 0 && archivedServiceIds.has(effectiveServiceId)) {
             continue;
         }
@@ -144,6 +160,12 @@ function computeForecastForClient(caseNumber, services, entries, costByEntryId) 
         // JOIN strictly by entryId (the cost doc id), NEVER the employee string.
         const cost = costByEntryId.get(entry.id);
         if (typeof cost === 'number' && Number.isFinite(cost)) {
+            // A finite cost — INCLUDING a real 0 (free/intern) — is a KNOWN cost (counts as
+            // costed, adds its value). NOTE: the only writer today, resolveEmployeeCost, nulls
+            // any non-positive cost (`cph > 0`), so a stored 0 is not produced in production
+            // yet — this 0-is-known branch is defensive/forward-compat (a future backfill or
+            // resolver change could emit a genuine 0). It must stay distinct from null
+            // (= unknown), which is excluded below.
             costedEntryCount += 1;
             actualCost += (minutes / 60) * cost;
         }
@@ -163,16 +185,9 @@ function computeForecastForClient(caseNumber, services, entries, costByEntryId) 
         schemaVersion: exports.FORECAST_SCHEMA_VERSION
     };
 }
-/** Reads ALL cost docs once into entryId → costPerHour|null (for the full scan). */
-async function readAllCostsMap(db) {
-    const map = new Map();
-    const snap = await db.collection(resolve_employee_cost_1.TIMESHEET_ENTRY_COSTS_COLLECTION).get();
-    snap.forEach((doc) => {
-        map.set(doc.id, finiteNum((doc.data() ?? {}).costPerHour));
-    });
-    return map;
-}
-/** Reads cost docs for a specific set of entry ids (for the single-case recompute). */
+/** Reads cost docs for a specific set of entry ids (per-client, bounded — used by
+ * BOTH the scheduled scan and the single-case recompute, so neither holds the whole
+ * timesheet_entry_costs collection in memory). */
 async function readCostsForEntries(db, entryIds) {
     const map = new Map();
     if (entryIds.length === 0)
@@ -220,13 +235,18 @@ async function writeForecast(db, forecast, status) {
         computedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 }
-/** Computes one client's Forecast. `costMap` is supplied for the full scan; omitted → reads per-entry. */
-async function aggregateOneClient(db, clientDoc, costMap) {
+/**
+ * Computes one client's Forecast — reads ONLY this client's entries + their cost
+ * docs (bounded memory; no full-collection cost scan, so the job scales with
+ * entries-per-client, not total cost-doc count). A per-client read failure is
+ * isolated by the caller's try/catch (fails just that client, not the run).
+ */
+async function aggregateOneClient(db, clientDoc) {
     const caseNumber = clientDoc.id;
     const data = clientDoc.data() ?? {};
     const entries = await readEntriesForClient(db, caseNumber);
-    const map = costMap ?? (await readCostsForEntries(db, entries.map((e) => e.id)));
-    return computeForecastForClient(caseNumber, data.services, entries, map);
+    const costByEntryId = await readCostsForEntries(db, entries.map((e) => e.id));
+    return computeForecastForClient(caseNumber, data.services, entries, costByEntryId);
 }
 /** Best-effort run audit (never masks the run result; logs on its own failure). */
 async function safeRunAudit(payload) {
@@ -239,25 +259,43 @@ async function safeRunAudit(payload) {
     }
 }
 /**
+ * Daily-job failure-rate ceiling. If at least this SHARE of scanned clients fail, the
+ * run THROWS so Cloud Scheduler records an alertable failed execution. A few malformed
+ * clients are tolerated (per-client isolation → logged + audited); a SYSTEMIC failure
+ * (a quota/permission/code regression hitting many clients) must page — the H.1.c
+ * lesson: a job that "succeeds" while silently failing en masse is worse than a hard
+ * failure for a financial aggregate feeding partner decisions.
+ */
+exports.FORECAST_MAX_FAILURE_RATE = 0.1;
+/**
+ * Pure alert decision (exported for unit testing): true when the failed share of
+ * scanned clients reaches FORECAST_MAX_FAILURE_RATE. Subsumes the total-failure case
+ * (rate 1.0). false for an empty system (scanned === 0).
+ */
+function exceedsFailureThreshold(scanned, failed) {
+    if (scanned <= 0)
+        return false;
+    return failed / scanned >= exports.FORECAST_MAX_FAILURE_RATE;
+}
+/**
  * The scheduled-job handler — exported separately for direct unit/integration
- * testing (no scheduler wrapping needed). Reads all clients + all cost docs once,
- * then per-client (isolated try/catch — one bad client never aborts the run)
- * computes + writes the Forecast. Writes a durable run audit on success AND
- * failure, and THROWS on a TOTAL failure (scanned > 0 but 0 written) so Cloud
- * Scheduler records an alertable failed execution. PII (cost/email) never logged.
+ * testing (no scheduler wrapping needed). Reads the client list once, then per-client
+ * (isolated try/catch — one bad client never aborts the run) reads ONLY that client's
+ * entries + their cost docs (bounded memory — no full-collection cost scan), computes
+ * + writes the Forecast. Writes a durable run audit on success AND failure, and THROWS
+ * when the failure RATE reaches FORECAST_MAX_FAILURE_RATE so a SYSTEMIC failure is
+ * alertable (not only a 0-written total failure). PII (cost/email) never logged.
  */
 async function aggregateClientProfitabilityHandler() {
     const db = admin.firestore();
     let clientsScanned = 0;
     let clientsWritten = 0;
     let clientsFailed = 0;
-    // ─── (1) ALL-OR-NOTHING reads (clients + cost docs) ──────────────────────────
+    // ─── (1) Read the client list (the one read the run cannot proceed without) ──
     let clientDocs;
-    let costMap;
     try {
         const clientsSnap = await db.collection(CLIENTS_COLLECTION).get();
         clientDocs = clientsSnap.docs;
-        costMap = await readAllCostsMap(db);
     }
     catch (err) {
         const code = err.code;
@@ -265,12 +303,12 @@ async function aggregateClientProfitabilityHandler() {
         await safeRunAudit({ ok: false, phase: 'read' });
         throw new Error('profitability aggregate read aborted');
     }
-    // ─── (2) Per-client compute + write (isolated failures) ──────────────────────
+    // ─── (2) Per-client compute + write (isolated failures; bounded per-client reads)
     for (const clientDoc of clientDocs) {
         clientsScanned += 1;
         try {
             const data = clientDoc.data() ?? {};
-            const forecast = await aggregateOneClient(db, clientDoc, costMap);
+            const forecast = await aggregateOneClient(db, clientDoc);
             await writeForecast(db, forecast, String(data.status ?? 'active'));
             clientsWritten += 1;
         }
@@ -293,9 +331,12 @@ async function aggregateClientProfitabilityHandler() {
     };
     logger.info('profitability_aggregate.complete', { ...result });
     await safeRunAudit({ ...result });
-    // ─── (4) Throw on TOTAL failure only (alertable) — partial failures are logged.
-    if (clientsScanned > 0 && clientsWritten === 0) {
-        throw new Error('profitability aggregate: 0 clients written (total failure)');
+    // ─── (4) Throw on a SYSTEMIC failure rate (alertable). A few bad clients are
+    // tolerated (logged + audited above); a majority failure pages Cloud Scheduler so a
+    // 99%-failed-but-2-written run can never look green.
+    if (exceedsFailureThreshold(clientsScanned, clientsFailed)) {
+        throw new Error(`profitability aggregate: failure rate ${clientsFailed}/${clientsScanned} ` +
+            `reached threshold ${exports.FORECAST_MAX_FAILURE_RATE}`);
     }
     return result;
 }

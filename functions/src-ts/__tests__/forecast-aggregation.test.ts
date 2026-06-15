@@ -21,6 +21,8 @@ jest.mock('firebase-admin', () => {
 
 import {
   computeForecastForClient,
+  exceedsFailureThreshold,
+  FORECAST_MAX_FAILURE_RATE,
   FORECAST_SCHEMA_VERSION,
   _FORECAST_SKIP_STATUSES,
   type ForecastEntry
@@ -142,5 +144,40 @@ describe('archived-filter drift guard', () => {
     const aggregates = require('../../shared/aggregates');
     expect([..._FORECAST_SKIP_STATUSES]).toEqual([...aggregates.NON_AGGREGATING_STATUSES]);
     expect([..._FORECAST_SKIP_STATUSES]).toEqual(['archived']);
+  });
+});
+
+describe('exceedsFailureThreshold — systemic-failure alerting (not just 0-written)', () => {
+  it('empty system (0 scanned) → false (no alert)', () => {
+    expect(exceedsFailureThreshold(0, 0)).toBe(false);
+  });
+
+  it('all clients succeed → false', () => {
+    expect(exceedsFailureThreshold(142, 0)).toBe(false);
+  });
+
+  it('a single malformed client among many → false (tolerated, logged)', () => {
+    expect(exceedsFailureThreshold(142, 1)).toBe(false);
+  });
+
+  it('below the threshold (5% < 10%) → false', () => {
+    expect(exceedsFailureThreshold(100, 5)).toBe(false);
+  });
+
+  it('AT the threshold (10%) → true (alerts)', () => {
+    expect(exceedsFailureThreshold(100, 10)).toBe(true);
+  });
+
+  it('majority failure (the 99%-failed-but-2-written trap) → true', () => {
+    expect(exceedsFailureThreshold(142, 140)).toBe(true);
+  });
+
+  it('total failure → true (subsumes the old 0-written case)', () => {
+    expect(exceedsFailureThreshold(50, 50)).toBe(true);
+  });
+
+  it('the threshold constant is a sane share (0 < rate <= 1)', () => {
+    expect(FORECAST_MAX_FAILURE_RATE).toBeGreaterThan(0);
+    expect(FORECAST_MAX_FAILURE_RATE).toBeLessThanOrEqual(1);
   });
 });
