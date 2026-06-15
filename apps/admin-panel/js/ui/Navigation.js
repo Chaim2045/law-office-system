@@ -38,7 +38,7 @@
 
             this.render();
 
-            // התחל להקשיב למספר האישורים הממתינים
+            // התחל להקשיב למספר חריגות התקציב הפעילות
             this.startApprovalCountListener();
         }
 
@@ -78,10 +78,10 @@ return;
                         </div>
                     </div>
                     <div class="nav-user">
-                        <button class="btn-approvals ${this.currentPage === 'approvals' ? 'active' : ''}" id="navApprovalsBtn" title="אישורי תקציב משימות" style="position: relative;">
+                        <button class="btn-approvals ${this.currentPage === 'approvals' ? 'active' : ''}" id="navApprovalsBtn" title="חריגות תקציב משימות" style="position: relative;">
                             <span id="approvalCountBadge" class="approval-count-badge" style="display: none;"></span>
-                            <i class="fas fa-clipboard-check"></i>
-                            <span>אישורי משימות</span>
+                            <i class="fas fa-triangle-exclamation"></i>
+                            <span>חריגות תקציב</span>
                         </button>
                         <a href="audit-trail.html" class="btn-settings ${this.currentPage === 'audit-trail' ? 'active' : ''}" title="לוג פעילות">
                             <i class="fas fa-history"></i>
@@ -389,13 +389,18 @@ return;
         }
 
         /**
-         * Start polling auto-approved tasks count
-         * התחל polling למספר משימות שאושרו אוטומטית ולא נצפו
+         * Start polling over-budget active tasks count (H.4 PR-a — "חריגות תקציב")
+         * התחל polling למספר משימות פעילות בחריגת תקציב
+         *
+         * Counts budget_tasks where status == 'פעיל' AND actualMinutes >
+         * estimatedMinutes (the over-budget set — same as budgetStatus level
+         * 'danger'/isOver). budget_tasks is admin-readable. The badge surfaces the
+         * urgent overruns; the side panel shows the wider approaching+over set.
          */
         startApprovalCountListener() {
             // וודא ש-Firebase זמין
             if (!window.firebaseDB) {
-                console.warn('⚠️ Firebase DB not available for approval count');
+                console.warn('⚠️ Firebase DB not available for budget overrun count');
                 return;
             }
 
@@ -408,34 +413,22 @@ return;
                         return;
                     }
 
-                    // קבל lastViewedAt של המשתמש
-                    const userDoc = await window.firebaseDB
-                        .collection('employees')
-                        .doc(currentUser.email)
-                        .get();
-                    const lastViewedAt = userDoc.data()?.approvalsPanelLastViewed?.toDate() || new Date(0);
-
-                    // תאריך היום (00:00)
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-
-                    // קבל רק משימות auto_approved מהיום (לא task_cancelled)
+                    // קבל את כל המשימות הפעילות (admin-readable) וספור את אלו שבחריגה
                     const snapshot = await window.firebaseDB
-                        .collection('pending_task_approvals')
-                        .where('status', '==', 'auto_approved')
-                        .where('createdAt', '>=', today)
+                        .collection('budget_tasks')
+                        .where('status', '==', 'פעיל')
                         .get();
 
-                    // ספור רק משימות שנוצרו אחרי הצפייה האחרונה (ללא task_cancelled)
-                    const unviewedCount = snapshot.docs.filter(doc => {
-                        const data = doc.data();
-                        const createdAt = data.createdAt?.toDate();
-                        return createdAt && createdAt > lastViewedAt && data.status !== 'task_cancelled';
+                    const overBudgetCount = snapshot.docs.filter(doc => {
+                        const data = doc.data() || {};
+                        const actual = typeof data.actualMinutes === 'number' ? data.actualMinutes : 0;
+                        const estimate = typeof data.estimatedMinutes === 'number' ? data.estimatedMinutes : 0;
+                        return estimate > 0 && actual > estimate;
                     }).length;
 
-                    this.updateApprovalCountBadge(unviewedCount);
+                    this.updateApprovalCountBadge(overBudgetCount);
                 } catch (error) {
-                    console.error('❌ Error getting approval count:', error);
+                    console.error('❌ Error getting budget overrun count:', error?.code || 'unknown');
                     this.updateApprovalCountBadge(0);
                 }
             };
@@ -446,7 +439,7 @@ return;
             // Polling כל 30 שניות
             this.approvalCountInterval = setInterval(updateCount, 30000);
 
-            console.log('✅ Started approval count polling (every 30s)');
+            console.log('✅ Started budget overrun count polling (every 30s)');
         }
 
         /**
@@ -475,7 +468,7 @@ return;
             if (this.approvalCountInterval) {
                 clearInterval(this.approvalCountInterval);
                 this.approvalCountInterval = null;
-                console.log('🛑 Stopped approval count polling');
+                console.log('🛑 Stopped budget overrun count polling');
             }
         }
 
@@ -484,20 +477,17 @@ return;
          * הגדרת מאזיני אירועים
          */
         setupEventListeners() {
-            // Approvals button - open side panel
+            // Budget overrun button - open side panel ("חריגות תקציב")
             const approvalsBtn = document.getElementById('navApprovalsBtn');
             if (approvalsBtn) {
                 approvalsBtn.addEventListener('click', async () => {
-                    console.log('📋 Opening Task Approval Side Panel');
+                    console.log('📋 Opening Budget Overrun Side Panel');
                     if (window.taskApprovalSidePanel) {
-                        // Initialize if not initialized
-                        if (!window.taskApprovalSidePanel.taskApprovalService) {
-                            await window.taskApprovalSidePanel.init();
-                        }
+                        await window.taskApprovalSidePanel.init();
                         window.taskApprovalSidePanel.open();
                     } else {
-                        console.error('❌ TaskApprovalSidePanel not found');
-                        alert('פאנל אישורים לא נטען כראוי');
+                        console.error('❌ Budget Overrun Side Panel not found');
+                        alert('פאנל חריגות התקציב לא נטען כראוי');
                     }
                 });
             }
