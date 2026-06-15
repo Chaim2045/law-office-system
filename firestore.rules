@@ -262,6 +262,26 @@ service cloud.firestore {
       allow read, write: if false; // CF-only (Admin SDK)
     }
 
+    // 🔒 client_profitability: CF-only Forecast cost/profit aggregate (Phase 2 H.3 PR3).
+    // Holds the per-case actualCost / actualHours / un-costed-coverage — a
+    // single-employee case's actualCost÷actualHours = that employee's confidential
+    // cost-per-hour, so it MUST NOT sit on the world-readable clients doc (line 147).
+    //
+    // Read is gated to admins + partners — the FIRST production isPartner() consumer
+    // (Pre-H.0.0.D deferred the consumer to here; dormant + fail-secure: resolves
+    // admin-only TODAY since no user holds role=='partner'). The admin||partner READ
+    // (vs a fully-locked `if false` like employee_costs) is precisely what permits the
+    // real-time onSnapshot profitability dashboard (PR4) WITHOUT leaking cost to
+    // employees. Write is CF-only (the Admin SDK aggregation job bypasses rules).
+    //
+    // UI stays admin-only; the partner CLAIM grant is a separate future auth PR
+    // (MASTER_PLAN §8.5 D-E). Writer: aggregateClientProfitability (scheduled) +
+    // recomputeProfitability (callable), both functions/src-ts/profitability/.
+    match /client_profitability/{caseNumber} {
+      allow read: if isAdmin() || isPartner();
+      allow write: if false; // CF-only (Admin SDK aggregation job)
+    }
+
     // ✅ System Settings: Read-only for authenticated users
     // Note: Only admins can modify through Cloud Functions
     match /system_settings/{settingId} {

@@ -128,6 +128,24 @@ exports.validateSalesRecordExists = validateSalesRecordModule.validateSalesRecor
 const exportSalesToBigQueryModule = require('./lib/tofes-mecher/export-sales-to-bigquery');
 exports.exportSalesToBigQuery = exportSalesToBigQueryModule.exportSalesToBigQuery;
 
+// Profitability — Forecast layer (TS — Phase 2 H.3 PR3). The dynamic per-case
+// cost/profit aggregate in the CF-only client_profitability/{caseNumber} collection
+// (firestore.rules: read isAdmin()||isPartner(), write false — the cost MUST stay OFF
+// the world-readable clients doc, §7.6 / §8.5 D-A).
+//   • aggregateClientProfitability — scheduled daily 06:30 (staggered after the
+//     dailyInvariantCheck full-client scan). Σ(entry.minutes/60 × snapshot cost),
+//     joined by entryId, null≠0, un-costed-coverage %. Admin SDK (bypasses rules).
+//   • recomputeProfitability — admin||partner callable: on-demand single-case recompute
+//     (the PR4 "refresh now" path). Audit-FIRST (mutation).
+//   • getProfitability — admin||partner callable: AUDITED single-case read (the live
+//     grid uses onSnapshot directly; this is the audited deliberate fetch).
+const forecastAggregationModule = require('./lib/profitability/forecast-aggregation');
+exports.aggregateClientProfitability = forecastAggregationModule.aggregateClientProfitability;
+const recomputeProfitabilityModule = require('./lib/profitability/recompute-profitability');
+exports.recomputeProfitability = recomputeProfitabilityModule.recomputeProfitability;
+const getProfitabilityModule = require('./lib/profitability/get-profitability');
+exports.getProfitability = getProfitabilityModule.getProfitability;
+
 // Budget Tasks Functions (imported from ./budget-tasks)
 const budgetTasks = require('./budget-tasks');
 exports.createBudgetTask = budgetTasks.createBudgetTask;

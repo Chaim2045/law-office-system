@@ -95,6 +95,19 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // The REAL client_profitability path (Phase 2 H.3 PR3) — mirrors production
+    // `allow read: if isAdmin() || isPartner(); allow write: if false`. Unlike the
+    // two `if false` collections above, this one ALLOWS admin + partner READ, so
+    // tests/rules/clientProfitability.test.ts asserts the POSITIVES (admin/partner
+    // read succeed) AND the negatives (employee/unauth read deny + all writes deny).
+    // The FIRST production isPartner() consumer (dormant today; resolves admin-only
+    // until a partner claim exists). The cost aggregate lives HERE, OFF the
+    // world-readable clients doc (§7.6 / §8.5 D-A).
+    match /client_profitability/{caseNumber} {
+      allow read: if isAdmin() || isPartner();
+      allow write: if false;
+    }
+
     // Deny everything else.
     match /{document=**} {
       allow read, write: if false;
