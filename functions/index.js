@@ -27,6 +27,12 @@ const feeAgreements = require('./fee-agreements');
 exports.uploadFeeAgreement = feeAgreements.uploadFeeAgreement;
 exports.deleteFeeAgreement = feeAgreements.deleteFeeAgreement;
 
+// getFeeAgreementUrl: admin-gated, on-demand SHORT-LIVED signed URL for viewing a
+// fee-agreement PDF (security remediation — replaces the world-readable public-ACL
+// URLs). Compiled from functions/src-ts/fee-agreements/get-fee-agreement-url.ts.
+const getFeeAgreementUrlModule = require('./lib/fee-agreements/get-fee-agreement-url');
+exports.getFeeAgreementUrl = getFeeAgreementUrlModule.getFeeAgreementUrl;
+
 // Scheduled Functions (imported from ./scheduled)
 const scheduled = require('./scheduled');
 exports.dailyTaskReminders = scheduled.dailyTaskReminders;
