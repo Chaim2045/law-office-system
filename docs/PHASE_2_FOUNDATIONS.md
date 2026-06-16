@@ -61,6 +61,29 @@ H.0 does NOT create tables — the schema is documented below; H.1's exporter cr
 
 ---
 
+## ⚠️ ANTHROPIC_API_KEY — second deploy-blocking secret (H.5, 2026-06-16)
+
+The H.5 `verifySignaturePresence` Cloud Function declares `defineSecret('ANTHROPIC_API_KEY')` (the Claude API key for the signature-presence check; later reused by H.8 AI chat). **Same landmine class as `TOFES_MECHER_SA_KEY`:** `defineSecret` requires the secret to exist in Secret Manager BEFORE `firebase deploy`, or the deploy fails **for the ENTIRE functions codebase**.
+
+### Set it BEFORE the H.5 deploy
+```
+firebase functions:secrets:set ANTHROPIC_API_KEY
+```
+Paste an Anthropic API key from the firm's Anthropic Console (a workspace key scoped to this use). Creates secret `ANTHROPIC_API_KEY` version 1. **Never commit the key.**
+
+### 🔴 PRIVACY GATE before wiring to real data (H.6 prerequisite, NOT H.5)
+H.5 ships as **plumbing** — it has no live consumer until H.6, and its tests mock the SDK boundary, so **no real client document egresses in DEV/CI**. Before H.6 wires `verifySignaturePresence` to real PROD fee-agreement PDFs (which carry client ת"ז + signatures + financial terms), the firm must have a **legal basis** for sending that PII to a third-party processor (Anthropic) under חוק הגנת הפרטיות — a DPA / data-handling/retention posture / sub-processor disclosure (the Phase 3 C.6 compliance work, pulled forward as an H.6 gate). This is a product/legal decision (Haim's domain), tracked here so H.6 cannot silently ship the egress.
+
+### Rotation runbook (if the API key is compromised)
+1. In the Anthropic Console → rotate / create a new API key.
+2. `firebase functions:secrets:set ANTHROPIC_API_KEY` (paste the new key — new secret version).
+3. Redeploy the consumer: `firebase deploy --only functions:verifySignaturePresence`.
+4. In the Anthropic Console → revoke the OLD key.
+
+(Optional cleanup if H.5/H.8 are ever removed: `firebase functions:secrets:destroy ANTHROPIC_API_KEY`.)
+
+---
+
 ## Verifying the wiring (after Steps 1-2 + deploy)
 
 > **⚠️ SUPERSEDED in H.1.b (2026-06-09):** the H.0 `tofesMecherConnectivityCheck` was the historical wiring proof (it returned `{ok, reachable, sawAtLeastOneDoc}`). It was validated live on 2026-06-08 (`{ok:true, reachable:true, sawAtLeastOneDoc:true}`) and then **DELETED** in H.1.b. The real bridge read `validateSalesRecordExists(salesRecordId)` now holds the secret binding and exercises the identical wiring while doing real work. To verify the wiring going forward, call it with a known `salesRecordId` (admin console) and expect `{ exists: true, ... }`.
