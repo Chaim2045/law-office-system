@@ -1901,19 +1901,18 @@ ${selectedClient.idNumber ? `🆔 ת.ז. ${selectedClient.idNumber}\n` : ''}📄
                 }
             });
 
-            // הפוך לציבורי
-            await file.makePublic();
+            // אבטחה (PR-SEC-2): לא הופכים את הקובץ לציבורי. הסכמי שכ"ט חתומים
+            // (שם + ת"ז + חתימות + תנאים כספיים) נשארים פרטיים; הצפייה נעשית לפי
+            // דרישה דרך ה-callable getFeeAgreementUrl (URL חתום קצר-מועד מתוך
+            // storagePath). makePublic + downloadUrl קבוע היה דליפה גלויה-לכל
+            // שעקפה את storage.rules. לא נשמר downloadUrl.
 
-            // קבל URL להורדה
-            const downloadUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
-
-            // הכן נתוני מסמך
+            // הכן נתוני מסמך (storagePath בלבד — ה-URL נפתר לפי דרישה)
             const agreementData = {
                 id: agreementId,
                 fileName: sanitizedFileName,
                 originalName: fileName,
                 storagePath: storagePath,
-                downloadUrl: downloadUrl,
                 fileType: contentType,
                 fileSize: fileSize,
                 uploadedAt: admin.firestore.Timestamp.now(),
