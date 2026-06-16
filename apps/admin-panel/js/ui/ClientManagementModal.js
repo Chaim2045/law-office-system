@@ -2072,16 +2072,43 @@ return;
          * View fee agreement
          * צפייה בהסכם שכר טרחה
          */
-        viewFeeAgreement(agreementId) {
+        async viewFeeAgreement(agreementId) {
             const agreement = this.currentClient?.feeAgreements?.find(a => a.id === agreementId);
 
-            if (!agreement || !agreement.downloadUrl) {
-                this.showNotification('לא ניתן לפתוח את ההסכם', 'error');
+            if (!agreement) {
+                this.showNotification('הסכם לא נמצא', 'error');
                 return;
             }
 
-            // Open in new tab
-            window.open(agreement.downloadUrl, '_blank');
+            // Security (PR-SEC-2): the PDF is private — fetch a short-lived signed URL
+            // on demand via getFeeAgreementUrl (no permanent public URL). Open the new
+            // tab SYNCHRONOUSLY (inside the click gesture, before the await) so the
+            // browser doesn't block it as a popup, then navigate it once the URL returns.
+            const viewTab = window.open('', '_blank');
+            try {
+                const getUrlFn = window.firebaseFunctions.httpsCallable('getFeeAgreementUrl');
+                const result = await getUrlFn({
+                    entity: 'clients',
+                    entityId: this.currentClient.id,
+                    agreementId: agreementId
+                });
+                const url = result?.data?.url;
+                if (!url) {
+                    throw new Error('missing-url');
+                }
+                if (viewTab) {
+                    viewTab.location = url;
+                } else {
+                    // popup was blocked — fall back to a same-context navigation
+                    window.open(url, '_blank');
+                }
+            } catch (error) {
+                if (viewTab) {
+                    viewTab.close();
+                }
+                console.error('❌ Error opening fee agreement:', error);
+                this.showNotification('לא ניתן לפתוח את ההסכם כעת. נסה שוב או פנה לתמיכה.', 'error');
+            }
         }
 
         /**

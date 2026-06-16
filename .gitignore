@@ -39,6 +39,10 @@ backups/
 #   - backfill-cost-per-hour.js            (H.2 — employee<->entry email mapping)
 #   - backfill-strip-legal-hourly-rate.js  (H.3 — clientId + services[] before-state)
 functions/backfill-backups/
+# One-time security migration before-state (old feeAgreements[] incl. downloadUrl
+# which embeds clientId/caseId + storagePath; the rollback key). Stay local. Used by:
+#   - revoke-fee-agreement-public-acls.js  (PR-SEC-2 — ACL revocation + downloadUrl null)
+functions/security-migration-backups/
 
 # IDE
 .vscode/
