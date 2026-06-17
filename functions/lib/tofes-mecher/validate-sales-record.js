@@ -34,6 +34,11 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.validateSalesRecordExists = exports.validateSalesRecordInputSchema = void 0;
+exports.asString = asString;
+exports.asNumberOrNull = asNumberOrNull;
+exports.asTimestampIso = asTimestampIso;
+exports.projectSalesRecord = projectSalesRecord;
+exports.readSalesRecordSnapshot = readSalesRecordSnapshot;
 exports.validateSalesRecordExistsHandler = validateSalesRecordExistsHandler;
 /**
  * validateSalesRecordExists — Phase 2 H.1.b (Pattern A: live cross-project read)
@@ -123,6 +128,52 @@ function asTimestampIso(v) {
     return null;
 }
 /**
+ * SSOT projection: maps a raw tofes-mecher `sales_records` doc to the
+ * field-minimized 9-field {@link SalesRecordSnapshot} (allowlist; RAW values; the
+ * single Timestamp→ISO transform). Exported so any consumer of a live sale (H.1.b
+ * validate + the H.6 create-from-sale cutover) projects through ONE function — no
+ * duplicate business logic, no risk of a future tofes field leaking via a second
+ * hand-rolled projection. NEVER call `snap.data()` into a response; always via here.
+ */
+function projectSalesRecord(salesRecordId, data) {
+    return {
+        salesRecordId,
+        clientName: asString(data.clientName),
+        idNumber: asString(data.idNumber),
+        amountBeforeVat: asNumberOrNull(data.amountBeforeVat),
+        vatAmount: asNumberOrNull(data.vatAmount),
+        amountWithVat: asNumberOrNull(data.amountWithVat),
+        amount: asNumberOrNull(data.amount),
+        transactionType: asString(data.transactionType),
+        timestampIso: asTimestampIso(data.timestamp)
+    };
+}
+/**
+ * SSOT live read: initializes the tofes-mecher named app from the SA key, point-reads
+ * ONE `sales_records` doc by id (collection hard-scoped), and returns either
+ * `{ exists: false }` or `{ exists: true } & {@link SalesRecordSnapshot}` (projected
+ * through {@link projectSalesRecord}). The SINGLE place a live sale is read +
+ * minimized — reused by both `validateSalesRecordExists` (H.1.b) and
+ * `createClientFromSalesRecord` (H.6 cutover). Throws {@link TofesMecherCredentialError}
+ * on a malformed key (sanitized — no key fragment); rethrows the raw read error
+ * (caller maps it to a Hebrew HttpsError + logs only its `code`). Never logs PII.
+ *
+ * @param saKeyJson the SA key JSON (from `defineSecret(...).value()`); NEVER logged.
+ * @param salesRecordId a validated 20-char tofes auto-id (charset-bounded by the caller).
+ */
+async function readSalesRecordSnapshot(saKeyJson, salesRecordId) {
+    const app = (0, app_1.getTofesMecherApp)(saKeyJson);
+    const snap = await app
+        .firestore()
+        .collection(config_1.TOFES_SALES_COLLECTION)
+        .doc(salesRecordId)
+        .get();
+    if (!snap.exists) {
+        return { exists: false };
+    }
+    return { exists: true, ...projectSalesRecord(salesRecordId, snap.data() ?? {}) };
+}
+/**
  * Internal handler — exported separately for direct unit testing (no v2
  * wrapping / region routing needed in tests).
  */
@@ -204,24 +255,14 @@ async function validateSalesRecordExistsHandler(request) {
         return { exists: false, salesRecordId };
     }
     // ─── (7) Field-minimized projection (allowlist; RAW; one transform) ────────
-    const data = snap.data() ?? {};
+    // Projects through the SSOT `projectSalesRecord` (also used by the H.6
+    // create-from-sale cutover) — one allowlist projection, never `snap.data()`.
     logger.info('tofes_mecher.validate.found', {
         actor: { uid: callerUid },
         salesRecordId
         // NO PII (idNumber / clientName / amounts) ever reaches Cloud Logging.
     });
-    return {
-        exists: true,
-        salesRecordId,
-        clientName: asString(data.clientName),
-        idNumber: asString(data.idNumber),
-        amountBeforeVat: asNumberOrNull(data.amountBeforeVat),
-        vatAmount: asNumberOrNull(data.vatAmount),
-        amountWithVat: asNumberOrNull(data.amountWithVat),
-        amount: asNumberOrNull(data.amount),
-        transactionType: asString(data.transactionType),
-        timestampIso: asTimestampIso(data.timestamp)
-    };
+    return { exists: true, ...projectSalesRecord(salesRecordId, snap.data() ?? {}) };
 }
 // ─── v2 Cloud Function wrapper ──────────────────────────────────────────────
 exports.validateSalesRecordExists = (0, https_1.onCall)({ region: config_1.REGION, secrets: [TOFES_KEY] }, validateSalesRecordExistsHandler);

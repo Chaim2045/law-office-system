@@ -41,9 +41,11 @@ const HELPERS = ['isAuthenticated', 'isAdmin', 'isPartner'] as const;
  * Rule-gated confidential collections whose `match` block MUST be identical between
  * the production ruleset and the test mirror (the deny-suite proves the gate against
  * the mirror, so a silent divergence here would be a false-green). H.3 PR3 added
- * client_profitability (the first production isAdmin()||isPartner() consumer).
+ * client_profitability (the first production isAdmin()||isPartner() consumer). H.6
+ * added sales_record_links (fully CF-only — the agreed-fee snapshot off the
+ * world-readable clients doc).
  */
-const GATED_COLLECTIONS = ['client_profitability'] as const;
+const GATED_COLLECTIONS = ['client_profitability', 'sales_record_links'] as const;
 
 /**
  * Extracts the body of `function <name>() { ... }` from a rules file via
