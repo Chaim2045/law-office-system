@@ -48,6 +48,24 @@ window.WhatsAppMessageDialog = (function() {
     let customMessage = '';
 
     // ═══════════════════════════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════════════════════════
+
+    /**
+     * Output-encode a string for safe interpolation into an HTML text/element
+     * context. Mirrors ReportGenerator.escapeHtml (& < > " ' → entities) so the
+     * user-controllable display name cannot break out of the modal markup that
+     * is injected via insertAdjacentHTML below (stored-XSS defense).
+     */
+    function escapeHtml(text) {
+        if (!text) {
+            return '';
+        }
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return String(text).replace(/[&<>"']/g, c => map[c]);
+    }
+
+    // ═══════════════════════════════════════════════════════════
     // SHOW DIALOG
     // ═══════════════════════════════════════════════════════════
 
@@ -69,7 +87,7 @@ window.WhatsAppMessageDialog = (function() {
                             </div>
                             <div class="modal-title-wrapper">
                                 <h2 class="modal-title">שלח הודעת WhatsApp</h2>
-                                <p class="modal-subtitle">שליחה אל: <strong>${userName}</strong></p>
+                                <p class="modal-subtitle">שליחה אל: <strong>${escapeHtml(userName)}</strong></p>
                             </div>
                         </div>
                         <button class="modal-close-btn" id="closeWhatsAppModal" aria-label="Close modal">
