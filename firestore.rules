@@ -282,6 +282,20 @@ service cloud.firestore {
       allow write: if false; // CF-only (Admin SDK aggregation job)
     }
 
+    // 🔒 sales_record_links: CF-only link/snapshot doc (Phase 2 H.6 — the cutover).
+    // Keyed by the tofes-mecher salesRecordId, written by createClientFromSalesRecord
+    // when a client is created from a sale. Holds the FINANCIAL snapshot
+    // ({ caseNumber, serviceId, agreedFeeSnapshot, feeFieldUsed, salesRecordTimestampIso,
+    // snapshotAt, confirmedBy, state, schemaVersion }) OFF the world-readable clients doc
+    // (§7.6 / DLR §8.2.5 D-A) — a single-employee/fixed case's agreed fee must not sit
+    // where any authenticated user can read it. FULLY CF-only (stricter than
+    // client_profitability's admin||partner read): nothing reads/writes from a client
+    // SDK; admins will read via a future callable, never directly. The CF writes via the
+    // Admin SDK (bypasses rules). Same lockdown class as employee_costs / timesheet_entry_costs.
+    match /sales_record_links/{linkId} {
+      allow read, write: if false; // CF-only (Admin SDK)
+    }
+
     // ✅ System Settings: Read-only for authenticated users
     // Note: Only admins can modify through Cloud Functions
     match /system_settings/{settingId} {

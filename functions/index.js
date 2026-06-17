@@ -166,6 +166,20 @@ exports.getProfitability = getProfitabilityModule.getProfitability;
 const verifySignaturePresenceModule = require('./lib/signatures/verify-signature-presence');
 exports.verifySignaturePresence = verifySignaturePresenceModule.verifySignaturePresence;
 
+// Cutover — deterministic client creation from a tofes-mecher sale (TS — Phase 2
+// H.6, the core). Admin-gated v2 onCall: LIVE-reads ONE sales_record via the SSOT
+// readSalesRecordSnapshot (the same named-app read + 9-field projection as
+// validateSalesRecordExists), then in ONE transaction idempotently creates a
+// client + a fixed-price service (fixedPrice = the sale's amountBeforeVat, DLR §8.2.5
+// D1) EXACTLY as createClient's `fixed` branch, with plan = computeClientPlan. The
+// agreed-fee snapshot lives in the CF-only sales_record_links/{salesRecordId} doc —
+// OFF the world-readable clients doc (§7.6 / DLR D-A). Audit-FIRST IN-TXN (the audit
+// commits atomically with the create); re-calling for the same sale is a no-op
+// ({ created:false }). NO PDF / AI egress here — Option A defers the H.5 signature
+// gate to a later H.6 increment.
+const createClientFromSalesRecordModule = require('./lib/cutover/create-client-from-sales-record');
+exports.createClientFromSalesRecord = createClientFromSalesRecordModule.createClientFromSalesRecord;
+
 // Budget Tasks Functions (imported from ./budget-tasks)
 const budgetTasks = require('./budget-tasks');
 exports.createBudgetTask = budgetTasks.createBudgetTask;

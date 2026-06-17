@@ -108,6 +108,15 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // The REAL sales_record_links path (Phase 2 H.6) — mirrors production
+    // `allow read, write: if false`. Fully CF-only (like employee_costs /
+    // timesheet_entry_costs): holds the agreed-fee snapshot OFF the world-readable
+    // clients doc (§7.6 / DLR §8.2.5 D-A). tests/rules/salesRecordLinks.test.ts
+    // asserts it denies EVERY context (unauth/employee/admin/partner — read + write).
+    match /sales_record_links/{linkId} {
+      allow read, write: if false;
+    }
+
     // Deny everything else.
     match /{document=**} {
       allow read, write: if false;
