@@ -495,13 +495,24 @@ return;
 return '';
 }
 
+            // OWASP CSV/Formula-Injection — every VALUE cell is neutralized via the
+            // shared SSOT encoder window.CsvSafe.cell (prefixes a leading formula
+            // trigger [= + - @ TAB CR LF] with ' then RFC-4180 quote-doubles; the
+            // caller still wraps in "..."). The headers below are hardcoded Hebrew
+            // literals from exportPhoneList (not user data) so they are left as-is.
+            // Fail-closed: if js/core/csv-safe.js did not load, abort the export
+            // rather than emit un-neutralized cells.
+            if (!window.CsvSafe || typeof window.CsvSafe.cell !== 'function') {
+                throw new Error('CsvSafe encoder not loaded — CSV export aborted (js/core/csv-safe.js must load first)');
+            }
+
             const headers = Object.keys(data[0]);
             const csvHeaders = headers.join(',');
 
             const csvRows = data.map(row => {
                 return headers.map(header => {
                     const value = row[header] || '';
-                    return `"${value.toString().replace(/"/g, '""')}"`;
+                    return `"${window.CsvSafe.cell(value)}"`;
                 }).join(',');
             });
 
