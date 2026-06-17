@@ -579,6 +579,8 @@
     <!-- ClientTypeDisplay MUST load BEFORE ClientsDataManager (used by .loadClients) -->
     <script src="js/core/client-type-display.js?v=20260514-mixed"></script>
     <script src="js/managers/ClientsDataManager.js?v=20260516-isOnHold"></script>
+    <!-- CsvSafe (OWASP CSV/formula-injection encoder) MUST load BEFORE ReportGenerator (used by its CSV exports) -->
+    <script src="js/core/csv-safe.js?v=20260617-pr-sec-3"></script>
     <script src="js/managers/ReportGenerator.js?v=20260507-stage-2"></script>
     <script src="js/ui/Pagination.js?v=20251215"></script>
     <script src="js/ui/ClientReportModal.js?v=20260516-fixed-tag"></script>

@@ -441,6 +441,8 @@
     <script src="js/managers/ClientsDataManager.js?v=20260516-isOnHold"></script>
     <script src="js/ui/ClientsTable.js?v=20260516-isOnHold"></script>
     <script src="js/ui/ClientReportModal.js?v=20260516-fixed-tag"></script>
+    <!-- CsvSafe (OWASP CSV/formula-injection encoder) MUST load BEFORE ReportGenerator (used by its CSV exports) -->
+    <script src="js/core/csv-safe.js?v=20260617-pr-sec-3"></script>
     <script src="js/managers/ReportGenerator.js?v=20260507-stage-2"></script>
 
     <!-- Fluent Design Components -->
