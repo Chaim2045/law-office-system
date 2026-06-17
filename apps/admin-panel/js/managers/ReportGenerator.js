@@ -223,7 +223,7 @@ return true;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>דוח פעילות ללקוח - ${client.fullName}</title>
+    <title>דוח פעילות ללקוח - ${this.escapeHtml(client.fullName)}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         * {
@@ -479,11 +479,11 @@ return true;
             <div class="info-grid">
                 <div class="info-item">
                     <span class="info-label">שם הלקוח</span>
-                    <span class="info-value">${client.fullName}</span>
+                    <span class="info-value">${this.escapeHtml(client.fullName)}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">מספר תיק</span>
-                    <span class="info-value">${client.caseNumber || '-'}</span>
+                    <span class="info-value">${this.escapeHtml(client.caseNumber || '-')}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">תקופת הדוח</span>
@@ -499,7 +499,7 @@ return true;
         <!-- Hours Info (if applicable) -->
         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' || formData.service ? `
         <div class="section">
-            <h3 class="section-title"><i class="fas fa-clock"></i> מידע על ${formData.service === 'all' ? 'כל השירותים' : formData.service}</h3>
+            <h3 class="section-title"><i class="fas fa-clock"></i> מידע על ${formData.service === 'all' ? 'כל השירותים' : this.escapeHtml(formData.service)}</h3>
             <div class="info-grid">
                 ${this.renderServiceInfo(client, formData)}
             </div>
@@ -524,7 +524,7 @@ return true;
                 <tbody>
                     ${stats.byEmployee.map(emp => `
                         <tr>
-                            <td>${emp.employeeName}</td>
+                            <td>${this.escapeHtml(emp.employeeName)}</td>
                             <td class="highlight">${emp.hours.toFixed(2)} שעות</td>
                             <td>${emp.entries}</td>
                         </tr>
@@ -573,7 +573,7 @@ return true;
                 <tbody>
                     ${stats.byService.map(service => `
                         <tr>
-                            <td>${service.service}</td>
+                            <td>${this.escapeHtml(service.service)}</td>
                             <td class="highlight">${service.hours.toFixed(2)} שעות</td>
                             <td>${service.entries}</td>
                         </tr>
@@ -829,8 +829,8 @@ return true;
                 return `
                     <tr>
                         <td>${this.formatDate(entry.date)}</td>
-                        <td>${entry.action || entry.taskDescription || entry.description || '-'}</td>
-                        <td>${this.dataManager.getEmployeeName(entry.employee)}</td>
+                        <td>${this.escapeHtml(entry.action || entry.taskDescription || entry.description || '-')}</td>
+                        <td>${this.escapeHtml(this.dataManager.getEmployeeName(entry.employee))}</td>
                         <td class="highlight">${minutes}</td>
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td>${accumulatedMinutes}</td>` : ''}
                         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td class="${balanceClass}">${remainingMinutes}</td>` : ''}
@@ -1162,7 +1162,7 @@ return '0:00';
         <div class="section" style="margin-top: 2rem;">
             <h3 class="section-title">
                 <i class="fas fa-boxes"></i>
-                פירוט חבילות שעות - ${serviceName}${dateRangeText}
+                פירוט חבילות שעות - ${this.escapeHtml(serviceName)}${dateRangeText}
             </h3>
             <table>
                 <thead>
@@ -1191,7 +1191,7 @@ return '0:00';
                             <td class="highlight">${pkgHours.toFixed(1)}</td>
                             <td>${pkgUsed.toFixed(1)}</td>
                             <td>${pkgRemaining.toFixed(1)}</td>
-                            <td style="max-width: 200px; word-wrap: break-word;">${pkgDescription}</td>
+                            <td style="max-width: 200px; word-wrap: break-word;">${this.escapeHtml(pkgDescription)}</td>
                         </tr>
                         `;
                     }).join('')}
