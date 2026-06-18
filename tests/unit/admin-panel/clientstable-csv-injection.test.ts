@@ -87,7 +87,7 @@ describe('ClientsTable.exportToExcel — the customer scenario (G4)', () => {
       typeDisplay: { kind: 'hours', label: 'שעות', breakdown: [] },
       hoursRemaining: 5,
       status: 'active',
-      assignedTo: ['@evil', 'דוד'],
+      assignedTo: ['@evil', 'דוד']
     }]);
 
     clientsTable.exportToExcel();
@@ -109,7 +109,7 @@ describe('ClientsTable.exportToExcel — the customer scenario (G4)', () => {
         typeDisplay: { kind: 'hours', label: 'שעות', breakdown: [] },
         hoursRemaining: 1,
         status: 'active',
-        assignedTo: [],
+        assignedTo: []
       }]);
       clientsTable.exportToExcel();
       expect(captured).toContain(`'${payload}`);
@@ -124,7 +124,7 @@ describe('ClientsTable.exportToExcel — the customer scenario (G4)', () => {
       typeDisplay: { kind: 'hours', label: 'שעות', breakdown: [] },
       hoursRemaining: 5,
       status: 'active',
-      assignedTo: ['דוד כהן'],
+      assignedTo: ['דוד כהן']
     }]);
 
     clientsTable.exportToExcel();
@@ -145,7 +145,7 @@ describe('ClientsTable.exportToExcel — the customer scenario (G4)', () => {
       typeDisplay: { kind: 'hours', label: 'שעות', breakdown: [] },
       hoursRemaining: 1,
       status: 'active',
-      assignedTo: [],
+      assignedTo: []
     }]);
 
     clientsTable.exportToExcel();
