@@ -904,6 +904,10 @@ return true;
 
             const { client, timesheetEntries, budgetTasks, stats } = reportData;
 
+            if (!this.ensureCsvSafe()) {
+                return;
+            }
+
             // Build CSV content
             let csv = '\uFEFF'; // BOM for Hebrew support
 
@@ -923,7 +927,7 @@ return true;
             csv += 'פירוט שעות:\n';
             csv += 'תאריך,חבר צוות,שירות,זמן (דקות),תיאור\n';
             timesheetEntries.forEach(entry => {
-                csv += `"${this.formatDate(entry.date)}","${this.dataManager.getEmployeeName(entry.employee)}","${entry.serviceName || entry.service || '-'}","${entry.minutes}","${entry.action || entry.taskDescription || entry.description || ''}"\n`;
+                csv += `"${this.formatDate(entry.date)}","${window.CsvSafe.cell(this.dataManager.getEmployeeName(entry.employee))}","${window.CsvSafe.cell(entry.serviceName || entry.service || '-')}","${entry.minutes}","${window.CsvSafe.cell(entry.action || entry.taskDescription || entry.description || '')}"\n`;
             });
             csv += '\n';
 
@@ -931,7 +935,7 @@ return true;
             csv += 'משימות:\n';
             csv += 'שם המשימה,סטטוס,זמן מתוכנן (שעות),זמן בפועל (דקות),תאריך יעד\n';
             budgetTasks.forEach(task => {
-                csv += `"${task.taskName || task.title}","${this.getTaskStatusText(task.status)}","${task.estimatedHours || 0}","${task.actualMinutes || 0}","${task.deadline ? this.formatDate(task.deadline) : '-'}"\n`;
+                csv += `"${window.CsvSafe.cell(task.taskName || task.title)}","${window.CsvSafe.cell(this.getTaskStatusText(task.status))}","${task.estimatedHours || 0}","${task.actualMinutes || 0}","${window.CsvSafe.cell(task.deadline ? this.formatDate(task.deadline) : '-')}"\n`;
             });
 
             // Download
@@ -1593,8 +1597,13 @@ return '0.00';
 
             const { employee, period, summary, clientBreakdown, entries } = reportData;
 
-            // RFC 4180: escape double quotes by doubling them
-            const csvEscape = (val) => String(val || '').replace(/"/g, '""');
+            if (!this.ensureCsvSafe()) {
+                return;
+            }
+
+            // RFC 4180 quote-doubling + OWASP CSV/formula-injection neutralization,
+            // via the shared SSOT encoder window.CsvSafe.cell (js/core/csv-safe.js).
+            const csvEscape = (val) => window.CsvSafe.cell(val);
 
             let csv = '\uFEFF'; // BOM for Hebrew/Excel support
 
@@ -1658,6 +1667,26 @@ return '0.00';
             if (window.notify) {
                 window.notify.success('הקובץ הורד בהצלחה', 'ייצוא הצליח');
             }
+        }
+
+        /**
+         * Fail-secure precondition for CSV exports: the shared SSOT encoder
+         * (js/core/csv-safe.js → window.CsvSafe.cell) MUST be loaded before any CSV
+         * is built. It neutralizes OWASP CSV / formula injection (prefixes a leading
+         * `= + - @` / TAB / CR / LF with a single quote) + preserves RFC-4180
+         * quote-doubling. If it is missing (the script did not load), ABORT the
+         * export rather than emit an un-neutralized CSV — and tell the user in Hebrew.
+         * @returns {boolean} true if the encoder is available
+         */
+        ensureCsvSafe() {
+            if (window.CsvSafe && typeof window.CsvSafe.cell === 'function') {
+                return true;
+            }
+            console.error('ReportGenerator: CsvSafe encoder not loaded (js/core/csv-safe.js must load before ReportGenerator.js)');
+            if (window.notify) {
+                window.notify.error('שגיאה בייצוא הקובץ — רכיב אבטחה חסר. רענן את הדף ונסה שוב', 'ייצוא נכשל');
+            }
+            return false;
         }
 
         /**
