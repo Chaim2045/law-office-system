@@ -704,6 +704,10 @@ ${hasBillableHours ? `שעות נותרות: ${client.hoursRemaining || 0}` : ''
          * ייצוא לאקסל
          */
         exportToExcel() {
+            if (!this.ensureCsvSafe()) {
+                return;
+            }
+
             console.log('📥 Exporting clients to Excel...');
 
             const clients = this.dataManager.filteredClients;
@@ -734,8 +738,11 @@ ${hasBillableHours ? `שעות נותרות: ${client.hoursRemaining || 0}` : ''
                 ];
             });
 
+            // RFC-4180 quote-doubling + OWASP CSV/formula-injection neutralization,
+            // via the shared SSOT encoder window.CsvSafe.cell (js/core/csv-safe.js).
+            // Headers are hardcoded Hebrew labels (no formula trigger) — left as-is.
             let csv = headers.join(',') + '\n';
-            csv += rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+            csv += rows.map(row => row.map(cell => `"${window.CsvSafe.cell(cell)}"`).join(',')).join('\n');
 
             // Add BOM for Hebrew support
             const BOM = '\uFEFF';
@@ -748,6 +755,24 @@ ${hasBillableHours ? `שעות נותרות: ${client.hoursRemaining || 0}` : ''
             if (window.notify) {
                 window.notify.success('הקובץ הורד בהצלחה', 'ייצוא הצליח');
             }
+        }
+
+        /**
+         * Fail-secure guard for CSV export: the shared CSV/formula-injection
+         * encoder (js/core/csv-safe.js → window.CsvSafe.cell) MUST be present
+         * before exporting. If missing, abort with a Hebrew message rather than
+         * emit un-neutralized cells.
+         * @returns {boolean} true if the encoder is available
+         */
+        ensureCsvSafe() {
+            if (window.CsvSafe && typeof window.CsvSafe.cell === 'function') {
+                return true;
+            }
+            console.error('ClientsTable: CsvSafe encoder not loaded (js/core/csv-safe.js must be present on this page)');
+            if (window.notify) {
+                window.notify.error('שגיאה בייצוא הקובץ — רכיב אבטחה חסר. רענן את הדף ונסה שוב', 'ייצוא נכשל');
+            }
+            return false;
         }
 
         /**
