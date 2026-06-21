@@ -668,6 +668,14 @@ return null;
             try {
                 console.log('📥 Exporting users to CSV...');
 
+                // SECURITY (CSV / formula injection): every value cell must be
+                // neutralized through the shared SSOT encoder (window.CsvSafe.cell,
+                // js/core/csv-safe.js) before it reaches the file. If that encoder is
+                // not loaded, fail secure — abort rather than emit un-neutralized CSV.
+                if (!this.ensureCsvSafe()) {
+                    return;
+                }
+
                 const users = this.filteredUsers;
 
                 if (users.length === 0) {
@@ -704,7 +712,7 @@ return null;
                 // Build CSV content
                 const csvContent = [
                     headers.join(','),
-                    ...rows.map(r => r.map(cell => `"${cell}"`).join(','))
+                    ...rows.map(r => r.map(cell => `"${window.CsvSafe.cell(cell)}"`).join(','))
                 ].join('\n');
 
                 // Create Blob with UTF-8 BOM for Excel compatibility
@@ -740,6 +748,26 @@ return null;
                 console.error('❌ Error exporting to CSV:', error);
                 window.notify.error('שגיאה בייצוא לExcel. נסה שוב', 'שגיאה');
             }
+        }
+
+        /**
+         * Fail-secure guard for the CSV export.
+         * Verifies the shared SSOT CSV/formula-injection encoder
+         * (window.CsvSafe.cell, js/core/csv-safe.js) is loaded before any cell is
+         * written. If it is missing, abort the export with a Hebrew notice rather
+         * than emit un-neutralized CSV.
+         *
+         * @returns {boolean} true if the encoder is available, false otherwise
+         */
+        ensureCsvSafe() {
+            if (window.CsvSafe && typeof window.CsvSafe.cell === 'function') {
+                return true;
+            }
+            console.error('DataManager: CsvSafe encoder not loaded (js/core/csv-safe.js must be present on this page)');
+            if (window.notify) {
+                window.notify.error('שגיאה בייצוא הקובץ — רכיב אבטחה חסר. רענן את הדף ונסה שוב', 'ייצוא נכשל');
+            }
+            return false;
         }
 
         /**
