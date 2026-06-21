@@ -469,13 +469,13 @@ return;
               }"></i>
             </div>
             <div class="notification-text">
-              <div class="notification-title">${safeText(
+              <div class="notification-title">${window.escapeHtml(
                 notification.title
               )}</div>
-              <div class="notification-description">${safeText(
+              <div class="notification-description">${window.escapeHtml(
                 notification.description
               )}</div>
-              <div class="notification-time">${safeText(
+              <div class="notification-time">${window.escapeHtml(
                 notification.time
               )}</div>
             </div>
