@@ -734,15 +734,9 @@
     },
 
     _escapeHtml: function (str) {
-      if (str === null || str === undefined) {
-        return '';
-      }
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+      // Routed to the shared SSOT escaper (js/core/escape-html.js).
+      // Behavior change: the apostrophe now encodes as &#039; (was &#39;) — same render.
+      return window.escapeHtml(str);
     }
   };
 
