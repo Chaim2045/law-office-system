@@ -125,12 +125,10 @@
             return '<div class="type-tooltip"><em>אין שירותים</em></div>';
         }
 
-        const escapeHtml = (str) => String(str || '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+        // Routed to the shared SSOT escaper (js/core/escape-html.js) — escapes leaf
+        // text only (the assembled tooltip HTML is handled by ClientsTable, excluded).
+        // Byte-identical for string input (same 5 entities incl. &#039;).
+        const escapeHtml = (str) => window.escapeHtml(str);
 
         const activeRows = breakdown.filter(b => b.isActive).map(b => {
             const typeLabel = b.isFixed ? 'פיקס' : 'שעות';

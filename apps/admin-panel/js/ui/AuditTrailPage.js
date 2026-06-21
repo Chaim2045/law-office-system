@@ -998,10 +998,10 @@
   }
 
   function _escapeHtml(str) {
-    if (!str) {
- return '';
-}
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    // Routed to the shared SSOT escaper (js/core/escape-html.js).
+    // Behavior change (security improvement): now also escapes ' → &#039; (was 4-entity);
+    // and 0/false stringify instead of blanking (the stricter null/undefined guard).
+    return window.escapeHtml(str);
   }
 
   window.AuditTrailPage = AuditTrailPage;

@@ -66,6 +66,8 @@
     <script src="js/core/config-loader.js"></script>
     <script src="js/core/auth.js"></script>
     <script src="js/core/constants.js"></script>
+    <!-- Shared HTML-escape SSOT (window.escapeHtml) — load before any escaper consumer -->
+    <script src="js/core/escape-html.js?v=20260621-escapehtml-pr1"></script>
 
     <!-- ===== Auth Guard ===== -->
     <script src="js/core/auth-guard.js?v=20250103"></script>
@@ -74,7 +76,7 @@
     <script src="js/ui/Navigation.js"></script>
 
     <!-- ===== Settings Page Component ===== -->
-    <script src="js/ui/SystemSettingsPage.js"></script>
+    <script src="js/ui/SystemSettingsPage.js?v=20260621-escapehtml-pr1"></script>
 
     <!-- ===== Notifications ===== -->
     <script src="js/ui/Notifications.js"></script>

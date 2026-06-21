@@ -1668,19 +1668,9 @@ input.value = '';
      * Escape HTML
      */
     escapeHtml(text) {
-      if (text === null || text === undefined) {
-        return '';
-      }
-      // המרה למחרזת אם זה לא מחרזת
-      text = String(text);
-      const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-      };
-      return text.replace(/[&<>"']/g, m => map[m]);
+      // Routed to the shared SSOT escaper (apps/admin-panel/js/core/escape-html.js).
+      // Byte-identical to the prior local copy (same 5 entities, same null/undefined guard).
+      return window.escapeHtml(text);
     }
 
     /**
