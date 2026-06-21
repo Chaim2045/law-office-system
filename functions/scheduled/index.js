@@ -8,7 +8,7 @@ const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
 // PR-C.1 (2026-05-18): nightly companion to PR-D's on-demand audit.
-const { calcClientAggregates } = require('../shared/aggregates');
+const { calcClientAggregates, round2, NON_AGGREGATING_STATUSES } = require('../shared/aggregates');
 const { _recomputeTotalHours } = require('../shared/client-writer');
 
 const db = admin.firestore();
@@ -283,6 +283,184 @@ const dailyBudgetWarnings = onSchedule({
 // TODO: כשישודרג Twilio — להוסיף שליחת SMS בפער
 // מספר יעד: +972549539238
 
+// PR-DRIFT-1 (2026-06-21): package-level CONSUMPTION tolerance. Matches Check 5's
+// PKG_DRIFT_TOLERANCE (0.05h / 3min) — the package grain accumulates round2 noise
+// per deduction, so the 0.02 service-grain tolerance would false-fire here.
+const PKG_HOURSUSED_TOLERANCE = 0.05;
+
+/**
+ * Pure helper — Check 0 "card" hours-used for a service, by type.
+ * PR-DRIFT-1: a top-level `fixed` service stores logged hours in
+ * `work.totalMinutesWorked` (its `service.hoursUsed` is always 0 — fixed services
+ * are excluded from billing aggregation). Without the ST.FIXED branch, Check 0
+ * compared 0 against Σ(entries) and false-flagged every fixed service with logged
+ * time. `legal_procedure`-fixed (pricingType===FIXED) keeps its stages-sum branch.
+ * Exposed via `_test`.
+ */
+function computeCardHoursUsed(service) {
+  if (service.type === ST.FIXED) {
+    const m = service.work && typeof service.work.totalMinutesWorked === 'number'
+      ? service.work.totalMinutesWorked : 0;
+    return m / 60;
+  }
+  if (service.pricingType === PT.FIXED) {
+    return (service.stages || []).reduce((sum, st) => sum + (st.totalHoursWorked || 0), 0);
+  }
+  return service.hoursUsed || 0;
+}
+
+/**
+ * Pure helper — Check 7 (PR-DRIFT-1): package-level CONSUMPTION drift + internal
+ * consistency for HOURS services. Read-only; returns an array of discrepancy
+ * objects (the caller stamps clientId/clientName). Empty array = clean.
+ *
+ * Closes the unmonitored rung in the invariant ladder: `package.hoursUsed` had no
+ * check against Σ(entries by packageId). Complements Check 5 (CAPACITY:
+ * service.totalHours vs Σpkg.hours), which never covered CONSUMPTION.
+ *
+ * SCOPE (PR-DRIFT-1): HOURS services only. `legal_procedure` STAGE packages are
+ * deferred to PR-DRIFT-3 — their ids ARE catalogued here (so stage entries are not
+ * mis-flagged as dangling) but their hoursUsed is NOT drift-checked.
+ *
+ * Archived services are SKIPPED for the drift/consistency checks — consistent with
+ * NON_AGGREGATING_STATUSES (their frozen hoursUsed is intentionally outside billing
+ * aggregation; archived drift is covered by the PR-DRIFT-2 repair full-scan).
+ *
+ * @param {Object} clientData             - the client document data
+ * @param {Object} packageMinutes         - { [packageId]: minutes } from the client's entries
+ * @param {Object} orphanMinutesByService - { [effectiveServiceId]: minutes } for entries with NO packageId
+ * @returns {Array<Object>} discrepancies (possibly empty)
+ */
+function detectPackageInvariants(clientData, packageMinutes, orphanMinutesByService) {
+  const out = [];
+  const services = Array.isArray(clientData && clientData.services)
+    ? clientData.services.filter(Boolean)
+    : [];
+  const pkgMin = packageMinutes || {};
+  const orphanMin = orphanMinutesByService || {};
+
+  // Pass 1: catalogue EVERY package id anywhere on the client (HOURS packages +
+  // legal_procedure stage packages, ALL statuses) so the dangling-id check below
+  // does not mis-flag a legal-stage or archived package as "no such package".
+  // Count occurrences too — `pkg_<ts>` ids are not globally unique (millisecond
+  // timestamp), so a same-client collision makes the packageMinutes bucket
+  // ambiguous and the value compare must be skipped.
+  const occurrences = {};
+  for (const svc of services) {
+    for (const pkg of (Array.isArray(svc.packages) ? svc.packages : [])) {
+      if (pkg && pkg.id) occurrences[pkg.id] = (occurrences[pkg.id] || 0) + 1;
+    }
+    for (const stage of (Array.isArray(svc.stages) ? svc.stages : [])) {
+      for (const pkg of (stage && Array.isArray(stage.packages) ? stage.packages : [])) {
+        if (pkg && pkg.id) occurrences[pkg.id] = (occurrences[pkg.id] || 0) + 1;
+      }
+    }
+  }
+  const knownPkgIds = new Set(Object.keys(occurrences));
+
+  // Pass 2: per-service + per-package checks — HOURS + non-archived only.
+  for (const svc of services) {
+    if (NON_AGGREGATING_STATUSES.includes(svc.status || 'active')) continue; // skip archived
+    const isHours = svc.type === ST.HOURS || svc.serviceType === ST.HOURS;
+    if (!isHours) continue;
+    const serviceId = svc.id;
+    const packages = Array.isArray(svc.packages) ? svc.packages : [];
+
+    // (B) orphan signal — entries with NO packageId on a service that HAS packages
+    if (packages.length > 0) {
+      const om = orphanMin[serviceId] || 0;
+      if (om > 0) {
+        out.push({
+          type: 'orphan_entries_on_packaged_service',
+          serviceId,
+          orphanMinutes: om,
+          orphanHours: round2(om / 60)
+        });
+      }
+    }
+
+    for (const pkg of packages) {
+      if (!pkg || !pkg.id) continue;
+      const packageId = pkg.id;
+
+      // non-unique id on this client → ambiguous bucket; signal + skip value compares
+      if ((occurrences[packageId] || 0) > 1) {
+        out.push({ type: 'duplicate_package_id', serviceId, packageId });
+        continue;
+      }
+
+      const cardUsed = pkg.hoursUsed || 0;
+      const entriesUsed = (pkgMin[packageId] || 0) / 60;
+
+      // (A) CONSUMPTION drift: package.hoursUsed vs Σ(entries by packageId)/60.
+      // Signed: + = card over-counts logged entries (the dominant phantom case).
+      const usedDrift = round2(cardUsed - entriesUsed);
+      if (Math.abs(usedDrift) > PKG_HOURSUSED_TOLERANCE) {
+        out.push({
+          type: 'package_hoursUsed_drift',
+          serviceId,
+          packageId,
+          card: round2(cardUsed),
+          entries: round2(entriesUsed),
+          drift: usedDrift
+        });
+      }
+
+      // (consistency) hoursRemaining == hours - hoursUsed (pure arithmetic)
+      if (typeof pkg.hoursRemaining === 'number') {
+        const expectedRemaining = round2((pkg.hours || 0) - cardUsed);
+        const remDrift = round2(pkg.hoursRemaining - expectedRemaining);
+        if (Math.abs(remDrift) > PKG_HOURSUSED_TOLERANCE) {
+          out.push({
+            type: 'package_hoursRemaining_arithmetic',
+            serviceId,
+            packageId,
+            stored: round2(pkg.hoursRemaining),
+            expected: expectedRemaining,
+            drift: remDrift
+          });
+        }
+      }
+
+      // (consistency) status <-> hoursRemaining coherence. Conservative to avoid
+      // noise: `depleted` must have remaining <= 0; `active`/`pending` flagged only
+      // BELOW the -10h controlled-overdraft floor (a package inside the window may
+      // legitimately stay active/pending).
+      const rem = typeof pkg.hoursRemaining === 'number'
+        ? pkg.hoursRemaining
+        : round2((pkg.hours || 0) - cardUsed);
+      const status = pkg.status || 'active';
+      let statusIncoherent = false;
+      if (status === 'depleted' && rem > PKG_HOURSUSED_TOLERANCE) statusIncoherent = true;
+      if ((status === 'active' || status === 'pending') && rem <= -10) statusIncoherent = true;
+      if (statusIncoherent) {
+        out.push({
+          type: 'package_status_incoherent',
+          serviceId,
+          packageId,
+          status,
+          hoursRemaining: round2(rem)
+        });
+      }
+    }
+  }
+
+  // Pass 3: dangling packageId — an entry references a package id that exists
+  // NOWHERE on the client (deleted/renamed package, or a write bug). The inverse
+  // of the orphan signal (entry HAS a packageId, but it points to nothing).
+  for (const packageId of Object.keys(pkgMin)) {
+    if (!knownPkgIds.has(packageId)) {
+      out.push({
+        type: 'dangling_packageId',
+        packageId,
+        entries: round2((pkgMin[packageId] || 0) / 60)
+      });
+    }
+  }
+
+  return out;
+}
+
 const dailyInvariantCheck = onSchedule({
   schedule: '0 6 * * *',
   timeZone: 'Asia/Jerusalem',
@@ -319,13 +497,22 @@ const dailyInvariantCheck = onSchedule({
           .where('clientId', '==', clientId)
           .get();
 
-        // Group minutes by effective serviceId (parentServiceId for legal_procedure stages)
+        // Group minutes by effective serviceId (parentServiceId for legal_procedure stages).
+        // PR-DRIFT-1: from the SAME single read, also group by packageId (Check 7) and
+        // accumulate orphan (no-packageId) minutes per effective service.
         const serviceMinutes = {};
+        const packageMinutes = {};
+        const orphanMinutesByService = {};
         timesheetSnapshot.forEach(doc => {
           const entry = doc.data();
           const effectiveServiceId = entry.parentServiceId || entry.serviceId;
           if (effectiveServiceId) {
             serviceMinutes[effectiveServiceId] = (serviceMinutes[effectiveServiceId] || 0) + (entry.minutes || 0);
+          }
+          if (entry.packageId) {
+            packageMinutes[entry.packageId] = (packageMinutes[entry.packageId] || 0) + (entry.minutes || 0);
+          } else if (effectiveServiceId) {
+            orphanMinutesByService[effectiveServiceId] = (orphanMinutesByService[effectiveServiceId] || 0) + (entry.minutes || 0);
           }
         });
 
@@ -334,9 +521,7 @@ const dailyInvariantCheck = onSchedule({
           const serviceId = service.id;
           if (!serviceId) continue;
 
-          const cardHoursUsed = service.pricingType === PT.FIXED
-            ? (service.stages || []).reduce((sum, st) => sum + (st.totalHoursWorked || 0), 0)
-            : (service.hoursUsed || 0);
+          const cardHoursUsed = computeCardHoursUsed(service);
           const timesheetMinutes = serviceMinutes[serviceId] || 0;
           const timesheetHoursUsed = timesheetMinutes / 60;
           const gap = Math.abs(cardHoursUsed - timesheetHoursUsed);
@@ -352,6 +537,14 @@ const dailyInvariantCheck = onSchedule({
               gap: parseFloat(gap.toFixed(2))
             });
           }
+        }
+
+        // ── Check 7 (PR-DRIFT-1): package-level consumption + consistency drift ──
+        // Reuses the per-client entries already read above (packageMinutes /
+        // orphanMinutesByService). Read-only — only pushes to `discrepancies`.
+        const pkgDiscrepancies = detectPackageInvariants(clientData, packageMinutes, orphanMinutesByService);
+        for (const d of pkgDiscrepancies) {
+          discrepancies.push({ ...d, clientId, clientName });
         }
       } catch (clientError) {
         console.error(`⚠️ Error checking client ${clientId}:`, clientError.message);
@@ -620,10 +813,13 @@ module.exports = {
   dailyBudgetWarnings,
   dailyInvariantCheck,
   holidaysCalendarSync,
-  // Exported for unit testing only (PR-C.1 + PR-G.1).
+  // Exported for unit testing only (PR-C.1 + PR-G.1 + PR-DRIFT-1).
   _test: {
     detectAggregateDrift,
+    detectPackageInvariants,
+    computeCardHoursUsed,
     AGG_DRIFT_TOLERANCE,
+    PKG_HOURSUSED_TOLERANCE,
     syncHolidaysForYear,
     _hashHolidays
   }
