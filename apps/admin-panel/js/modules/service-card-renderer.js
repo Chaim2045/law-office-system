@@ -31,17 +31,15 @@
   'use strict';
 
   /**
-   * ✅ Use global safeText from core-utils.js (Single Source of Truth)
-   * Aliased as escapeHtml for backward compatibility
+   * Routed to the shared HTML-escape SSOT window.escapeHtml
+   * (apps/admin-panel/js/core/escape-html.js — escapeHtml-dedup PR3a), aliased as
+   * escapeHtml so the existing call-sites stay unchanged. The previous
+   * safeText-or-temp-div fallback is removed: window.safeText was never defined in the
+   * admin panel (the fallback always won), and the temp-div escaped only & < > — the
+   * SSOT also escapes " and ' (5-entity, attribute-safe). clients.html loads
+   * escape-html.js before this script.
    */
-  const escapeHtml = window.safeText || function(text) {
-    if (!text) {
-return '';
-}
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  };
+  const escapeHtml = window.escapeHtml;
 
   /**
    * ═══════════════════════════════════════════════════════════════════

@@ -1408,12 +1408,13 @@ return dateStr;
         }
 
         sanitize(text) {
-            if (!text) {
-return '';
-}
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+            // Routed to the shared SSOT escaper (js/core/escape-html.js — escapeHtml-dedup PR3a).
+            // Behavior change: now also escapes " and ' (the temp-div escaped only & < >) — inert in
+            // HTML text, safer in the attribute sinks; the id-coupled (id= / onclick) pairs stay
+            // consistent because both sides call this same method. The onclick JS-string apostrophe
+            // hazard is PRE-EXISTING (3-entity also leaves ' intact) and is fixed properly in PR3c
+            // (data-attr + delegated listener).
+            return window.escapeHtml(text);
         }
 
         getRoleLabel(role) {

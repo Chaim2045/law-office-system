@@ -53,16 +53,15 @@ window.WhatsAppMessageDialog = (function() {
 
     /**
      * Output-encode a string for safe interpolation into an HTML text/element
-     * context. Mirrors ReportGenerator.escapeHtml (& < > " ' → entities) so the
-     * user-controllable display name cannot break out of the modal markup that
-     * is injected via insertAdjacentHTML below (stored-XSS defense).
+     * context. Delegates to the shared SSOT escaper window.escapeHtml (& < > " ' →
+     * entities) so the user-controllable display name cannot break out of the modal
+     * markup that is injected via insertAdjacentHTML below (stored-XSS defense).
      */
     function escapeHtml(text) {
-        if (!text) {
-            return '';
-        }
-        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-        return String(text).replace(/[&<>"']/g, c => map[c]);
+        // Routed to the shared SSOT escaper (js/core/escape-html.js).
+        // Entity output unchanged (already 5-entity); null-guard narrows to null/undefined
+        // (0/false now stringify rather than blank).
+        return window.escapeHtml(text);
     }
 
     // ═══════════════════════════════════════════════════════════

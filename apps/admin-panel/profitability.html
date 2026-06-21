@@ -66,6 +66,8 @@
     <script src="js/core/config-loader.js"></script>
     <script src="js/core/auth.js"></script>
     <script src="js/core/constants.js"></script>
+    <!-- Shared HTML-escape SSOT (window.escapeHtml) — load before any escaper consumer -->
+    <script src="js/core/escape-html.js?v=20260621-escapehtml-pr1"></script>
 
     <!-- ===== Auth Guard ===== -->
     <script src="js/core/auth-guard.js?v=20250103"></script>
@@ -76,7 +78,7 @@
     <!-- ===== Modals + Pure Formatters + Page + Notifications ===== -->
     <script src="js/ui/Modals.js"></script>
     <script src="js/core/profitability-format.js"></script>
-    <script src="js/ui/ProfitabilityPage.js"></script>
+    <script src="js/ui/ProfitabilityPage.js?v=20260621-escapehtml-pr1"></script>
     <script src="js/ui/Notifications.js"></script>
 
     <!-- ===== Page Initialization ===== -->

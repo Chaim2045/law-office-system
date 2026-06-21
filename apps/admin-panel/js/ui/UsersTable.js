@@ -635,9 +635,10 @@ return '-';
          * בריחה מ-HTML למניעת XSS
          */
         escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+            // Routed to the shared SSOT escaper (js/core/escape-html.js).
+            // Behavior change: now also escapes " and ' (the temp-div escaped only & < >);
+            // undefined now renders '' instead of 'undefined' — safe in HTML text contexts.
+            return window.escapeHtml(text);
         }
     }
 
