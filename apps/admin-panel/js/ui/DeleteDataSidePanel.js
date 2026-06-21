@@ -997,12 +997,10 @@ return;
          * עזר: escape HTML
          */
         escapeHtml(text) {
-            if (!text) {
-return '';
-}
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+            // Routed to the shared SSOT escaper (js/core/escape-html.js).
+            // Behavior change: now also escapes " and ' (the temp-div escaped only & < >);
+            // null-guard narrows to null/undefined only — safe in HTML text/attribute contexts.
+            return window.escapeHtml(text);
         }
 
         /**

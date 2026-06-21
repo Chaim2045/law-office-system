@@ -21,6 +21,12 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 
+// WhatsAppMessageDialog.escapeHtml now DELEGATES to the shared SSOT
+// window.escapeHtml (escapeHtml-dedup PR2) — import the SSOT FIRST so the global is
+// defined when the dialog HTML is built. Without this the routed escaper throws.
+// @ts-ignore — classic admin-panel script, no type declarations
+import '../../../apps/admin-panel/js/core/escape-html.js';
+
 // WhatsAppMessageDialog.js is an IIFE that assigns the module to window
 // (happy-dom provides window/document). Import for side-effect, then read it off
 // window — same harness pattern as report-generator-escaping.test.ts.

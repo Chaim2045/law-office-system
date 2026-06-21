@@ -1796,9 +1796,10 @@ localService.packages = [];
          * בריחת תווי HTML
          */
         escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+            // Routed to the shared SSOT escaper (js/core/escape-html.js).
+            // Behavior change: now also escapes " and ' (the temp-div escaped only & < >) —
+            // safe in HTML text/attribute contexts (e.g. the fee-agreement title attr).
+            return window.escapeHtml(text);
         }
 
         /**

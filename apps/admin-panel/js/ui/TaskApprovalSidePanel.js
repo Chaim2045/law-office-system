@@ -436,12 +436,10 @@
         }
 
         _escapeHtml(str) {
-            if (str === null || str === undefined) {
-                return '';
-            }
-            const div = document.createElement('div');
-            div.textContent = String(str);
-            return div.innerHTML;
+            // Routed to the shared SSOT escaper (js/core/escape-html.js).
+            // Behavior change: now also escapes " and ' (was & < > only); the null/undefined
+            // guard + String() coercion are unchanged (already SSOT-equivalent).
+            return window.escapeHtml(str);
         }
     }
 
