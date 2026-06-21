@@ -18,6 +18,12 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 
+// ReportGenerator.escapeHtml now DELEGATES to the shared SSOT window.escapeHtml
+// (escapeHtml-dedup PR2) — import the SSOT FIRST so the global is defined when the
+// report HTML is built below. Without this the routed escaper throws at call-time.
+// @ts-ignore — classic admin-panel script, no type declarations
+import '../../../apps/admin-panel/js/core/escape-html.js';
+
 // ReportGenerator.js is an IIFE that assigns the singleton to window (happy-dom
 // provides window). Import for side-effect, then read the instance off window.
 // @ts-ignore — classic admin-panel script, no type declarations

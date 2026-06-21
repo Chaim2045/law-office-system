@@ -206,6 +206,8 @@
     <script src="js/modules/idle-timeout-manager.js?v=e02c45c"></script>
     <script src="js/core/auth.js?v=e02c45c"></script>
     <script src="js/core/constants.js?v=e02c45c"></script>
+    <!-- Shared HTML-escape SSOT (escapeHtml dedup PR2) — must load before any consumer below -->
+    <script src="js/core/escape-html.js?v=20260621-escapehtml-pr2"></script>
 
     <!-- ===== Navigation Component ===== -->
     <script src="js/ui/Navigation.js?v=e02c45c"></script>
@@ -218,7 +220,7 @@
     <!-- ===== Phase 2: Data & UI Components ===== -->
     <script src="js/managers/DataManager.js?v=e02c45c"></script>
     <script src="js/ui/StatsCards.js?v=e02c45c"></script>
-    <script src="js/ui/UsersTable.js?v=e02c45c"></script>
+    <script src="js/ui/UsersTable.js?v=20260621-escapehtml-pr2"></script>
     <script src="js/ui/FilterBar.js?v=e02c45c"></script>
     <script src="js/ui/Pagination.js?v=e02c45c"></script>
     <script src="js/ui/DashboardUI.js?v=e02c45c"></script>
@@ -233,11 +235,11 @@
     <script src="js/ui/Modals.js?v=e02c45c"></script>
     <script src="js/ui/Notifications.js?v=e02c45c"></script>
     <script src="js/ui/UserForm.js?v=e02c45c"></script>
-    <script src="js/ui/UserDetailsModal.js?v=e02c45c"></script>
+    <script src="js/ui/UserDetailsModal.js?v=20260621-escapehtml-pr2"></script>
     <!-- CsvSafe (OWASP CSV/formula-injection encoder) MUST load BEFORE ReportGenerator (used by its CSV exports) -->
     <script src="js/core/csv-safe.js?v=20260617-pr-sec-3"></script>
-    <script src="js/managers/ReportGenerator.js?v=20260507-stage-2"></script>
-    <script src="js/ui/DeleteDataSidePanel.js?v=e02c45c"></script>
+    <script src="js/managers/ReportGenerator.js?v=20260621-escapehtml-pr2"></script>
+    <script src="js/ui/DeleteDataSidePanel.js?v=20260621-escapehtml-pr2"></script>
     <script src="js/managers/UsersActions.js?v=e02c45c"></script>
 
     <!-- ===== Alert Communication System ===== -->
@@ -245,14 +247,14 @@
     <script src="js/managers/AlertsAnalyticsService.js?v=e02c45c"></script>
 
     <!-- ===== WhatsApp Messaging System ===== -->
-    <script src="js/managers/WhatsAppMessageDialog.js?v=e02c45c"></script>
+    <script src="js/managers/WhatsAppMessageDialog.js?v=20260621-escapehtml-pr2"></script>
 
     <script src="js/config/message-categories.js?v=e02c45c"></script>
     <script src="js/managers/AlertCommunicationManager.js?v=e02c45c"></script>
-    <script src="js/ui/UserAlertsPanel.js?v=e02c45c"></script>
+    <script src="js/ui/UserAlertsPanel.js?v=20260621-escapehtml-pr2"></script>
     <script src="js/ui/QuickMessageDialog.js?v=e02c45c"></script>
-    <script src="js/ui/MessagesFullscreenModal.js?v=e02c45c"></script>
-    <script src="js/ui/AdminThreadView.js?v=e02c45c"></script>
+    <script src="js/ui/MessagesFullscreenModal.js?v=20260621-escapehtml-pr2"></script>
+    <script src="js/ui/AdminThreadView.js?v=20260621-escapehtml-pr2"></script>
 
     <!-- ===== Task Approval System (for Side Panel) ===== -->
     <script type="module">
@@ -267,7 +269,7 @@
     </script>
     <!-- H.4 PR-a: canonical budget-meter helper (must load before the overrun side panel) -->
     <script src="js/core/budget-status.js?v=e02c45c"></script>
-    <script src="js/ui/TaskApprovalSidePanel.js?v=e02c45c"></script>
+    <script src="js/ui/TaskApprovalSidePanel.js?v=20260621-escapehtml-pr2"></script>
 
     <!-- ✅ NotificationBell - For admins who are also users -->
     <script src="js/modules/notification-bell.js?v=e02c45c"></script>

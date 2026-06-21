@@ -780,12 +780,12 @@ ${hasBillableHours ? `שעות נותרות: ${client.hoursRemaining || 0}` : ''
          * הימנעות מ-HTML injection
          */
         escapeHtml(text) {
-            if (!text) {
-return '';
-}
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+            // Routed to the shared SSOT escaper (js/core/escape-html.js).
+            // Behavior change: now also escapes " and ' (the temp-div escaped only & < >);
+            // null-guard narrows to null/undefined only — safe in HTML text/attribute contexts.
+            // NOTE: the separate data-tooltip-html escape in getTypeBadge() is intentionally
+            // NOT routed here (it packs pre-rendered HTML; a 5-entity escape would break it).
+            return window.escapeHtml(text);
         }
     }
 

@@ -1693,11 +1693,10 @@ return '0.00';
          * Helper: Escape HTML characters for employee reports
          */
         escapeHtml(text) {
-            if (!text) {
-return '';
-}
-            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-            return String(text).replace(/[&<>"']/g, c => map[c]);
+            // Routed to the shared SSOT escaper (js/core/escape-html.js).
+            // Entity output unchanged (already 5-entity); null-guard narrows to null/undefined
+            // (0/false now stringify rather than blank).
+            return window.escapeHtml(text);
         }
 
         /**
