@@ -75,7 +75,7 @@ const ROUTED: ReadonlyArray<readonly [string, string, string]> = [
   ['js/ui/UsersTable.js', 'escapeHtml(text) {', 'text'],
   ['js/ui/ClientsTable.js', 'escapeHtml(text) {', 'text'],
   ['js/managers/WhatsAppMessageDialog.js', 'function escapeHtml(text) {', 'text'],
-  ['js/managers/ReportGenerator.js', 'escapeHtml(text) {', 'text'],
+  ['js/managers/ReportGenerator.js', 'escapeHtml(text) {', 'text']
 ];
 
 describe('escapeHtml PR2 — every routed escaper delegates to the SSOT', () => {
@@ -122,18 +122,18 @@ describe('escapeHtml PR2 — load-order invariant (escape-html.js before EVERY r
       'js/ui/UsersTable.js', 'js/ui/UserDetailsModal.js', 'js/ui/DeleteDataSidePanel.js',
       'js/managers/WhatsAppMessageDialog.js', 'js/ui/UserAlertsPanel.js',
       'js/ui/MessagesFullscreenModal.js', 'js/ui/AdminThreadView.js',
-      'js/ui/TaskApprovalSidePanel.js', 'js/managers/ReportGenerator.js',
+      'js/ui/TaskApprovalSidePanel.js', 'js/managers/ReportGenerator.js'
     ]],
     ['system-announcements.html', ['js/ui/AnnouncementCard.js', 'js/ui/ReadStatusModal.js']],
     ['clients.html', [
       'js/managers/ReportGenerator.js', 'js/ui/ClientReportModal.js',
       'js/ui/ClientManagementModal.js', 'js/ui/ClientsTable.js',
-      'js/features/ServiceOverdraftResolution.js', 'js/ui/TaskApprovalSidePanel.js',
+      'js/features/ServiceOverdraftResolution.js', 'js/ui/TaskApprovalSidePanel.js'
     ]],
     ['clients-fluent.html', [
       'js/ui/ClientsTable.js', 'js/ui/ClientReportModal.js',
-      'js/managers/ReportGenerator.js', 'js/fluent/FluentDataGrid.js',
-    ]],
+      'js/managers/ReportGenerator.js', 'js/fluent/FluentDataGrid.js'
+    ]]
   ];
 
   for (const [page, consumers] of PAGE_CONSUMERS) {
@@ -152,9 +152,10 @@ describe('escapeHtml PR2 — load-order invariant (escape-html.js before EVERY r
 
 describe('escapeHtml PR2 — SSOT behavioral contract the routing depends on', () => {
   it('escapes all 5 entities (the routed temp-div copies now also escape " and \')', () => {
-    const escapeHtml = (globalThis as any).window?.escapeHtml ?? (globalThis as any).escapeHtml;
+    // escape-html.js (imported above) sets window.escapeHtml; happy-dom provides window.
+    const escapeHtml = (window as any).escapeHtml;
     expect(typeof escapeHtml).toBe('function');
-    expect(escapeHtml(`O'Brien & <b>"x"</b>`)).toBe('O&#039;Brien &amp; &lt;b&gt;&quot;x&quot;&lt;/b&gt;');
+    expect(escapeHtml('O\'Brien & <b>"x"</b>')).toBe('O&#039;Brien &amp; &lt;b&gt;&quot;x&quot;&lt;/b&gt;');
     expect(escapeHtml(null)).toBe('');
     expect(escapeHtml(undefined)).toBe('');
   });
