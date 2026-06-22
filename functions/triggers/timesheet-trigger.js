@@ -62,6 +62,52 @@ function getMinutesDelta(eventType, before, after) {
 }
 
 /**
+ * Pure predicate: does this UPDATE change the entry's serviceId (a service
+ * transfer)? Mirrors the inline expression in the handler (lines ~274-277).
+ *
+ * Exported via `_test` only. The handler keeps its own inline expression for
+ * runtime; a drift-guard test pins the two to stay byte-identical. Extracting
+ * this as a pure function lets the repair-stamp no-op invariant be unit-tested
+ * without a Firestore emulator.
+ *
+ * @param {'CREATE'|'UPDATE'|'DELETE'} eventType
+ * @param {Object|null} before
+ * @param {Object|null} after
+ * @returns {boolean}
+ */
+function isServiceTransferChange(eventType, before, after) {
+  return eventType === 'UPDATE'
+    && !!(before && before.serviceId)
+    && !!(after && after.serviceId)
+    && before.serviceId !== after.serviceId;
+}
+
+/**
+ * Pure predicate: is this UPDATE a zero-hours-mutation no-op the trigger must
+ * early-return on? Mirrors the guard in the handler (lines ~281-284):
+ *   eventType === 'UPDATE' && minutesDelta === 0 && !isServiceTransfer
+ *
+ * This is the SAFETY the repair migration depends on: the repair stamps orphan
+ * timesheet entries with { packageId, repairStampedAt, repairRunId } — minutes
+ * UNCHANGED, serviceId UNCHANGED. minutesDelta is 0 and it is not a service
+ * transfer → the trigger must NOT re-deduct. The rollback un-stamp is the same
+ * shape (minutes/serviceId unchanged) → also a no-op.
+ *
+ * Exported via `_test` only; the handler keeps its own inline guard for runtime.
+ * A drift-guard test pins the two together.
+ *
+ * @param {'CREATE'|'UPDATE'|'DELETE'} eventType
+ * @param {Object|null} before
+ * @param {Object|null} after
+ * @returns {boolean} true → trigger early-returns (no-op); false → trigger proceeds
+ */
+function isZeroHoursMutationNoOp(eventType, before, after) {
+  const minutesDelta = getMinutesDelta(eventType, before, after);
+  const isServiceTransfer = isServiceTransferChange(eventType, before, after);
+  return eventType === 'UPDATE' && minutesDelta === 0 && !isServiceTransfer;
+}
+
+/**
  * Apply a service transfer: decrement old service, increment new service.
  * Each leg dispatches by its own service type (hours vs legal_procedure).
  *
@@ -586,6 +632,8 @@ module.exports = {
     applyServiceTransfer,
     calcClientAggregates,
     getEventType,
-    getMinutesDelta
+    getMinutesDelta,
+    isServiceTransferChange,
+    isZeroHoursMutationNoOp
   }
 };

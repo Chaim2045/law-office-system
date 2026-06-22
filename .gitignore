@@ -43,6 +43,10 @@ functions/backfill-backups/
 # which embeds clientId/caseId + storagePath; the rollback key). Stay local. Used by:
 #   - revoke-fee-agreement-public-acls.js  (PR-SEC-2 — ACL revocation + downloadUrl null)
 functions/security-migration-backups/
+# Package-drift repair before-state + per-client services snapshot + stamp plan
+# (the --rollback key; non-PII ids/counts but stays local on principle, §2.8). Used by:
+#   - repair-package-aggregates.js  (PR-DRIFT-2 — package-hours forward-replay repair)
+functions/repair-backups/
 
 # IDE
 .vscode/
