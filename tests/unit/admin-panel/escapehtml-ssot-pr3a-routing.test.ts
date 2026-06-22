@@ -31,23 +31,6 @@ const ADMIN = path.resolve(__dirname, '../../../apps/admin-panel');
 const read = (rel: string): string => fs.readFileSync(path.resolve(ADMIN, rel), 'utf8');
 const exists = (rel: string): boolean => fs.existsSync(path.resolve(ADMIN, rel));
 
-// Extract an escaper body from its signature line through the delegation return,
-// so the negative assertions cannot false-positive on an unrelated createElement.
-function escaperBody(src: string, sig: string): string {
-  const all = src.split('\n');
-  const i = all.findIndex((l) => l.includes(sig));
-  expect(i, 'escaper signature not found: ' + sig).toBeGreaterThan(-1);
-  let j = -1;
-  for (let k = i; k < Math.min(i + 12, all.length); k++) {
-    if (all[k].includes('return window.escapeHtml(')) {
-      j = k;
-      break;
-    }
-  }
-  expect(j, 'delegation "return window.escapeHtml(" not found after ' + sig).toBeGreaterThan(-1);
-  return all.slice(i, j + 1).join('\n');
-}
-
 describe('escapeHtml PR3a — dead case-form-validator.js deleted + unreferenced', () => {
   it('the admin-panel copy no longer exists', () => {
     expect(exists('js/modules/case-form-validator.js')).toBe(false);
@@ -78,11 +61,17 @@ describe('escapeHtml PR3a — service-card-renderer routed to the SSOT', () => {
   });
 });
 
-describe('escapeHtml PR3a — WorkloadCard.sanitize delegates to the SSOT', () => {
-  it('sanitize body routes to window.escapeHtml (temp-div removed)', () => {
-    const body = escaperBody(read('js/workload-analytics/WorkloadCard.js'), 'sanitize(text) {');
-    expect(body).toContain('return window.escapeHtml(text);');
-    expect(body, 'temp-div body must be gone').not.toContain('document.createElement');
+describe('escapeHtml PR3a/PR3c — WorkloadCard escapes via the SSOT', () => {
+  // PR3a routed WorkloadCard.sanitize's METHOD BODY to window.escapeHtml. PR3c then
+  // SUPERSEDED that: the onclick→addEventListener refactor removed the only reason a
+  // local wrapper existed, so the sanitize wrapper was deleted entirely and every
+  // call-site now invokes window.escapeHtml directly. This assertion is updated to the
+  // PR3c end-state (no sanitize wrapper) — see workloadcard-onclick-refactor.test.ts.
+  it('WorkloadCard routes to window.escapeHtml directly; sanitize wrapper deleted (PR3c)', () => {
+    const src = read('js/workload-analytics/WorkloadCard.js');
+    expect(src, 'WorkloadCard must call the SSOT').toContain('window.escapeHtml(');
+    expect(src, 'PR3c deleted the sanitize wrapper').not.toContain('sanitize(text) {');
+    expect(src, 'temp-div escaper body must be gone').not.toContain('document.createElement');
   });
 
   it('workload.html loads escape-html.js before WorkloadCard.js (new dependency)', () => {
