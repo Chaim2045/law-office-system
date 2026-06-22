@@ -49,7 +49,8 @@ const {
   isEligibleService,
   isSkippedHoursServiceNeedingStamp,
   detectDuplicatePackageIds,
-  detectDanglingEntries
+  detectDanglingEntries,
+  applyRepairWritesInOrder
 } = require('../shared/package-repair-core');
 
 // The writer derives client rollup + plan; the repair sets service.hoursUsed only.
@@ -413,19 +414,18 @@ async function applyClient(clientId) {
           throw e;
         }
 
-        // FIX 2 — Audit-FIRST, INSIDE the txn (logCriticalActionInTxn). Previously
-        // the audit was a bare logCriticalAction().add() BEFORE runTransaction, so an
-        // A5-forced retry wrote a SECOND REPAIR_PACKAGE_AGGREGATES doc for the same
-        // client+RUN_ID while only ONE mutation committed → duplicate audit docs.
-        // Setting it INSIDE the txn makes the audit commit ATOMICALLY with the
-        // mutation: an A5 abort rolls BOTH back together (one audit per committed
-        // mutation), and the audit `tx.set` is enqueued BEFORE the writer's mutation
-        // set below — audit-FIRST/backup-FIRST semantics preserved. Computed from
-        // txnPlan (the snapshot actually being written), not the pre-txn plan.
+        // FIX 3 (PR-DRIFT-2.2) — Firestore requires ALL reads before ALL writes in
+        // a txn. writeClientWithCanonicalAggregates does an internal transaction.get
+        // (READ); the audit (logCriticalActionInTxn) is a pure WRITE. So the WRITER
+        // must run BEFORE the audit — applyRepairWritesInOrder pins that order.
+        // (PR-DRIFT-2 round-2 had the audit first → every --apply client aborted with
+        // "reads must come before writes"; mocked-SDK tests did not enforce the rule.)
+        // The audit still commits ATOMICALLY with the mutation (same txn) →
+        // audit-FIRST preserved as audit-atomic. Payload from txnPlan (what is written).
         const netDeltaHours = txnPlan.serviceReports
           .filter((s) => !s.skip)
           .reduce((sum, s) => sum + (s.serviceAfter - s.serviceBefore), 0);
-        logCriticalActionInTxn(tx, AUDIT_ACTION, AUDIT_ACTOR, {
+        const auditPayload = {
           clientId,
           runId: RUN_ID,
           packagesRepaired: txnPlan.serviceReports
@@ -436,16 +436,15 @@ async function applyClient(clientId) {
           netDeltaHours: Math.round(netDeltaHours * 100) / 100,
           blockFlip: txnPlan.clientEffect.blockFlip,
           schemaVersion: 1
-        });
-
-        // The writer reads services from partialUpdate.services as-is (sets
-        // service.hoursUsed), derives client aggregates + plan, strips RESTRICTED_KEYS.
-        await writeClientWithCanonicalAggregates(
-          tx,
+        };
+        await applyRepairWritesInOrder(tx, {
           clientRef,
-          { services: txnPlan.servicesAfter },
-          { caller: 'repairPackageAggregates', auditMeta: { uid: AUDIT_ACTOR } }
-        );
+          services: txnPlan.servicesAfter,
+          writeFn: (t, ref, payload) => writeClientWithCanonicalAggregates(
+            t, ref, payload, { caller: 'repairPackageAggregates', auditMeta: { uid: AUDIT_ACTOR } }
+          ),
+          auditFn: (t) => logCriticalActionInTxn(t, AUDIT_ACTION, AUDIT_ACTOR, auditPayload)
+        });
       });
     } catch (err) {
       if (refusedInTxn || (err && err.code === 'repair_refused_block_flip')) {

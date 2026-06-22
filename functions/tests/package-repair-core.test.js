@@ -24,6 +24,7 @@ const {
   isSkippedHoursServiceNeedingStamp,
   detectDuplicatePackageIds,
   detectDanglingEntries,
+  applyRepairWritesInOrder,
   _internal
 } = require('../shared/package-repair-core');
 
@@ -663,5 +664,59 @@ describe('A7 — skipped override/overdraftResolved HOURS services stamp orphans
       return e && !e.packageId; // mirrors the script's stamp gate
     });
     expect(wouldStamp).toHaveLength(0);
+  });
+});
+
+// ─── PR-DRIFT-2.2: in-txn write ORDER (Firestore reads-before-writes) ─────────
+// Regression for the --apply failure: the canonical writer does an internal
+// transaction.get (READ) then writes; the audit is a pure write. Firestore aborts
+// a txn that reads after a write, so the writer MUST precede the audit. This mock
+// transaction ENFORCES the rule the production SDK enforces (the prior mocked
+// tests did NOT) — so re-introducing the audit-first order fails here.
+describe('PR-DRIFT-2.2 — applyRepairWritesInOrder (reads-before-writes)', () => {
+  function strictTxn() {
+    let wrote = false;
+    const ops = [];
+    return {
+      ops,
+      get() {
+        if (wrote) {
+          throw new Error('Firestore transactions require all reads to be executed before all writes.');
+        }
+        ops.push('get');
+        return Promise.resolve({ exists: true, data: () => ({}) });
+      },
+      set() { wrote = true; ops.push('set'); },
+      update() { wrote = true; ops.push('update'); }
+    };
+  }
+  // mimics writeClientWithCanonicalAggregates: reads the doc, THEN writes.
+  const realisticWriter = async (t, ref) => { await t.get(ref); t.update(ref, {}); };
+  // mimics logCriticalActionInTxn: a pure write.
+  const auditWrite = (t) => t.set({}, {});
+
+  test('writer runs BEFORE audit → no reads-after-writes abort', async () => {
+    const tx = strictTxn();
+    await applyRepairWritesInOrder(tx, {
+      clientRef: {}, services: [], writeFn: realisticWriter, auditFn: auditWrite
+    });
+    expect(tx.ops).toEqual(['get', 'update', 'set']);
+  });
+
+  test('REGRESSION pin: audit-before-writer WOULD abort (proves the mock bites)', async () => {
+    const tx = strictTxn();
+    auditWrite(tx); // the round-2 bug: audit first
+    await expect(realisticWriter(tx, {})).rejects.toThrow(/reads.*before.*writes/i);
+  });
+
+  test('the writer receives the {services} payload it must persist', async () => {
+    const tx = strictTxn();
+    let seen = null;
+    const capturingWriter = async (t, ref, payload) => { await t.get(ref); seen = payload; t.update(ref, payload); };
+    await applyRepairWritesInOrder(tx, {
+      clientRef: { id: 'c1' }, services: [{ id: 's1', hoursUsed: 5 }],
+      writeFn: capturingWriter, auditFn: auditWrite
+    });
+    expect(seen).toEqual({ services: [{ id: 's1', hoursUsed: 5 }] });
   });
 });

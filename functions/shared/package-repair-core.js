@@ -725,6 +725,31 @@ function detectDanglingEntries(client, entries) {
   return dangling;
 }
 
+/**
+ * Perform the two in-transaction writes in the ONLY Firestore-legal order.
+ *
+ * Firestore requires ALL reads before ALL writes within a single transaction.
+ * The canonical client writer (`writeFn`) does an internal `transaction.get`
+ * (a READ) and then writes; the audit (`auditFn` → logCriticalActionInTxn) is a
+ * pure WRITE. Therefore the writer MUST run BEFORE the audit — if the audit
+ * write is enqueued first, the writer's subsequent read aborts the whole txn
+ * with "Firestore transactions require all reads to be executed before all
+ * writes." (This regressed once: PR-DRIFT-2 round-2 placed the audit first and
+ * every --apply client failed; mocked-SDK unit tests did NOT enforce the rule.)
+ *
+ * Pure + dependency-injected (no firebase-admin import) so the ordering is
+ * regression-tested with a reads-before-writes-enforcing mock transaction.
+ * The audit still commits ATOMICALLY with the mutation (same txn) — "audit-FIRST"
+ * is preserved as "audit-atomic": either both land or both roll back.
+ *
+ * @param {Object} tx Firestore transaction
+ * @param {Object} args { clientRef, services, writeFn(tx, ref, {services}), auditFn(tx) }
+ */
+async function applyRepairWritesInOrder(tx, { clientRef, services, writeFn, auditFn }) {
+  await writeFn(tx, clientRef, { services }); // 1) reads-then-writes — its read precedes every write
+  auditFn(tx);                                // 2) pure write — strictly AFTER the writer's read
+}
+
 module.exports = {
   // PURE core API (script + tests)
   assignEntriesForwardReplay,
@@ -733,6 +758,7 @@ module.exports = {
   isSkippedHoursServiceNeedingStamp,
   detectDuplicatePackageIds,
   detectDanglingEntries,
+  applyRepairWritesInOrder,
   // exposed for tests / script reuse
   _internal: {
     round2,
