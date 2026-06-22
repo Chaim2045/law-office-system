@@ -299,10 +299,22 @@ function summarizeForReport(plan) {
   const changedServices = plan.serviceReports.filter((s) => !s.skip);
   const bigReversals = plan.phantomReversals.filter((p) => (p.beforeHoursUsed || 0) >= 20);
   const invariantFailures = changedServices.filter((s) => s.invariantOk === false);
+  // The hours actually being corrected on this client (THE billing-review number).
+  // net = signed sum (negative = removing over-count); abs = total magnitude moved.
+  const netHoursDelta = changedServices.reduce((sum, s) => sum + ((s.serviceAfter || 0) - (s.serviceBefore || 0)), 0);
+  const absHoursDelta = changedServices.reduce((sum, s) => sum + Math.abs((s.serviceAfter || 0) - (s.serviceBefore || 0)), 0);
+  // The per-PACKAGE-card movement on eligible services (the dormant redistribution
+  // being reconciled — large even when the service total barely moves).
+  const packageCardReconcileAbs = changedServices.reduce(
+    (sum, s) => sum + (s.packageDiffs || []).reduce((a, d) => a + Math.abs(d.delta || 0), 0), 0
+  );
   return {
     clientId: plan.clientId,
     eligibleServices: changedServices.length,
     skippedServices: plan.serviceReports.length - changedServices.length,
+    netHoursDelta: Math.round(netHoursDelta * 100) / 100,
+    absHoursDelta: Math.round(absHoursDelta * 100) / 100,
+    packageCardReconcileAbs: Math.round(packageCardReconcileAbs * 100) / 100,
     orphansToStamp: plan.stampPlan.length,
     orphansStampedOnSkipped: plan.orphansStampedOnSkipped, // A7
     basisCounts: plan.basisCounts,
@@ -573,7 +585,12 @@ async function main() {
   const counts = {
     clientsScanned: 0, clientsWithDrift: 0, clientsRepaired: 0,
     clientsRefusedBlockFlip: 0, clientsErrored: 0,
-    orphansPlanned: 0, orphansStamped: 0, orphansStampedOnSkipped: 0, // A6 planned-vs-stamped + A7
+    // PLANNED totals — aggregated from every scanned client (meaningful in BOTH
+    // dry-run AND apply; the *Stamped/Repaired counters below only fill on --apply).
+    orphansToStampTotal: 0, orphansOnSkippedTotal: 0, unresolvedTotal: 0,
+    netHoursDelta: 0, absHoursDelta: 0,             // the billing-review numbers (service-level)
+    packageCardReconcileAbs: 0,                     // per-package-card movement (the dormant +874h redistribution)
+    orphansPlanned: 0, orphansStamped: 0, orphansStampedOnSkipped: 0, // A6 planned-vs-stamped + A7 (apply-only)
     clientsWithPartialStamp: 0,                     // A6: clients where stamped < planned (re-run self-heals)
     unresolvedEntries: 0,                           // A6: entries with no eligible package (operator review)
     sameDayBoundaryFlags: 0,                        // A3
@@ -607,6 +624,14 @@ async function main() {
         if (summary.blockFlip) counts.blockFlips += 1;
         if (summary.invariantFailures.length > 0) counts.invariantFailures += 1;
         counts.sameDayBoundaryFlags += (summary.sameDayBoundaryFlags || []).length; // A3
+        // Planned totals — aggregated for EVERY scanned client (dry-run gets real
+        // numbers, not the apply-only Stamped counters which stay 0 until --apply).
+        counts.orphansToStampTotal += (summary.orphansToStamp || 0) - (summary.orphansStampedOnSkipped || 0);
+        counts.orphansOnSkippedTotal += summary.orphansStampedOnSkipped || 0;
+        counts.unresolvedTotal += summary.unresolvedCount || 0;
+        counts.netHoursDelta += summary.netHoursDelta || 0;
+        counts.absHoursDelta += summary.absHoursDelta || 0;
+        counts.packageCardReconcileAbs += summary.packageCardReconcileAbs || 0;
         if (hasWork || summary.blockFlip || summary.invariantFailures.length > 0
             || summary.duplicatePackageIds.length > 0 || summary.danglingEntries.length > 0
             || (summary.sameDayBoundaryFlags || []).length > 0) {
