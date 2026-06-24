@@ -6,9 +6,11 @@
  * house pattern (daily-invariant-check-i1-i4.test.js) we test the PURE detectors
  * exported via `_test`: `detectPackageInvariants` (Check 7) and
  * `computeCardHoursUsed` (the Check-0 card calc, incl. the fixed-service fix).
- * The cron loop is a thin wrapper that builds packageMinutes/orphanMinutes from
- * one read and pushes the detector output into `discrepancies` — verified by
- * reading the code.
+ * The cron loop is a thin wrapper that builds packageMinutes/orphanMinutesByService/
+ * orphanMinutesByStage (OWN-0(d): the stage map mirrors the orphanMinutesByService
+ * bucketing, keyed by entry.stageId) from one read and pushes the detector output
+ * into `discrepancies` — the wiring is verified by reading the code (house convention),
+ * the detector logic (incl. the OWN-0(d) signals) is unit-tested below.
  */
 
 jest.mock('firebase-admin', () => ({
@@ -217,5 +219,58 @@ describe('detectPackageInvariants — scope guards', () => {
     expect(detectPackageInvariants({}, {}, {})).toEqual([]);
     expect(detectPackageInvariants({ services: null }, {}, {})).toEqual([]);
     expect(detectPackageInvariants(null, null, null)).toEqual([]);
+  });
+});
+
+// ─── OWN-0(d): detection for the classes OWN-0(a)/(b) leave uncovered ───
+describe('detectPackageInvariants — OWN-0(d) uncovered-class detection', () => {
+  function makeLegalSvc(id, stage) {
+    return { id, type: ST.LEGAL_PROCEDURE, name: `legal ${id}`, status: 'active', stages: [stage] };
+  }
+
+  it('HOURS service with ZERO packages + orphan minutes → orphan_entries_on_packageless_service', () => {
+    const client = makeClient([makeHoursService('s1', { packages: [] })]);
+    const out = detectPackageInvariants(client, {}, { s1: 120 }, {});
+    const sig = out.find((d) => d.type === 'orphan_entries_on_packageless_service');
+    expect(sig).toBeDefined();
+    expect(sig.serviceId).toBe('s1');
+    expect(sig.orphanHours).toBe(2);
+    // It must NOT also fire the packaged-service signal.
+    expect(out.find((d) => d.type === 'orphan_entries_on_packaged_service')).toBeUndefined();
+  });
+
+  it('HOURS service WITH packages + orphans → packaged signal only (NOT packageless)', () => {
+    const client = makeClient([makeHoursService('s1', { packages: [makePackage('p1', { hours: 50 })] })]);
+    const out = detectPackageInvariants(client, {}, { s1: 60 }, {});
+    expect(out.find((d) => d.type === 'orphan_entries_on_packaged_service')).toBeDefined();
+    expect(out.find((d) => d.type === 'orphan_entries_on_packageless_service')).toBeUndefined();
+  });
+
+  it('legal_procedure HOURLY stage WITH packages + orphan stage-minutes → orphan_entries_on_legal_procedure_stage', () => {
+    const svc = makeLegalSvc('lp1', { id: 'stage_a', pricingType: PT.HOURLY, status: 'active', packages: [makePackage('sp1', { hours: 20 })] });
+    const out = detectPackageInvariants(makeClient([svc]), {}, {}, { stage_a: 90 });
+    const sig = out.find((d) => d.type === 'orphan_entries_on_legal_procedure_stage');
+    expect(sig).toBeDefined();
+    expect(sig.serviceId).toBe('lp1');
+    expect(sig.stageId).toBe('stage_a');
+    expect(sig.orphanHours).toBe(1.5);
+  });
+
+  it('legal_procedure FIXED stage → NO signal (no packageId expected on a fixed stage)', () => {
+    const svc = makeLegalSvc('lp1', { id: 'stage_a', pricingType: PT.FIXED, status: 'active', packages: [] });
+    const out = detectPackageInvariants(makeClient([svc]), {}, {}, { stage_a: 90 });
+    expect(out.find((d) => d.type === 'orphan_entries_on_legal_procedure_stage')).toBeUndefined();
+  });
+
+  it('legal_procedure HOURLY stage with ZERO packages → NO signal (nothing to attribute to)', () => {
+    const svc = makeLegalSvc('lp1', { id: 'stage_a', pricingType: PT.HOURLY, status: 'active', packages: [] });
+    const out = detectPackageInvariants(makeClient([svc]), {}, {}, { stage_a: 90 });
+    expect(out.find((d) => d.type === 'orphan_entries_on_legal_procedure_stage')).toBeUndefined();
+  });
+
+  it('backward compatible — omitting the 4th arg yields no stage signals (no throw)', () => {
+    const svc = makeLegalSvc('lp1', { id: 'stage_a', pricingType: PT.HOURLY, status: 'active', packages: [makePackage('sp1', { hours: 20 })] });
+    const out = detectPackageInvariants(makeClient([svc]), {}, {});
+    expect(out.find((d) => d.type === 'orphan_entries_on_legal_procedure_stage')).toBeUndefined();
   });
 });

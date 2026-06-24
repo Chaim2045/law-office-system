@@ -308,26 +308,17 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
     const packageId = `pkg_${Date.now()}`;
     const clientRef = db.collection('clients').doc(clientId);
 
-    // ── Backfill: query orphan entries OUTSIDE Transaction ──
-    // (Firestore TX supports only doc gets, not collection queries)
-    const orphanSnap = await db.collection('timesheet_entries')
-      .where('clientId', '==', clientId)
-      .where('serviceId', '==', data.serviceId)
-      .get();
-
-    const orphanEntries = [];
-    let orphanMinutes = 0;
-    orphanSnap.forEach(doc => {
-      const entry = doc.data();
-      if (!entry.packageId) {
-        orphanEntries.push(doc.ref);
-        orphanMinutes += (entry.minutes || 0);
-      }
-    });
-
-    const orphanHours = round2(orphanMinutes / 60);
-
-    console.log(`📦 [addPackageToService] Backfill: ${orphanEntries.length} entries (${orphanHours}h) → ${packageId}`);
+    // ── OWN-0(c) (2026-06-24): orphan-reseed REMOVED. ──
+    // Historically this function scanned `packageId:null` entries on the service
+    // and seeded the new package's hoursUsed from them (+ backfilled their
+    // packageId). That re-counted "package-counted-null" orphans — entries whose
+    // hours were ALREADY counted into a fallback package by the trigger/create
+    // paths — into the new package = the +874h double-count detonator
+    // (see project_package_hours_drift / DRIFT-2). A new package now starts EMPTY
+    // (hoursUsed=0) and existing `service.hoursUsed` is PRESERVED (NOT recomputed
+    // from Σpackages, which would drop legitimately service-level hours = the
+    // PR #174 under-count). Re-attribution of LEGACY orphans is the supervised
+    // forward-replay repair's job (package-repair-core), not this hot write path.
 
     // ── Transaction: read client → build package → write atomically ──
     const result = await db.runTransaction(async (transaction) => {
@@ -363,18 +354,15 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
         );
       }
 
-      // יצירת חבילה חדשה
-      const newHoursUsed = orphanHours;
-      const newHoursRemaining = round2(data.hours - newHoursUsed);
-
+      // יצירת חבילה חדשה — מתחילה ריקה (OWN-0(c): אין reseed מ-יתומים)
       const newPackage = {
         id: packageId,
         type: 'additional',
         hours: data.hours,
-        hoursUsed: newHoursUsed,
-        hoursRemaining: newHoursRemaining,
+        hoursUsed: 0,
+        hoursRemaining: round2(data.hours),
         purchaseDate: now,
-        status: newHoursRemaining <= 0 ? 'depleted' : 'active',
+        status: 'active',
         description: data.description ? sanitizeString(data.description.trim()) : `חבילה נוספת - ${new Date().toLocaleDateString('he-IL')}`
       };
 
@@ -382,13 +370,21 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       service.packages = service.packages || [];
       service.packages.push(newPackage);
 
-      // עדכון סיכומי השירות — חישוב מחדש מכל ה-packages
+      // עדכון סיכומי השירות — מוסיפים קיבולת בלבד.
+      // OWN-0(c): service.hoursUsed נשמר כפי שהוא (NOT recomputed = Σpackages),
+      // אחרת שעות שנמנו רק ברמת-השירות (service-only orphans) היו נמחקות = ה-under-count
+      // של PR #174. החבילה החדשה ריקה ⇒ אינה משנה את הצריכה הקיימת.
+      //
+      // ⚠️ השימור הוא point-in-time. service-only orphans (שעות ב-svc.hoursUsed שאינן
+      // באף package) נשארים שבירים — ה-recompute הבא ב-applyHoursDelta (svc.hoursUsed =
+      // Σpackages) ישמיט אותם. התיקון העמיד הוא ה-forward-replay repair שחותם את אותן
+      // רשומות לתוך package (כך Σpackages "מתעדכן" וה-recompute הבא הוא no-op). #174 עשה
+      // זאת אד-הוק כאן תוך ספירה-כפולה של package-counted-null orphans — OWN-0(c) מסיר
+      // את הגרסה הבאגית ונשען על ה-repair (+ ה-single-owner ב-OWN-1) כמנגנון העמיד.
       service.totalHours = (service.totalHours || 0) + data.hours;
-      const svcHoursUsed = round2(
-        service.packages.reduce((sum, pkg) => sum + (pkg.hoursUsed || 0), 0)
-      );
-      service.hoursUsed = svcHoursUsed;
-      service.hoursRemaining = round2(service.totalHours - svcHoursUsed);
+      const preservedHoursUsed = round2(service.hoursUsed || 0);
+      service.hoursUsed = preservedHoursUsed;
+      service.hoursRemaining = round2(service.totalHours - preservedHoursUsed);
 
       // ── Invariant guard: prevent drift between service.totalHours and Σ(packages.hours) ──
       // Drift happened historically (pre-2026-02-19) when renewServiceHours updated totalHours
@@ -437,19 +433,10 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       };
     });
 
-    // ── Backfill: כתיבת packageId על entries יתומים (batches of 500) ──
-    // (מחוץ ל-Transaction — eventual consistency, best-effort)
-    if (orphanEntries.length > 0) {
-      for (let i = 0; i < orphanEntries.length; i += 500) {
-        const chunk = orphanEntries.slice(i, i + 500);
-        const batch = db.batch();
-        for (const ref of chunk) {
-          batch.update(ref, { packageId: packageId });
-        }
-        await batch.commit();
-      }
-      console.log(`✅ [addPackageToService] Backfill committed: ${orphanEntries.length} entries → ${packageId}`);
-    }
+    // ── OWN-0(c): orphan packageId-backfill REMOVED (rationale at top of function). ──
+    // The old best-effort batch re-stamped `packageId:null` entries onto the new
+    // package — both the double-count vector and a packageId-only entry UPDATE that
+    // re-fired the trigger. Gone.
 
     // Audit log (מחוץ ל-Transaction — מסמך נפרד)
     await logAction('ADD_PACKAGE_TO_SERVICE', user.uid, user.username, {

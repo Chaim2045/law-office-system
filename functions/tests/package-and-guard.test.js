@@ -250,28 +250,14 @@ describe('addPackageToService — Transaction', () => {
     });
   });
 
-  test('orphan backfill — orphan entries absorbed into new package hoursUsed', async () => {
-    // 3 orphan entries (30min, 60min, 90min = 180min = 3h)
-    const orphanRefs = [
-      { ref: { id: 'e1' } },
-      { ref: { id: 'e2' } },
-      { ref: { id: 'e3' } }
-    ];
-    const orphanData = [
-      { minutes: 30 },
-      { minutes: 60 },
-      { minutes: 90 }
-    ];
+  test('OWN-0(c) — orphan entries are NOT absorbed into the new package (no detonation, no backfill)', async () => {
+    // 3 orphan entries exist (30+60+90 = 3h). Pre-OWN-0 these were folded into the
+    // new package = the double-count detonator. They must now be IGNORED.
+    const orphanRefs = [{ ref: { id: 'e1' } }, { ref: { id: 'e2' } }, { ref: { id: 'e3' } }];
+    const orphanData = [{ minutes: 30 }, { minutes: 60 }, { minutes: 90 }];
 
     mockWhereResult.get.mockResolvedValue({
-      forEach: (cb) => {
-        orphanRefs.forEach((doc, i) => {
-          cb({
-            ref: doc.ref,
-            data: () => orphanData[i]  // no packageId → orphan
-          });
-        });
-      }
+      forEach: (cb) => { orphanRefs.forEach((doc, i) => cb({ ref: doc.ref, data: () => orphanData[i] })); }
     });
 
     const clientDoc = makeClientDoc();
@@ -283,36 +269,24 @@ describe('addPackageToService — Transaction', () => {
     );
 
     expect(result.success).toBe(true);
-    // Package should have 3h used from orphans
-    expect(result.package.hoursUsed).toBe(3);
-    expect(result.package.hoursRemaining).toBe(7); // 10 - 3
+    // New package starts EMPTY — orphan hours are NOT folded in.
+    expect(result.package.hoursUsed).toBe(0);
+    expect(result.package.hoursRemaining).toBe(10);
     expect(result.package.status).toBe('active');
 
-    // Batch should have been called for backfill writes
-    expect(mockBatchUpdate).toHaveBeenCalledTimes(3);
-    expect(mockBatchCommit).toHaveBeenCalledTimes(1);
+    // No backfill batch (the trigger-re-firing entry rewrite is gone).
+    expect(mockBatchUpdate).not.toHaveBeenCalled();
+    expect(mockBatchCommit).not.toHaveBeenCalled();
   });
 
-  test('orphan backfill — orphans exceed package hours → status depleted', async () => {
-    // 2 orphan entries of 6h each = 12h, package only 10h
-    const orphanRefs = [
-      { ref: { id: 'e1' } },
-      { ref: { id: 'e2' } }
-    ];
-    const orphanData = [
-      { minutes: 360 },  // 6h
-      { minutes: 360 }   // 6h
-    ];
+  test('OWN-0(c) — many orphans do NOT deplete the fresh package (it stays empty/active)', async () => {
+    // 12h of orphans. Pre-OWN-0 they depleted the new 10h package (hoursUsed=12,
+    // status=depleted). Now the new package is untouched.
+    const orphanRefs = [{ ref: { id: 'e1' } }, { ref: { id: 'e2' } }];
+    const orphanData = [{ minutes: 360 }, { minutes: 360 }];
 
     mockWhereResult.get.mockResolvedValue({
-      forEach: (cb) => {
-        orphanRefs.forEach((doc, i) => {
-          cb({
-            ref: doc.ref,
-            data: () => orphanData[i]
-          });
-        });
-      }
+      forEach: (cb) => { orphanRefs.forEach((doc, i) => cb({ ref: doc.ref, data: () => orphanData[i] })); }
     });
 
     const clientDoc = makeClientDoc();
@@ -323,9 +297,9 @@ describe('addPackageToService — Transaction', () => {
       defaultContext
     );
 
-    expect(result.package.hoursUsed).toBe(12);
-    expect(result.package.hoursRemaining).toBe(-2); // 10 - 12
-    expect(result.package.status).toBe('depleted');
+    expect(result.package.hoursUsed).toBe(0);
+    expect(result.package.hoursRemaining).toBe(10);
+    expect(result.package.status).toBe('active');
   });
 
   test('validation — missing clientId → throws invalid-argument', async () => {
@@ -789,14 +763,15 @@ describe('Code-level verification — -10 guard in source', () => {
     expect(servicesCode).toContain('db.runTransaction');
   });
 
-  test('addPackageToService — orphan backfill queries timesheet_entries', () => {
-    expect(servicesCode).toContain("'timesheet_entries'");
-    expect(servicesCode).toContain('!entry.packageId');
+  test('addPackageToService — OWN-0(c): orphan re-scan + backfill REMOVED (detonator gone)', () => {
+    // The double-count detonator (scan packageId:null entries → seed the new package
+    // → batch-backfill their packageId) is gone. These markers were unique to it.
+    expect(servicesCode).not.toContain('!entry.packageId');
+    expect(servicesCode).not.toContain('i += 500');
   });
 
-  test('addPackageToService — orphan backfill uses batch writes (500 limit)', () => {
-    expect(servicesCode).toContain('i += 500');
-    expect(servicesCode).toContain('batch.update');
-    expect(servicesCode).toContain('batch.commit');
+  test('addPackageToService — OWN-0(c): new package empty + service.hoursUsed preserved', () => {
+    // Consumption is preserved (no PR #174 under-count), not recomputed from Σpackages.
+    expect(servicesCode).toContain('preservedHoursUsed');
   });
 });
