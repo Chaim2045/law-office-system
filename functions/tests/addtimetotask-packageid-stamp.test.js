@@ -1,120 +1,22 @@
 /**
- * PR-DRIFT-0 — fresh-only packageId stamp on the timesheet entry +
- * PR-DRIFT-2 — trigger-no-op regression pin (design §6 / §13).
+ * OWN-0(a) — trigger CREATE-fallback packageId stamp + the retained zero-delta
+ * no-op pin (was PR-DRIFT-2; the DRIFT-0 `resolveFreshStampPackageId` block was
+ * removed when OWN-0(b) replaced the fresh-only stamp with a deduction-target
+ * stamp — see add-time-to-task-canonical-helper.test.js "F. OWN-0(b)").
  *
- * DRIFT-0 (design §10): the package id STAMPED on a timesheet entry must be the
- *   FRESH-resolved one (active/pending AND hoursRemaining>0), and `null` when the
- *   deduction fell to the depleted/overdraft fallback. Scoped to HOURS-only.
- *   Tested via the pure helper `resolveFreshStampPackageId` exported on `_test`.
- *     - fresh → stamped
- *     - depleted-fallback → null
- *     - non-HOURS (legal_procedure / "FIXED-stage") → keeps serviceIds.packageId
+ * OWN-0(a): when the trigger's CREATE-fallback resolves a missing packageId and
+ *   deducts into it, Write-2 persists `{ packageId, deductedInTransaction:true }`
+ *   on the entry so it is NOT left a package-counted-null orphan, and a coalesced
+ *   re-CREATE is skipped by the deductedInTransaction guard.
  *
- * TRIGGER NO-OP (design §6, fold 2-C/X-2): a packageId-only (+ repairStampedAt)
- *   UPDATE must produce ZERO hours mutation — the stamp's UPDATE leaves `minutes`
- *   unchanged → getMinutesDelta==0 → the zero-delta guard returns early →
- *   no re-deduction. Pinned here as the mandatory regression test, both at the
- *   pure-helper level (`getMinutesDelta`/`getEventType`) AND by driving the real
- *   trigger handler with a packageId-only UPDATE and asserting the canonical
- *   writer is NEVER invoked (no hours mutation).
+ * ZERO-DELTA / SELF-WRITE no-op (retained): a packageId-only (minutes-unchanged)
+ *   UPDATE produces ZERO hours mutation — either the self-write guard (changed keys
+ *   ⊆ {isOverage,overageMinutes,packageId,deductedInTransaction}) or the zero-delta
+ *   guard returns before the transaction. Pinned by driving the real handler.
  */
 'use strict';
 
-// ── Mock firebase-admin + firebase-functions for the addTimeToTask import ──────
-jest.mock('firebase-admin', () => {
-  const FieldValue = {
-    serverTimestamp: jest.fn(() => 'SERVER_TIMESTAMP'),
-    increment: jest.fn((n) => ({ _increment: n })),
-    delete: jest.fn(() => 'DELETE_SENTINEL')
-  };
-  const Timestamp = {
-    now: jest.fn(() => 'NOW'),
-    fromDate: jest.fn((d) => ({ _date: d.toISOString() }))
-  };
-  return {
-    apps: [],
-    initializeApp: jest.fn(),
-    firestore: Object.assign(() => ({ collection: jest.fn() }), { FieldValue, Timestamp })
-  };
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// DRIFT-0 — resolveFreshStampPackageId
-// ═══════════════════════════════════════════════════════════════════════════
-const { _test: addTimeTest } = require('../addTimeToTask_v2');
-const { resolveFreshStampPackageId } = addTimeTest;
-
-function pkg(id, { hours = 100, hoursUsed = 0, hoursRemaining, status, purchaseDate } = {}) {
-  const rem = hoursRemaining === undefined ? Math.round((hours - hoursUsed) * 100) / 100 : hoursRemaining;
-  return {
-    id, hours, hoursUsed, hoursRemaining: rem,
-    status: status || (rem > 0 ? 'active' : 'depleted'),
-    purchaseDate: purchaseDate || '2026-01-01T00:00:00.000Z'
-  };
-}
-
-describe('PR-DRIFT-0 — resolveFreshStampPackageId (fresh-only stamp)', () => {
-  test('HOURS + fresh package → stamps the fresh package id', () => {
-    const svc = { id: 's1', type: 'hours', packages: [pkg('p_fresh', { hours: 50, hoursUsed: 10 })] };
-    // serviceIds.packageId came from the allowOverdraft=true lookup — here same id.
-    expect(resolveFreshStampPackageId(svc, 'p_fresh')).toBe('p_fresh');
-  });
-
-  test('HOURS + ONLY depleted/overdraft fallback → stamps NULL (the fresh-only rule)', () => {
-    // The only package is depleted (overdraft). lookupServiceIds (allowOverdraft=true)
-    // would have returned it as serviceIds.packageId, but the FRESH-only stamp must be null.
-    const svc = {
-      id: 's1', type: 'hours',
-      packages: [pkg('p_dep', { hours: 10, hoursUsed: 15, hoursRemaining: -5, status: 'overdraft' })]
-    };
-    expect(resolveFreshStampPackageId(svc, 'p_dep')).toBeNull();
-  });
-
-  test('HOURS + fresh AND depleted both present → stamps the FRESH one (not the fallback)', () => {
-    const svc = {
-      id: 's1', type: 'hours',
-      packages: [
-        pkg('p_dep', { hours: 10, hoursUsed: 15, hoursRemaining: -5, status: 'depleted', purchaseDate: '2026-01-01T00:00:00.000Z' }),
-        pkg('p_fresh', { hours: 50, hoursUsed: 0, status: 'active', purchaseDate: '2026-02-01T00:00:00.000Z' })
-      ]
-    };
-    // Even if serviceIds.packageId was the depleted one, the fresh-only resolve picks p_fresh.
-    expect(resolveFreshStampPackageId(svc, 'p_dep')).toBe('p_fresh');
-  });
-
-  test('legal_procedure service ("FIXED-stage" path) → keeps serviceIds.packageId unchanged', () => {
-    const svc = { id: 's1', type: 'legal_procedure', stages: [] };
-    expect(resolveFreshStampPackageId(svc, 'pkg_from_lookup')).toBe('pkg_from_lookup');
-    // and null stays null
-    expect(resolveFreshStampPackageId(svc, null)).toBeNull();
-  });
-
-  test('fixed service → keeps serviceIds.packageId (non-HOURS scope)', () => {
-    const svc = { id: 's1', type: 'fixed', work: { totalMinutesWorked: 0 } };
-    expect(resolveFreshStampPackageId(svc, 'whatever')).toBe('whatever');
-  });
-
-  test('no target service → falls back to serviceIds.packageId (or null)', () => {
-    expect(resolveFreshStampPackageId(null, 'x')).toBe('x');
-    expect(resolveFreshStampPackageId(null, null)).toBeNull();
-  });
-
-  test('HOURS + overrideActive lets a deep-overdraft package still NOT count as fresh', () => {
-    // override affects the deduction FLOOR, not freshness. A negative-remaining package
-    // is never "fresh" → stamp is null even with override.
-    const svc = {
-      id: 's1', type: 'hours', overrideActive: true,
-      packages: [pkg('p', { hours: 5, hoursUsed: 50, hoursRemaining: -45, status: 'depleted' })]
-    };
-    expect(resolveFreshStampPackageId(svc, 'p')).toBeNull();
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// PR-DRIFT-2 — trigger no-op regression (packageId-only UPDATE → zero mutation)
-// ═══════════════════════════════════════════════════════════════════════════
-describe('PR-DRIFT-2 — trigger no-op on packageId-only UPDATE', () => {
-  // Reset modules so the trigger gets its OWN admin + functions mocks below.
+describe('OWN-0(a) — trigger CREATE-fallback stamp + zero-delta no-op', () => {
   let registeredHandler;
   let writeSpy;
   let mockTransaction;
@@ -154,9 +56,9 @@ describe('PR-DRIFT-2 — trigger no-op on packageId-only UPDATE', () => {
     jest.resetModules();
   });
 
-  function makeEvent(before, after) {
+  function makeEvent(before, after, id = 'evt_1') {
     return {
-      id: 'evt_1',
+      id,
       params: { entryId: 'entry_1' },
       data: {
         before: { exists: !!before, data: () => before },
@@ -165,6 +67,39 @@ describe('PR-DRIFT-2 — trigger no-op on packageId-only UPDATE', () => {
     };
   }
 
+  // ── OWN-0(a): CREATE-fallback resolves a missing packageId → Write-2 stamps it ──
+  test('CREATE with no packageId on a HOURS service → entry stamped {packageId, deductedInTransaction:true}', async () => {
+    writeSpy.mockClear();
+    mockTransaction.get.mockReset();
+    mockTransaction.update.mockClear();
+
+    const clientData = {
+      totalHours: 50,
+      services: [{
+        id: 's1', type: 'hours', totalHours: 50,
+        packages: [{ id: 'p1', hours: 50, hoursUsed: 0, hoursRemaining: 50, status: 'active', purchaseDate: '2026-01-01T00:00:00.000Z' }]
+      }]
+    };
+    // 1st get = idempotency (not processed), 2nd get = client doc. No taskId → no task get.
+    mockTransaction.get
+      .mockResolvedValueOnce({ exists: false })
+      .mockResolvedValueOnce({ exists: true, data: () => clientData });
+
+    // CREATE: before doesn't exist; after has NO packageId and is NOT deductedInTransaction.
+    const after = { clientId: 'c1', serviceId: 's1', minutes: 60, packageId: null };
+    await registeredHandler(makeEvent(null, after));
+
+    // Write-1 (client) happened, and Write-2 (entry) carries the stamp.
+    expect(writeSpy).toHaveBeenCalledTimes(1);
+    const entryUpdate = mockTransaction.update.mock.calls
+      .map((c) => c[1])
+      .find((p) => p && 'packageId' in p);
+    expect(entryUpdate).toBeDefined();
+    expect(entryUpdate.packageId).toBe('p1');
+    expect(entryUpdate.deductedInTransaction).toBe(true);
+  });
+
+  // ── Retained no-op pins ──
   test('pure helpers: getMinutesDelta==0 for a packageId-only UPDATE (minutes unchanged)', () => {
     const { _test } = require('../triggers/timesheet-trigger');
     const before = { clientId: 'c1', serviceId: 's1', minutes: 60, packageId: null };
@@ -173,7 +108,7 @@ describe('PR-DRIFT-2 — trigger no-op on packageId-only UPDATE', () => {
     expect(_test.getMinutesDelta('UPDATE', before, after)).toBe(0);
   });
 
-  test('packageId-only UPDATE → zero-delta guard returns early → canonical writer NEVER called', async () => {
+  test('packageId-only UPDATE (with repairStampedAt) → zero-delta guard → canonical writer NEVER called', async () => {
     writeSpy.mockClear();
     mockTransaction.update.mockClear();
 
@@ -181,27 +116,50 @@ describe('PR-DRIFT-2 — trigger no-op on packageId-only UPDATE', () => {
     const after = { clientId: 'c1', serviceId: 's1', minutes: 60, packageId: 'p_assigned', repairStampedAt: 'TS' };
 
     const result = await registeredHandler(makeEvent(before, after));
-
-    // Zero-delta, non-transfer UPDATE → handler returns null BEFORE the transaction.
     expect(result).toBeNull();
-    // The canonical writer (the only path that mutates hours) was never reached.
     expect(writeSpy).not.toHaveBeenCalled();
     expect(mockTransaction.update).not.toHaveBeenCalled();
   });
 
-  test('control: a minutes-CHANGING UPDATE is NOT skipped (proves the guard is delta-based)', async () => {
+  test('OWN-0(a): trigger self-write re-fire (packageId + deductedInTransaction, minutes unchanged) → self-write guard skips', async () => {
     writeSpy.mockClear();
-    // For this control we only need to prove the handler does NOT early-return on a
-    // non-zero delta. We stub the transaction reads so the handler proceeds far enough
-    // to attempt the client read (then bails on the mocked missing client) — the key
-    // assertion is that it did NOT return at the zero-delta guard.
+    mockTransaction.update.mockClear();
+
+    // Exactly the fields Write-2 stamps on the CREATE-fallback path.
+    const before = { clientId: 'c1', serviceId: 's1', minutes: 60, packageId: null, isOverage: false, overageMinutes: 0 };
+    const after = { clientId: 'c1', serviceId: 's1', minutes: 60, packageId: 'p1', deductedInTransaction: true, isOverage: false, overageMinutes: 0 };
+
+    const result = await registeredHandler(makeEvent(before, after));
+    expect(result).toBeNull();             // skipped at the self-write guard
+    expect(writeSpy).not.toHaveBeenCalled();
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+  });
+
+  test('OWN-0(a) tripwire: a packageId-ONLY change (minutes unchanged) is skipped — pins the future-reassignment trap', async () => {
+    writeSpy.mockClear();
+    mockTransaction.update.mockClear();
+    // changed keys = exactly {packageId}. A FUTURE flow that reassigns packageId and
+    // EXPECTS the trigger to move hours would be silently skipped here — by the
+    // self-write guard (packageId ∈ triggerFields) and, independently, the zero-delta
+    // guard (minutes unchanged). timesheet-trigger.js documents that such a flow MUST
+    // revisit the guard; this test makes the behavior a red tripwire, not a surprise.
+    const before = { clientId: 'c1', serviceId: 's1', minutes: 60, packageId: 'pA' };
+    const after = { clientId: 'c1', serviceId: 's1', minutes: 60, packageId: 'pB' };
+    const result = await registeredHandler(makeEvent(before, after));
+    expect(result).toBeNull();
+    expect(writeSpy).not.toHaveBeenCalled();
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+  });
+
+  test('control: a minutes-CHANGING UPDATE is NOT skipped (proves the guards are delta-based)', async () => {
+    writeSpy.mockClear();
+    mockTransaction.get.mockReset();
     mockTransaction.get.mockResolvedValue({ exists: false });
 
     const before = { clientId: 'c1', serviceId: 's1', minutes: 60, packageId: 'p1' };
     const after = { clientId: 'c1', serviceId: 's1', minutes: 90, packageId: 'p1' };
 
     await registeredHandler(makeEvent(before, after));
-    // It entered the transaction (idempotency + client read attempted) — not a zero-delta skip.
-    expect(mockTransaction.get).toHaveBeenCalled();
+    expect(mockTransaction.get).toHaveBeenCalled();   // entered the transaction (not a zero-delta skip)
   });
 });

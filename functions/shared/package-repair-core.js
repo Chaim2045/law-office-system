@@ -394,9 +394,11 @@ function isEligibleService(service) {
 /**
  * A7 — classify a service that isEligibleService SKIPPED. Distinguishes:
  *   - skipped-but-HOURS WITH packages (override_preserved / overdraft_resolved):
- *     its orphan entries (packageId:null) still need STAMPING so the
- *     addPackageToService detonator finds nothing — WITHOUT recomputing its
- *     hoursUsed/packages/aggregates (the override/resolution is intentional).
+ *     its orphan entries (packageId:null) still need STAMPING so each entry is
+ *     attributable by packageId (single-owner / forward-replay) — WITHOUT
+ *     recomputing its hoursUsed/packages/aggregates (the override/resolution is
+ *     intentional). [OWN-0(c) removed the addPackageToService orphan-reseed that
+ *     used to re-count these; stamping stays correct for attribution.]
  *   - fully-untouched (archived / non-HOURS / no-packages): leave entirely alone.
  *
  * @param {Object} service
@@ -410,8 +412,8 @@ function isSkippedHoursServiceNeedingStamp(service) {
   if (!Array.isArray(service.packages) || service.packages.length === 0) return false; // no packages → nothing to stamp to
   // The ONLY skip reasons that reach here with HOURS+packages are
   // override_preserved / overdraft_resolved — both keep their packages and
-  // accumulated orphans. Those orphans must be stamped (detonator) but the
-  // service's hoursUsed/packages stay frozen.
+  // accumulated orphans. Those orphans must be stamped (for packageId attribution)
+  // but the service's hoursUsed/packages stay frozen.
   const isOverride = service.overrideActive === true;
   const isResolved = !!(service.overdraftResolved && service.overdraftResolved.isResolved === true);
   return isOverride || isResolved;

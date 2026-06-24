@@ -246,9 +246,16 @@ const onTimesheetEntryChanged = onDocumentWritten({
     return null;
   }
 
-  // ── Guard: skip self-writes (trigger writing isOverage/overageMinutes back to entry) ──
+  // ── Guard: skip self-writes (trigger writing its own fields back to the entry) ──
+  // The trigger's Write-2 may stamp isOverage/overageMinutes and — OWN-0(a) — a
+  // CREATE-fallback-resolved packageId + deductedInTransaction. A re-fired UPDATE
+  // whose changed keys are ALL within this set is the trigger's own write → skip.
+  // Minutes are never in this set, so any real minutes change still processes (the
+  // zero-delta guard below is the second line of defense). No live flow updates
+  // packageId alone expecting re-aggregation — addPackageToService's backfill was
+  // removed in OWN-0(c). A future package-reassignment flow MUST revisit this guard.
   if (eventType === 'UPDATE') {
-    const triggerFields = ['isOverage', 'overageMinutes'];
+    const triggerFields = ['isOverage', 'overageMinutes', 'packageId', 'deductedInTransaction'];
     const changedKeys = Object.keys(afterData).filter((key) => {
       return JSON.stringify(beforeData[key]) !== JSON.stringify(afterData[key]);
     });
@@ -362,6 +369,9 @@ const onTimesheetEntryChanged = onDocumentWritten({
       const services = clientData.services || [];
 
       let result = null;
+      // OWN-0(a): set to the trigger-resolved packageId ONLY on a CREATE-fallback
+      // where the entry arrived without a packageId — then stamped in Write-2 below.
+      let createFallbackStampPackageId = null;
 
       // ── Service transfer: two-legged operation (decrement old, increment new) ──
       if (isServiceTransfer) {
@@ -442,6 +452,12 @@ const onTimesheetEntryChanged = onDocumentWritten({
 
           if (resolvedPackageId) {
             result = applyHoursDelta(services, lookupServiceId, resolvedPackageId, minutesDelta);
+            if (eventType === 'CREATE' && !packageId) {
+              // OWN-0(a): the entry arrived with no packageId and the trigger
+              // resolved + deducted into a fallback package. Persist that id (Write-2)
+              // so the entry is not left a package-counted-null orphan.
+              createFallbackStampPackageId = resolvedPackageId;
+            }
           } else {
             // All packages depleted — count at service level only
             result = applyHoursDeltaServiceOnly(services, lookupServiceId, minutesDelta);
@@ -581,10 +597,20 @@ const onTimesheetEntryChanged = onDocumentWritten({
       // ── Write 2: Update overage flags on entry (CREATE/UPDATE only, not DELETE) ──
       if (afterData) {
         const entryRef = db.collection('timesheet_entries').doc(entryId);
-        transaction.update(entryRef, {
+        const entryUpdate = {
           isOverage: isOverage,
           overageMinutes: isOverage ? overageMinutes : 0
-        });
+        };
+        if (createFallbackStampPackageId) {
+          // OWN-0(a): persist the trigger-resolved packageId + mark deductedInTransaction
+          // so a coalesced re-CREATE (different event.id → the idempotency guard at the
+          // txn top won't block it) is skipped by the CREATE guard above. The resulting
+          // UPDATE re-fire leaves minutes unchanged → zero-delta no-op (and is also
+          // caught by the self-write guard). Fires ONLY on the CREATE-fallback path.
+          entryUpdate.packageId = createFallbackStampPackageId;
+          entryUpdate.deductedInTransaction = true;
+        }
+        transaction.update(entryRef, entryUpdate);
       }
 
       // ── Write 3: Update budget_task if taskId exists ──

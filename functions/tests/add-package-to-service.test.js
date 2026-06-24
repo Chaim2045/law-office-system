@@ -8,7 +8,8 @@
  *   D. Service-level drift guard (predates this migration; must remain)
  *   E. Canonical helper integration:
  *      - happy path (package appended, service.totalHours grows, aggregates derived)
- *      - orphan absorption (newPackage.hoursUsed = orphanHours)
+ *      - OWN-0(c): new package starts EMPTY; orphans NOT re-counted (no detonation,
+ *        no backfill); service.hoursUsed PRESERVED (no PR #174 under-count)
  *      - legacy `caseId` alias
  *   F. Audit log
  *   G. Return shape
@@ -333,37 +334,60 @@ describe('E. Canonical helper integration', () => {
     expect(payload.isBlocked).toBe(false);
   });
 
-  test('orphan absorption: orphan entries assigned to newPackage, hoursUsed reflects them', async () => {
+  test('OWN-0(c) — orphan entries are NOT re-counted into the new package (no detonation, no backfill)', async () => {
     setupTxMocks(
       makeClientDoc([makeHoursService('s1', { totalHours: 10 })]),
-      // 2 orphan entries — 60 + 30 = 90 minutes = 1.5h
+      // 2 orphan entries exist on the service — pre-OWN-0 these were swept into the
+      // new package (the +874h double-count detonator). They must now be IGNORED.
       [
         { minutes: 60, clientId: 'c1', serviceId: 's1' },
         { minutes: 30, clientId: 'c1', serviceId: 's1' }
       ]
     );
 
-    await addPackageToService(
-      { clientId: 'c1', serviceId: 's1', hours: 5 },
-      makeCtx()
-    );
+    await addPackageToService({ clientId: 'c1', serviceId: 's1', hours: 5 }, makeCtx());
 
     const [, payload] = mockTransaction.update.mock.calls[0];
     const svc = payload.services.find(s => s.id === 's1');
     const newPkg = svc.packages.find(p => p.type === 'additional');
 
-    // newPackage absorbs orphan hours
-    expect(newPkg.hoursUsed).toBe(1.5);
-    expect(newPkg.hoursRemaining).toBe(3.5); // 5 - 1.5
+    // New package starts EMPTY — orphan hours are NOT folded in.
+    expect(newPkg.hoursUsed).toBe(0);
+    expect(newPkg.hoursRemaining).toBe(5);
 
-    // Service totals reflect: 10 initial (unused) + 5 new (1.5 used) = 15 total, 1.5 used
+    // Capacity grows; existing consumption (0 here) preserved.
     expect(svc.totalHours).toBe(15);
-    expect(svc.hoursUsed).toBe(1.5);
-    expect(svc.hoursRemaining).toBe(13.5);
+    expect(svc.hoursUsed).toBe(0);
+    expect(svc.hoursRemaining).toBe(15);
 
-    // Backfill: orphan entries got packageId
-    expect(mockBatchUpdate).toHaveBeenCalledTimes(2);
-    expect(mockBatchCommit).toHaveBeenCalledTimes(1);
+    // No packageId-backfill batch (the trigger-re-firing entry rewrite is gone).
+    expect(mockBatchUpdate).not.toHaveBeenCalled();
+    expect(mockBatchCommit).not.toHaveBeenCalled();
+  });
+
+  test('OWN-0(c) — service-only hours are PRESERVED, not dropped (no PR #174 under-count)', async () => {
+    // svc.hoursUsed (5) exceeds Σ packages.hoursUsed (2) → 3h live only at service
+    // level (service-only). The pre-OWN-0 `service.hoursUsed = Σpackages` recompute
+    // would DROP those 3h. The preserve path must keep them.
+    const svc = {
+      id: 's1', type: ST.HOURS, name: 'svc', status: 'active',
+      totalHours: 10, hoursUsed: 5, hoursRemaining: 5,
+      packages: [{ id: 'p1', type: 'initial', hours: 10, hoursUsed: 2, hoursRemaining: 8, status: 'active' }]
+    };
+    setupTxMocks(makeClientDoc([svc]), []);
+
+    await addPackageToService({ clientId: 'c1', serviceId: 's1', hours: 5 }, makeCtx());
+
+    const [, payload] = mockTransaction.update.mock.calls[0];
+    const out = payload.services.find(s => s.id === 's1');
+    const newPkg = out.packages.find(p => p.type === 'additional');
+
+    expect(newPkg.hoursUsed).toBe(0);
+    expect(out.totalHours).toBe(15);
+    expect(out.hoursUsed).toBe(5);          // PRESERVED (not recomputed to Σpackages=2)
+    expect(out.hoursRemaining).toBe(10);    // 15 - 5
+    // Client aggregate (real canonical helper) reflects the preserved consumption.
+    expect(payload.hoursUsed).toBe(5);
   });
 
   test('legacy caseId alias works same as clientId', async () => {

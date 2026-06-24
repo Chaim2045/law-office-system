@@ -221,34 +221,12 @@ function computeFixedDeduction(services, lookupServiceId, minutesDelta) {
   return { updatedServices: updatedArr, isOverage: false, overageMinutes: 0 };
 }
 
-/**
- * PR-DRIFT-0 (design §10): resolve the FRESH-only package id to STAMP on a
- * timesheet entry. Pure + testable.
- *
- * Contract:
- *   - HOURS service → `getActivePackage(svc, allowOverdraft=false, override)`
- *     returns the fresh package (active/pending AND hoursRemaining>0, FIFO) or
- *     null when ONLY a depleted/overdraft fallback exists → returns null. This
- *     is the fresh-only rule: the entry never carries a depleted-fallback id.
- *   - Any non-HOURS service (legal_procedure / fixed / undefined) → returns the
- *     fallback `serviceIdsPackageId` unchanged (DRIFT-0 is scoped to HOURS-only;
- *     legal_procedure stage-package orphans are PR-DRIFT-3).
- *
- * @param {Object} targetService - the resolved service (svc.type/serviceType)
- * @param {string|null} serviceIdsPackageId - the lookupServiceIds id (allowOverdraft=true)
- * @returns {string|null} the package id to stamp on the entry
- */
-function resolveFreshStampPackageId(targetService, serviceIdsPackageId) {
-  if (!targetService) return serviceIdsPackageId || null;
-  const type = targetService.type;
-  if (type !== ST.HOURS) {
-    // Non-HOURS: preserve today's behavior (minimal surgical scope).
-    return serviceIdsPackageId || null;
-  }
-  // HOURS: fresh-only (allowOverdraft=false → null when only fallback exists).
-  const freshPkg = getActivePackage(targetService, false, !!targetService.overrideActive);
-  return freshPkg ? freshPkg.id : null;
-}
+// OWN-0(b) (2026-06-24): resolveFreshStampPackageId REMOVED. DRIFT-0's "fresh-only"
+// stamp deliberately left HOURS entries packageId:null whenever the deduction
+// overdrew a depleted/overdraft package — a package-counted-null orphan. The entry
+// now stamps the actual deduction target inline (entryStampPackageId), so the stamp
+// and the deduction never diverge. Non-HOURS keeps serviceIds.packageId. getActivePackage
+// is still used by lookupServiceIds below.
 
 function lookupServiceIds(clientData, taskData) {
   const result = { stageId: null, packageId: null };
@@ -479,6 +457,10 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         let deductedInTransaction = false;
         let entryIsOverage = false;
         let entryOverageMinutes = 0;
+        // OWN-0(b): the packageId to STAMP on the entry = the actual deduction
+        // target. Default = serviceIds.packageId (preserves non-HOURS behavior);
+        // the HOURS branch overrides it with the real applyHoursDelta target below.
+        let entryStampPackageId = serviceIds.packageId || null;
 
         if (clientData && resolvedServiceId && services.length > 0) {
           const lookupServiceId = taskData.parentServiceId || resolvedServiceId;
@@ -510,8 +492,15 @@ async function addTimeToTaskWithTransaction(db, data, user) {
                   }
                 }
                 deductionResult = applyHoursDelta(services, lookupServiceId, resolvedPackageId, minutesDelta);
+                // OWN-0(b): stamp the package the deduction actually hit (incl. an
+                // overdraft/depleted fallback going negative) — NOT null. Eliminates
+                // the package-counted-null orphan at the source.
+                entryStampPackageId = resolvedPackageId;
               } else {
                 deductionResult = applyHoursDeltaServiceOnly(services, lookupServiceId, minutesDelta);
+                // Genuine service-only (0 packages / all beyond -10h floor): no package
+                // to stamp → null. Surfaced by Check-7 (OWN-0(d)); recovered by repair.
+                entryStampPackageId = null;
                 console.warn(`⚠️ [addTimeToTask] No package found — counting at service level`);
               }
 
@@ -582,16 +571,12 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         // ✅ זיהוי אוטומטי של רשומת פנימית לפי clientId
         const isInternalWork = taskData.clientId === 'internal_office';
 
-        // PR-DRIFT-0 (design §10): for HOURS services the entry carries the
-        // FRESH-resolved package id (freshStampPackageId — null when the deduction
-        // fell to the depleted/overdraft fallback). For any other service type
-        // (legal_procedure / fixed / legacy) the stamp keeps today's
-        // serviceIds.packageId. resolveFreshStampPackageId encapsulates both: it
-        // returns the fresh-only id for HOURS, else serviceIds.packageId unchanged.
-        const targetServiceForStamp = (clientData && resolvedServiceId)
-          ? (clientData.services || []).find(s => s.id === (taskData.parentServiceId || resolvedServiceId))
-          : null;
-        const stampPackageId = resolveFreshStampPackageId(targetServiceForStamp, serviceIds.packageId);
+        // OWN-0(b): the entry's packageId = the actual deduction target captured
+        // above (HOURS → the applyHoursDelta target incl. overdraft, or null for a
+        // genuine service-only deduction; non-HOURS → serviceIds.packageId). This
+        // supersedes DRIFT-0's fresh-only stamp, which left a package-counted-null
+        // orphan every time the deduction overdrew a depleted package.
+        const stampPackageId = entryStampPackageId;
 
         const timesheetEntry = {
           clientId: taskData.clientId,
@@ -733,5 +718,5 @@ async function addTimeToTaskWithTransaction(db, data, user) {
 
 module.exports = {
   addTimeToTaskWithTransaction,
-  _test: { computeFixedDeduction, resolveFreshStampPackageId }
+  _test: { computeFixedDeduction }
 };

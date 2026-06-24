@@ -331,13 +331,14 @@ function computeCardHoursUsed(service) {
  * @param {Object} orphanMinutesByService - { [effectiveServiceId]: minutes } for entries with NO packageId
  * @returns {Array<Object>} discrepancies (possibly empty)
  */
-function detectPackageInvariants(clientData, packageMinutes, orphanMinutesByService) {
+function detectPackageInvariants(clientData, packageMinutes, orphanMinutesByService, orphanMinutesByStage) {
   const out = [];
   const services = Array.isArray(clientData && clientData.services)
     ? clientData.services.filter(Boolean)
     : [];
   const pkgMin = packageMinutes || {};
   const orphanMin = orphanMinutesByService || {};
+  const orphanMinByStage = orphanMinutesByStage || {}; // OWN-0(d): orphan minutes per stageId
 
   // Pass 1: catalogue EVERY package id anywhere on the client (HOURS packages +
   // legal_procedure stage packages, ALL statuses) so the dangling-id check below
@@ -372,6 +373,20 @@ function detectPackageInvariants(clientData, packageMinutes, orphanMinutesByServ
       if (om > 0) {
         out.push({
           type: 'orphan_entries_on_packaged_service',
+          serviceId,
+          orphanMinutes: om,
+          orphanHours: round2(om / 60)
+        });
+      }
+    } else {
+      // (B2) OWN-0(d) — HOURS service with ZERO packages but logged (orphan) hours.
+      // OWN-0(b) cannot stamp these (no package exists) and the forward-replay repair
+      // skips them ('no_packages'), so they stay packageId:null at service level by
+      // design. Detection-only signal so the "no new orphans" claim is MEASURED.
+      const om = orphanMin[serviceId] || 0;
+      if (om > 0) {
+        out.push({
+          type: 'orphan_entries_on_packageless_service',
           serviceId,
           orphanMinutes: om,
           orphanHours: round2(om / 60)
@@ -445,6 +460,32 @@ function detectPackageInvariants(clientData, packageMinutes, orphanMinutesByServ
     }
   }
 
+  // Pass 2b (OWN-0(d)): legal_procedure stage orphans — entries with NO packageId on
+  // an HOURLY stage that HAS packages (a packageId SHOULD have been assigned). Fixed
+  // stages legitimately carry no packageId, so only hourly-with-packages stages count.
+  // Detection-only: legal_procedure repair is DRIFT-3; this MEASURES the open surface
+  // that OWN-0(a)/(b) (HOURS-only) deliberately leave for now.
+  for (const svc of services) {
+    if (NON_AGGREGATING_STATUSES.includes(svc.status || 'active')) continue; // skip archived
+    if (svc.type !== ST.LEGAL_PROCEDURE && svc.serviceType !== ST.LEGAL_PROCEDURE) continue;
+    for (const stage of (Array.isArray(svc.stages) ? svc.stages : [])) {
+      if (!stage || !stage.id) continue;
+      const isHourlyStage = stage.pricingType !== PT.FIXED;
+      const stagePackages = Array.isArray(stage.packages) ? stage.packages : [];
+      if (!isHourlyStage || stagePackages.length === 0) continue;
+      const om = orphanMinByStage[stage.id] || 0;
+      if (om > 0) {
+        out.push({
+          type: 'orphan_entries_on_legal_procedure_stage',
+          serviceId: svc.id,
+          stageId: stage.id,
+          orphanMinutes: om,
+          orphanHours: round2(om / 60)
+        });
+      }
+    }
+  }
+
   // Pass 3: dangling packageId — an entry references a package id that exists
   // NOWHERE on the client (deleted/renamed package, or a write bug). The inverse
   // of the orphan signal (entry HAS a packageId, but it points to nothing).
@@ -503,6 +544,7 @@ const dailyInvariantCheck = onSchedule({
         const serviceMinutes = {};
         const packageMinutes = {};
         const orphanMinutesByService = {};
+        const orphanMinutesByStage = {}; // OWN-0(d): orphan minutes keyed by stageId (legal_procedure)
         timesheetSnapshot.forEach(doc => {
           const entry = doc.data();
           const effectiveServiceId = entry.parentServiceId || entry.serviceId;
@@ -513,6 +555,12 @@ const dailyInvariantCheck = onSchedule({
             packageMinutes[entry.packageId] = (packageMinutes[entry.packageId] || 0) + (entry.minutes || 0);
           } else if (effectiveServiceId) {
             orphanMinutesByService[effectiveServiceId] = (orphanMinutesByService[effectiveServiceId] || 0) + (entry.minutes || 0);
+            // OWN-0(d): also bucket by stage so legal_procedure hourly-stage orphans
+            // can be detected per stage (orphanMinutesByService is keyed by the parent
+            // service, which mixes fixed + hourly stages).
+            if (entry.stageId) {
+              orphanMinutesByStage[entry.stageId] = (orphanMinutesByStage[entry.stageId] || 0) + (entry.minutes || 0);
+            }
           }
         });
 
@@ -541,8 +589,9 @@ const dailyInvariantCheck = onSchedule({
 
         // ── Check 7 (PR-DRIFT-1): package-level consumption + consistency drift ──
         // Reuses the per-client entries already read above (packageMinutes /
-        // orphanMinutesByService). Read-only — only pushes to `discrepancies`.
-        const pkgDiscrepancies = detectPackageInvariants(clientData, packageMinutes, orphanMinutesByService);
+        // orphanMinutesByService / orphanMinutesByStage). Read-only — only pushes
+        // to `discrepancies`. OWN-0(d) adds the 4th arg for legal_procedure stage orphans.
+        const pkgDiscrepancies = detectPackageInvariants(clientData, packageMinutes, orphanMinutesByService, orphanMinutesByStage);
         for (const d of pkgDiscrepancies) {
           discrepancies.push({ ...d, clientId, clientName });
         }
