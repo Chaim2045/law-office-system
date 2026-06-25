@@ -43,6 +43,11 @@ exports.holidaysCalendarSync = scheduled.holidaysCalendarSync;  // PR-G.1
 // single-owner redesign). Gated by system_settings/package_reconciliation
 // (default OFF → inert on deploy); calls the OWN-1 owner in enforce mode.
 exports.reconcilePackageDrift = require('./scheduled/reconcile-package-drift').reconcilePackageDrift;
+// OWN-3 admin control: admin-gated callables to operate the loop from the Admin
+// Panel (set off/dry_run/enforce + Run-now). The page reads mode + runs directly.
+const reconciliationModule = require('./reconciliation');
+exports.setReconciliationMode = reconciliationModule.setReconciliationMode;
+exports.runReconciliationNow = reconciliationModule.runReconciliationNow;
 
 // WhatsApp Functions (imported from ./whatsapp)
 const whatsapp = require('./whatsapp');
