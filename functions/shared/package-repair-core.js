@@ -575,9 +575,10 @@ function assignEntriesForwardReplay(packages, entries, opts) {
  *   packageDiffs: Array,          // per package {packageId, before, after, delta, statusFlip}
  *   serviceBefore: number,        // service.hoursUsed before
  *   serviceAfter: number,         // service.hoursUsed after
- *   ledgerTruth: number,          // Σ all assigned minutes / 60
- *   invariantOk: boolean,         // |serviceAfter - ledgerTruth| <= 0.05
- *   phantomReversals: Array       // packages zeroed (seeded-phantom), with before.hoursUsed
+ *   ledgerTruth: number,          // Σ ALL entry minutes / 60 — assigned + unresolved (the true total)
+ *   invariantOk: boolean,         // |serviceAfter - ledgerTruth| <= 0.05 — FALSE when entries are unresolved
+ *   phantomReversals: Array,      // packages zeroed (seeded-phantom), with before.hoursUsed
+ *   unresolvedMinutes: number     // minutes the replay could not attribute (>0 ⇒ invariantOk false)
  * }}
  */
 function computeRepairedService(service, replay) {
@@ -647,9 +648,27 @@ function computeRepairedService(service, replay) {
   const serviceTotal = typeof service.totalHours === 'number' ? service.totalHours : 0;
   const serviceRemaining = round2(serviceTotal - serviceAfter);
 
-  // Ledger truth = Σ ALL assigned-entry minutes / 60 (independent of package buckets).
+  // Ledger truth = Σ ALL entry minutes / 60 — assigned PLUS unresolved. The
+  // unresolved minutes (entries the replay could NOT attribute to any package —
+  // e.g. an overdrawn service past the -10h floor with no override) are REAL hours
+  // in the ledger. Including them here is load-bearing: when entries cannot be
+  // fully attributed, serviceAfter (Σ attributable) < ledgerTruth (the true total),
+  // so invariantOk goes FALSE → the live loop (reconcile-package-drift) SKIPS the
+  // service ('invariant_failed') and the owner (service-writer) REFUSES to write,
+  // instead of silently persisting an UNDER-COUNT that would pass a (wrongly) clean
+  // invariant.
+  // ⚠️ The OFFLINE supervised script (repair-package-aggregates.js) is NOT part of
+  // this refusal: it REPORTS unresolved + invariantFailures in its summary but does
+  // NOT gate its `--apply` write on invariantOk (it writes servicesAfter when
+  // `!skip`). So an operator MUST NOT `--apply` a client whose report shows
+  // invariantFailures > 0 — that would persist this same under-count. (Gating the
+  // script on invariantOk like the live paths is a tracked follow-up.)
+  // [fix: own-2 unresolved silent under-count]
+  const unresolvedMinutes = (replay && Array.isArray(replay.unresolved))
+    ? replay.unresolved.reduce((sum, u) => sum + (typeof u.minutes === 'number' ? u.minutes : 0), 0)
+    : 0;
   const ledgerTruth = round2(
-    assignments.reduce((sum, a) => sum + a.minutes, 0) / 60
+    (assignments.reduce((sum, a) => sum + a.minutes, 0) + unresolvedMinutes) / 60
   );
   const invariantOk = Math.abs(serviceAfter - ledgerTruth) <= SERVICE_INVARIANT_TOLERANCE;
 
@@ -667,7 +686,8 @@ function computeRepairedService(service, replay) {
     serviceAfter,
     ledgerTruth,
     invariantOk,
-    phantomReversals
+    phantomReversals,
+    unresolvedMinutes // entries the replay could NOT attribute (drives invariantOk=false); observability for the loop/script
   };
 }
 

@@ -265,6 +265,35 @@ describe('computeRepairedService', () => {
     expect(r.serviceAfter).toBe(3);
     expect(r.invariantOk).toBe(true);
   });
+
+  // [fix: own-2 unresolved silent under-count] When the replay cannot attribute
+  // every entry (overdrawn past the -10h floor, no override), the unresolved
+  // minutes are REAL ledger hours. ledgerTruth must include them so serviceAfter
+  // (Σ attributable) < ledgerTruth → invariantOk FALSE → the live loop skips +
+  // the owner refuses, instead of writing a silent under-count.
+  test('UNDER-COUNT GUARD: unresolved entries push ledgerTruth above serviceAfter → invariantOk FALSE', () => {
+    const svc = hoursService('s1', [pkg('p1', { hours: 1, hoursUsed: 0, purchaseDate: '2026-01-01T00:00:00.000Z' })]);
+    const entries = [
+      entry('e1', 660, { createdAt: '2026-02-01T00:00:00.000Z' }), // 11h → package to -10 (assigned)
+      entry('e2', 60, { createdAt: '2026-02-02T00:00:00.000Z' })   // live remaining -10, NOT > -10 → unresolved
+    ];
+    const replay = assignEntriesForwardReplay(svc.packages, entries); // override OFF (default)
+    expect(replay.unresolved.map((u) => u.entryId)).toContain('e2'); // precondition: e2 IS unresolved
+    const r = computeRepairedService(svc, replay);
+    expect(r.serviceAfter).toBe(11);       // only the attributable hours
+    expect(r.unresolvedMinutes).toBe(60);  // the 1h the replay could not place
+    expect(r.ledgerTruth).toBe(12);        // 11 + 1 = the TRUE total (was 11 — the silent under-count — before the fix)
+    expect(r.invariantOk).toBe(false);     // serviceAfter(11) !== ledgerTruth(12) → refuse to write
+  });
+
+  test('no unresolved → ledgerTruth unchanged, invariantOk TRUE (the fix does not regress the happy path)', () => {
+    const svc = hoursService('s1', [pkg('p1', { hours: 100, hoursUsed: 0 })]);
+    const replay = assignEntriesForwardReplay(svc.packages, [entry('e1', 90), entry('e2', 30)]);
+    const r = computeRepairedService(svc, replay);
+    expect(r.unresolvedMinutes).toBe(0);
+    expect(r.ledgerTruth).toBe(2);
+    expect(r.invariantOk).toBe(true);
+  });
 });
 
 // ─── defensive helpers (0 in PROD) ───────────────────────────────────────────

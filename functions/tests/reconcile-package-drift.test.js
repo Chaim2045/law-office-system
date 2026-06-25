@@ -200,6 +200,23 @@ describe('A. planServiceReconciliation', () => {
     const plan = planServiceReconciliation(svc, [svc], [entry('e1', 60, { packageId: 's1_p1' })]);
     expect(plan).toMatchObject({ action: 'skip', reason: 'invariant_failed' });
   });
+
+  // [fix: own-2 unresolved silent under-count] END-TO-END with the REAL engine:
+  // an overdrawn service the replay cannot fully attribute (past the -10h floor,
+  // no override) yields unresolved entries → ledgerTruth > serviceAfter →
+  // invariantOk FALSE → the loop SKIPS it, instead of writing a silent under-count.
+  test('REAL engine: overdrawn service with unresolved entries → skip(invariant_failed), no under-count write', () => {
+    const svc = hoursService('s1', {
+      totalHours: 1,
+      packages: [{ id: 's1_p1', hours: 1, hoursUsed: 0, hoursRemaining: 1, status: 'active', purchaseDate: '2026-01-01T00:00:00.000Z' }]
+    });
+    const entries = [
+      entry('e1', 660, { createdAt: '2026-02-01T10:00:00.000Z' }), // 11h → package to -10 (assigned)
+      entry('e2', 60, { createdAt: '2026-02-02T10:00:00.000Z' })   // live remaining -10, NOT > -10 → unresolved
+    ];
+    const plan = planServiceReconciliation(svc, [svc], entries);
+    expect(plan).toMatchObject({ action: 'skip', reason: 'invariant_failed' });
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
