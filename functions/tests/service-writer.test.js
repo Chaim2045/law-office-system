@@ -623,10 +623,15 @@ describe('H. Return value', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// I. OWN-1 is DEAD CODE — wired to nothing (the safety invariant)
+// I. Owner wiring invariant — wired ONLY by the OWN-2 reconciliation loop
 // ═══════════════════════════════════════════════════════════════
+// OWN-1 shipped the owner as DEAD CODE. OWN-2 is the FIRST sanctioned live
+// caller (the reconciliation loop, gated OFF by default). This guard now pins
+// that the owner is wired by THAT caller and nothing else — OWN-3 will extend
+// the allowlist as it reroutes the deduction-path writers; any unexpected live
+// require before then is a leak.
 
-describe('I. Dead-code invariant', () => {
+describe('I. Owner wiring invariant', () => {
   function walkJs(dir, acc) {
     for (const name of fs.readdirSync(dir)) {
       if (['node_modules', 'lib', 'coverage', '.git'].includes(name)) continue;
@@ -639,19 +644,26 @@ describe('I. Dead-code invariant', () => {
     return acc;
   }
 
-  test('no live functions module require()s service-writer (it must stay unwired until OWN-2/3)', () => {
+  // The ONLY sanctioned live callers of the owner (forward-slash, relative to functions/).
+  const ALLOWED_CALLERS = ['scheduled/reconcile-package-drift.js']; // OWN-2
+
+  test('the owner is wired ONLY by the OWN-2 reconciliation loop (no unexpected live caller)', () => {
     const functionsRoot = path.join(__dirname, '..');
     const files = walkJs(functionsRoot, []);
     const requireRe = /require\(\s*['"][^'"]*service-writer['"]\s*\)/;
-    const offenders = [];
+    const callers = [];
     for (const f of files) {
       const base = path.basename(f);
       if (base === 'service-writer.js') continue;           // the module itself
       if (base.endsWith('.test.js')) continue;              // test files
       if (f.includes(`${path.sep}tests${path.sep}`)) continue;
       const src = fs.readFileSync(f, 'utf8');
-      if (requireRe.test(src)) offenders.push(path.relative(functionsRoot, f));
+      if (requireRe.test(src)) callers.push(path.relative(functionsRoot, f).split(path.sep).join('/'));
     }
-    expect(offenders).toEqual([]);
+    // no caller outside the sanctioned allowlist
+    const unexpected = callers.filter((c) => !ALLOWED_CALLERS.includes(c));
+    expect(unexpected).toEqual([]);
+    // and the sanctioned OWN-2 wiring actually exists (the owner is now live)
+    expect(callers).toEqual(expect.arrayContaining(ALLOWED_CALLERS));
   });
 });
