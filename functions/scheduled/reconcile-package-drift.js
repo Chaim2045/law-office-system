@@ -378,6 +378,10 @@ const reconcilePackageDrift = onSchedule({
 
 module.exports = {
   reconcilePackageDrift,
+  // Promoted to a first-class export (OWN-3 admin control): the `runReconciliationNow`
+  // callable invokes this on demand. It reads getReconciliationMode() itself, so a
+  // manual run respects the CURRENT mode (off → no-op, dry_run → logs, enforce → writes).
+  runReconciliation,
   _test: {
     planServiceReconciliation,
     runReconciliation,

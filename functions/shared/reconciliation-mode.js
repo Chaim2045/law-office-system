@@ -115,19 +115,25 @@ async function getReconciliationMode() {
   return mode;
 }
 
-/** Test-only: clear cache between tests. */
-function _resetCacheForTests() {
+/**
+ * Public cache invalidation — clears the per-instance mode cache so the NEXT
+ * getReconciliationMode() re-reads Firestore. Called by `setReconciliationMode`
+ * after a flip so an immediate `runReconciliationNow` in the same CF instance sees
+ * the new mode rather than the (up-to-60s) stale cached value. Idempotent + safe.
+ */
+function invalidateReconciliationModeCache() {
   cachedMode = null;
   cachedAt = 0;
 }
 
 module.exports = {
   getReconciliationMode,
+  invalidateReconciliationModeCache,
   VALID_MODES,
   DEFAULT_MODE,
   CACHE_TTL_MS,
   _test: {
-    resetCache: _resetCacheForTests,
+    resetCache: invalidateReconciliationModeCache,
     readModeFromFirestore,
     normalizeMode
   }
