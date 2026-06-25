@@ -39,6 +39,10 @@ exports.dailyTaskReminders = scheduled.dailyTaskReminders;
 exports.dailyBudgetWarnings = scheduled.dailyBudgetWarnings;
 exports.dailyInvariantCheck = scheduled.dailyInvariantCheck;
 exports.holidaysCalendarSync = scheduled.holidaysCalendarSync;  // PR-G.1
+// OWN-2: the live package/service reconciliation loop (self-healing half of the
+// single-owner redesign). Gated by system_settings/package_reconciliation
+// (default OFF → inert on deploy); calls the OWN-1 owner in enforce mode.
+exports.reconcilePackageDrift = require('./scheduled/reconcile-package-drift').reconcilePackageDrift;
 
 // WhatsApp Functions (imported from ./whatsapp)
 const whatsapp = require('./whatsapp');
