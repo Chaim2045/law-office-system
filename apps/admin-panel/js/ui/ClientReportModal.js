@@ -166,8 +166,10 @@
             // Populate service cards
             this.populateServiceCards(client);
 
-            // Set default date range (this month)
-            this.setQuickDateRange('thisMonth');
+            // Set default date range ('all' = since case-open date) so the FULL client
+            // history is visible by default. Was 'thisMonth', which hid older entries
+            // and made staff think older time logs were "missing".
+            this.setQuickDateRange('all');
 
             // Show modal
             if (this.modal) {

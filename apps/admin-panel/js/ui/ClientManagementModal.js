@@ -188,7 +188,7 @@ return;
                 }
 
                 try {
-                    await FirebaseService.call('updateClient', {
+                    await window.firebaseFunctions.httpsCallable('updateClient')({
                         clientId: client.id,
                         caseOpenDate: newDate.toISOString()
                     });
