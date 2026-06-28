@@ -496,7 +496,7 @@ return;
     // התראות נפרדות לכל לקוח חסום (עם פירוט שעות)
     if (blockedClientsData && blockedClientsData.length > 0) {
       blockedClientsData.forEach(client => {
-        const hoursText = client.hoursRemaining !== undefined
+        const hoursText = Number.isFinite(client.hoursRemaining)
           ? ` (${client.hoursRemaining.toFixed(1)} שעות נותרו)`
           : '';
 
@@ -512,7 +512,7 @@ return;
     // התראות נפרדות לכל לקוח קריטי (עם מספר שעות מדויק)
     if (criticalClientsData && criticalClientsData.length > 0) {
       criticalClientsData.forEach(client => {
-        const hoursRemaining = client.hoursRemaining.toFixed(1);
+        const hoursRemaining = (Number.isFinite(client.hoursRemaining) ? client.hoursRemaining : 0).toFixed(1);
 
         this.addSystemNotification(
           'critical',
