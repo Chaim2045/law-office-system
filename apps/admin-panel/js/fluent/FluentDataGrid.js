@@ -784,7 +784,12 @@ return;
         if (window.ClientReportModal) {
             const client = this.data.find(c => c.id === id);
             if (client) {
-                window.ClientReportModal.open(client.raw);
+                // ClientReportModal.open() expects a STRING client id (it does
+                // dataManager.getClientById(id) → clients.find(c => c.id === id)).
+                // Pass client.id (= Firestore doc.id, the 7-digit caseNumber) — the
+                // row's reliable id key. NOT client.raw (= doc.data(), which has no
+                // guaranteed id field). Mirrors ClientsTable.js:666 (passes clientId).
+                window.ClientReportModal.open(client.id);
             }
         }
     },
