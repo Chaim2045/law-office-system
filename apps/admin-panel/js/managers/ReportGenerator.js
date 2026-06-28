@@ -685,7 +685,12 @@ return true;
                         totalHours, usedHours, remainingHours, matchType: 'stage',
                         isFixed: this._isFixedService(parentService),
                         fixedPrice: Number.isFinite(selectedStage.fixedPrice) ? selectedStage.fixedPrice : null,
-                        totalFixedPrice: (parentService && Number.isFinite(parentService.totalFixedPrice)) ? parentService.totalFixedPrice : null
+                        totalFixedPrice: (parentService && Number.isFinite(parentService.totalFixedPrice)) ? parentService.totalFixedPrice : null,
+                        // Stored worked-hours: stage `hoursUsed`, else the parent service's; `null`
+                        // (legacy/uninitialised) -> the fixed renderer derives it from the ledger.
+                        storedUsedHours: Number.isFinite(selectedStage.hoursUsed)
+                            ? selectedStage.hoursUsed
+                            : ((parentService && Number.isFinite(parentService.hoursUsed)) ? parentService.hoursUsed : null)
                     };
                 }
             }
@@ -707,7 +712,8 @@ return true;
                     isFixed: this._isFixedService(selectedService),
                     fixedPrice: null,
                     totalFixedPrice: Number.isFinite(selectedService.totalFixedPrice) ? selectedService.totalFixedPrice
-                        : (Number.isFinite(selectedService.totalPrice) ? selectedService.totalPrice : null)
+                        : (Number.isFinite(selectedService.totalPrice) ? selectedService.totalPrice : null),
+                    storedUsedHours: Number.isFinite(selectedService.hoursUsed) ? selectedService.hoursUsed : null
                 };
             }
 
@@ -771,7 +777,8 @@ return true;
             // (paid/balance) is intentionally NOT shown: no live source yet, deferred to H.6
             // (MASTER_PLAN §8.5 D-C). The null-guard below still applies to the hourly path.
             if (hours.isFixed) {
-                return this.renderFixedServiceInfo(hours, purchaseDate);
+                const workedHours = this.resolveFixedWorkedHours(hours, client, formData);
+                return this.renderFixedServiceInfo(hours, purchaseDate, workedHours);
             }
 
             // (d) Service/stage not matched in client.services: derive USED hours from
@@ -824,15 +831,43 @@ return true;
         }
 
         /**
+         * Worked-hours for a FIXED-price service. Prefer the stored stage/service hoursUsed;
+         * when it is null (legacy/uninitialised), derive from the service-scoped timesheet
+         * ledger — the SAME sum the matchType==='none' branch + ClientReportModal use — so the
+         * report matches the SSOT instead of showing a fake 0.0.
+         */
+        resolveFixedWorkedHours(hours, client, formData) {
+            if (Number.isFinite(hours.storedUsedHours)) {
+                return hours.storedUsedHours;
+            }
+            if (this.dataManager && typeof this.dataManager.getClientTimesheetEntries === 'function') {
+                const stageMapping = window.SYSTEM_CONSTANTS?.STAGE_NAMES || {
+                    'stage_a': 'שלב א', 'stage_b': 'שלב ב', 'stage_c': 'שלב ג'
+                };
+                const allEntries = this.dataManager.getClientTimesheetEntries(client.fullName) || [];
+                const serviceEntries = allEntries.filter(entry =>
+                    entry.serviceName === formData.service ||
+                    entry.service === formData.service ||
+                    entry.serviceId === formData.service ||
+                    (formData.stage && entry.serviceId === formData.stage) ||
+                    (entry.serviceId && stageMapping[entry.serviceId] === formData.service)
+                );
+                const totalMinutes = serviceEntries.reduce((sum, e) => sum + (e.minutes || 0), 0);
+                return totalMinutes / 60;
+            }
+            return 0;
+        }
+
+        /**
          * Render service info for a FIXED-price legal procedure.
          * תצוגת מידע לשירות פיקס — מחיר + שעות עבודה (מדידה פנימית), בלי תקרת/יתרת שעות.
          * Payment status (paid/balance) is deferred to H.6 (no live source — MASTER_PLAN §8.5 D-C).
          */
-        renderFixedServiceInfo(hours, purchaseDate) {
+        renderFixedServiceInfo(hours, purchaseDate, workedHours) {
             const price = Number.isFinite(hours.fixedPrice) ? hours.fixedPrice
                 : (Number.isFinite(hours.totalFixedPrice) ? hours.totalFixedPrice : null);
             const priceStr = price !== null ? '₪' + price.toLocaleString('he-IL') : '—';
-            const workedHours = Number.isFinite(hours.usedHours) ? hours.usedHours : 0;
+            const worked = Number.isFinite(workedHours) ? workedHours : 0;
             return `
                 <div class="info-item">
                     <span class="info-label">תמחור</span>
@@ -848,7 +883,7 @@ return true;
                 </div>
                 <div class="info-item">
                     <span class="info-label">שעות עבודה (מדידה פנימית)</span>
-                    <span class="info-value">${workedHours.toFixed(1)} שעות</span>
+                    <span class="info-value">${worked.toFixed(1)} שעות</span>
                 </div>
             `;
         }
@@ -930,7 +965,10 @@ return true;
 
             // Fixed-price: show price + internal work-hours, never an hours overdraft.
             if (hours.isFixed) {
-                return this.renderFixedFinalSummary(hours);
+                const workedHours = Number.isFinite(hours.storedUsedHours)
+                    ? hours.storedUsedHours
+                    : timesheetEntries.reduce((sum, e) => sum + ((e.minutes || 0) / 60), 0);
+                return this.renderFixedFinalSummary(hours, workedHours);
             }
 
             let serviceTotalHours = hours.totalHours;
@@ -964,16 +1002,16 @@ return true;
          * Final summary for a FIXED-price legal procedure — price + internal work-hours.
          * סיכום לשירות פיקס: מחיר + שעות עבודה (מדידה פנימית), בלי תקרת/יתרת/חריגת שעות.
          */
-        renderFixedFinalSummary(hours) {
+        renderFixedFinalSummary(hours, workedHours) {
             const price = Number.isFinite(hours.fixedPrice) ? hours.fixedPrice
                 : (Number.isFinite(hours.totalFixedPrice) ? hours.totalFixedPrice : null);
             const priceStr = price !== null ? '₪' + price.toLocaleString('he-IL') : '—';
-            const workedHours = Number.isFinite(hours.usedHours) ? hours.usedHours : 0;
+            const worked = Number.isFinite(workedHours) ? workedHours : 0;
             return `
         <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: #374151;">
                 <span style="font-weight: 500;">סיכום:</span>
-                <span>תמחור פיקס | מחיר ${priceStr} | שעות עבודה (מדידה פנימית) ${workedHours.toFixed(1)}</span>
+                <span>תמחור פיקס | מחיר ${priceStr} | שעות עבודה (מדידה פנימית) ${worked.toFixed(1)}</span>
             </div>
         </div>
             `;

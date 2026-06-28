@@ -77,7 +77,9 @@ describe('renderPackagesTable — per-row null aggregate must not crash', () => 
       { type: 'additional', hours: 10, hoursUsed: 2, hoursRemaining: null, purchaseDate: '2026-01-01', description: 'בדיקה' }
     ];
     let html = '';
-    expect(() => { html = reportGenerator.renderPackagesTable(packages, 'שירות', null, null); }).not.toThrow();
+    expect(() => {
+      html = reportGenerator.renderPackagesTable(packages, 'שירות', null, null);
+    }).not.toThrow();
     // recomputed remainder = hours(10) - used(2) = 8.0
     expect(html).toContain('8.0');
     // the totals row remainder is also 8.0
@@ -136,7 +138,7 @@ describe('fixed-price legal procedure — report shows price + work-hours, never
   });
 
   it('renderTimesheetRows suppresses the running-balance columns for fixed-price (4 base cells only)', () => {
-    reportGenerator.dataManager = { getEmployeeName: (e: any) => String(e) };
+    reportGenerator.dataManager = { getEmployeeName: (e: unknown) => String(e) };
     const rows = reportGenerator.renderTimesheetRows(
       [{ date: '2026-01-02', action: 'עבודה', employee: 'x', minutes: 60 }],
       fixedStageClient(),
@@ -158,5 +160,19 @@ describe('fixed-price legal procedure — report shows price + work-hours, never
     const html = reportGenerator.renderServiceInfo(hourlyClient, fixedFormData);
     expect(html).toContain('שעות שנרכשו');
     expect(html).not.toContain('מחיר קבוע (פיקס)');
+  });
+
+  it('M2 — fixed stage with hoursUsed:null derives work-hours from the ledger (== SSOT), not a fake 0.0', () => {
+    // SSOT: 120 + 120 logged minutes on this stage = 4.0 hours.
+    reportGenerator.dataManager = {
+      getClientTimesheetEntries: () => [
+        { serviceId: 'stage_a', minutes: 120 },
+        { serviceId: 'stage_a', minutes: 120 }
+      ]
+    };
+    const html = reportGenerator.renderServiceInfo(fixedStageClient({ hoursUsed: null }), fixedFormData);
+    expect(html).toContain('4.0');          // ledger-derived effort (matches the modal SSOT)
+    expect(html).not.toContain('0.0 שעות'); // never the fake zero
+    expect(html).toContain('מחיר קבוע (פיקס)');
   });
 });
