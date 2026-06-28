@@ -188,12 +188,14 @@ return;
                 }
 
                 try {
-                    await FirebaseService.call('updateClient', {
+                    await window.firebaseFunctions.httpsCallable('updateClient')({
                         clientId: client.id,
                         caseOpenDate: newDate.toISOString()
                     });
 
-                    this.currentClient.caseOpenDate = { seconds: Math.floor(newDate.getTime() / 1000), nanoseconds: 0 };
+                    // Real Timestamp (not a plain {seconds} object) so consumers that call
+                    // .toDate() — e.g. the report's 'all' range — anchor correctly in-session.
+                    this.currentClient.caseOpenDate = firebase.firestore.Timestamp.fromDate(newDate);
                     cleanup();
                     this.renderClientInfo();
                     this.showNotification('תאריך פתיחת תיק עודכן', 'success');
