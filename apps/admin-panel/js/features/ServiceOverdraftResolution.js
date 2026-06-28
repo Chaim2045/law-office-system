@@ -642,7 +642,7 @@
             const container = document.createElement('div');
 
             if (service.overdraftResolved?.isResolved) {
-                // הצגת סטטוס "הוסדר"
+                // הצגת סטטוס "נגבה"
                 const resolution = service.overdraftResolved;
                 const date = new Date(resolution.resolvedAt).toLocaleDateString('he-IL');
 
@@ -663,7 +663,7 @@
                 container.innerHTML = `
                     <div class="overdraft-resolved-header">
                         <i class="fas fa-check-circle overdraft-resolved-icon"></i>
-                        <span class="overdraft-resolved-title">חריגה הוסדרה</span>
+                        <span class="overdraft-resolved-title">החוב נגבה</span>
                     </div>
                     <div class="overdraft-resolved-meta">
                         על ידי ${this.escapeHtml(resolution.resolvedByName)} ב-${date}
@@ -684,20 +684,20 @@
                     }
                 }
             } else {
-                // הצגת כפתור "סמן כהוסדר"
+                // הצגת כפתור "סמן כנגבה"
                 container.className = 'overdraft-warning-box';
                 container.innerHTML = `
                     <div class="overdraft-warning-header">
                         <i class="fas fa-exclamation-triangle overdraft-warning-icon"></i>
                         <span class="overdraft-warning-text">
-                            חריגה: ${Math.abs(service.hoursRemaining).toFixed(1)} שעות
+                            חוב פתוח לגביה: ${Math.abs(service.hoursRemaining).toFixed(1)} שעות
                         </span>
                     </div>
                     <button class="mark-resolved-btn"
                             data-service-id="${service.id}"
                             data-client-id="${clientId}">
                         <i class="fas fa-check-circle"></i>
-                        <span>סמן כהוסדר</span>
+                        <span>סמן כנגבה</span>
                     </button>
                 `;
 
@@ -725,7 +725,7 @@
                 <div class="resolution-modal-header">
                     <h3 class="resolution-modal-title">
                         <i class="fas fa-check-circle"></i>
-                        סימון חריגה כהוסדר
+                        סימון חוב כנגבה
                     </h3>
                     <button class="resolution-modal-close" type="button">
                         <i class="fas fa-times"></i>
@@ -739,7 +739,7 @@
                         <textarea
                             class="resolution-form-textarea"
                             id="resolutionNote"
-                            placeholder="נא הסבר כיצד החריגה הוסדרה (לדוגמא: הלקוח שילם בתאריך X, רכש שעות נוספות, וכו')"
+                            placeholder="נא הסבר כיצד נגבה החוב (לדוגמא: הלקוח שילם בתאריך X, רכש שעות נוספות, וכו')"
                             maxlength="500"
                             required
                         ></textarea>
@@ -829,7 +829,7 @@ closeModal();
 
                 // הצגת הודעה
                 if (window.NotificationManager) {
-                    window.NotificationManager.success('החריגה סומנה כהוסדרה בהצלחה');
+                    window.NotificationManager.success('החוב סומן כנגבה בהצלחה');
                 }
 
                 // רענון הנתונים
@@ -849,18 +849,18 @@ closeModal();
         }
 
         /**
-         * ביטול סימון "הוסדר" (אדמינים בלבד)
+         * ביטול סימון "נגבה" (אדמינים בלבד)
          */
         async unresolveService(serviceId, clientId) {
             // בדיקת הרשאות
             // clients.html לא משתמש ב-authSystem, כל מי שנכנס הוא אדמין
             if (window.authSystem && !window.authSystem.isAdmin) {
-                alert('❌ רק מנהלים יכולים לבטל סימון "הוסדר"');
+                alert('❌ רק מנהלים יכולים לבטל סימון "נגבה"');
                 return;
             }
 
             // אישור מהמשתמש
-            if (!confirm('האם לבטל את הסימון "הוסדר"?\n\nהשירות יחזור להיספר כחריגה פעילה.')) {
+            if (!confirm('האם לבטל את הסימון "נגבה"?\n\nהשירות יחזור להיספר כחוב פתוח לגביה.')) {
                 return;
             }
 
@@ -878,7 +878,7 @@ closeModal();
 
                 // הצגת הודעה
                 if (window.NotificationManager) {
-                    window.NotificationManager.success('הסימון "הוסדר" בוטל בהצלחה');
+                    window.NotificationManager.success('הסימון "נגבה" בוטל בהצלחה');
                 }
 
                 // רענון הנתונים
