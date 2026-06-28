@@ -653,7 +653,9 @@ return '';
                 let hoursInfo = '';
                 const stageHours = stage.hours || stage.totalHours || stage.allocatedHours || stage.estimatedHours || 0;
                 const hoursUsed = stage.hoursUsed || 0;
-                const hoursRemaining = stage.hoursRemaining !== undefined
+                // Number.isFinite (not `!== undefined`): a stored `null` stage aggregate
+                // must fall through to the recompute, not slip past and crash at .toFixed().
+                const hoursRemaining = Number.isFinite(stage.hoursRemaining)
                     ? stage.hoursRemaining
                     : (stageHours - hoursUsed);
 
