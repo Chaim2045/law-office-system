@@ -964,11 +964,10 @@ return true;
             const hours = this.resolveServiceHours(client, formData);
 
             // Fixed-price: show price + internal work-hours, never an hours overdraft.
+            // ONE SSOT sourcing path — the SAME resolveFixedWorkedHours renderServiceInfo uses —
+            // so the service-info card and this summary line can never disagree on worked-hours.
             if (hours.isFixed) {
-                const workedHours = Number.isFinite(hours.storedUsedHours)
-                    ? hours.storedUsedHours
-                    : timesheetEntries.reduce((sum, e) => sum + ((e.minutes || 0) / 60), 0);
-                return this.renderFixedFinalSummary(hours, workedHours);
+                return this.renderFixedFinalSummary(hours, this.resolveFixedWorkedHours(hours, client, formData));
             }
 
             let serviceTotalHours = hours.totalHours;
