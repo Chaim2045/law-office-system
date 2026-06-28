@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>סנכרון שעות | Admin Panel</title>
+
+    <!-- ===== UNIFIED AUTH GUARD (NO PRE-FLIGHT REDIRECT) ===== -->
+    <script>
+        (function() {
+            'use strict';
+            try {
+                var authState = sessionStorage.getItem('authState');
+                if (authState) {
+                    var state = JSON.parse(authState);
+                    var age = Date.now() - (state.timestamp || 0);
+                    window._reconciliationOptimistic = state.isAuthenticated && age < 5 * 60 * 1000;
+                } else {
+                    window._reconciliationOptimistic = false;
+                }
+            } catch (e) {
+                window._reconciliationOptimistic = false;
+            }
+        })();
+    </script>
+
+    <!-- ===== Firebase SDK ===== -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
+
+    <!-- ===== Font Awesome Icons ===== -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- ===== Design System ===== -->
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/reconciliation.css?v=20260628-own3-1">
+</head>
+
+<body class="admin-page">
+    <!-- ===== Navigation Bar ===== -->
+    <div id="navigationContainer"></div>
+
+    <!-- ===== Main Content ===== -->
+    <main class="dashboard-main">
+        <div id="reconciliation-section" class="dashboard-content">
+            <!-- Reconciliation control page (or access-denied state) rendered here by JS -->
+        </div>
+    </main>
+
+    <!-- ===== Loading Overlay ===== -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner-circle"></div>
+            <p class="loading-text">טוען...</p>
+        </div>
+    </div>
+
+    <!-- ===== Core Scripts ===== -->
+    <script src="js/core/firebase.js"></script>
+    <script src="js/core/system-constants.js"></script>
+    <script src="js/core/config-loader.js"></script>
+    <script src="js/core/auth.js"></script>
+    <script src="js/core/constants.js"></script>
+    <!-- Shared HTML-escape SSOT (window.escapeHtml) — load before any escaper consumer -->
+    <script src="js/core/escape-html.js?v=20260621-escapehtml-pr1"></script>
+
+    <!-- ===== Auth Guard ===== -->
+    <script src="js/core/auth-guard.js?v=20250103"></script>
+
+    <!-- ===== Navigation Component ===== -->
+    <script src="js/ui/Navigation.js"></script>
+
+    <!-- ===== Modals + Pure Formatters + Page + Notifications ===== -->
+    <script src="js/ui/Modals.js"></script>
+    <script src="js/ui/reconciliation-format.js?v=20260628-own3-1"></script>
+    <script src="js/ui/ReconciliationPage.js?v=20260628-own3-1"></script>
+    <script src="js/ui/Notifications.js"></script>
+
+    <!-- ===== Page Initialization ===== -->
+    <script>
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'logoutEvent') {
+                // Tear down any in-flight state before leaving.
+                if (window.ReconciliationPage && typeof window.ReconciliationPage.teardown === 'function') {
+                    window.ReconciliationPage.teardown();
+                }
+                sessionStorage.removeItem('authState');
+                window.location.replace('index.html');
+            }
+        });
+
+        /**
+         * Render a Hebrew access-denied state — used when the authenticated user
+         * is NOT an admin. NO control UI is rendered and NO callable / flag read
+         * is made in this branch.
+         */
+        function renderAccessDenied() {
+            const section = document.getElementById('reconciliation-section');
+            if (!section) {
+                return;
+            }
+            section.innerHTML = ''
+                + '<div class="rc-access-denied" role="alert">'
+                + '  <i class="fas fa-lock" aria-hidden="true"></i>'
+                + '  <h1>אין הרשאת גישה</h1>'
+                + '  <p>דף זה מיועד למנהלי מערכת בלבד. אם לדעתך זו טעות, פנה למנהל המערכת.</p>'
+                + '  <a class="rc-btn rc-btn--secondary" href="index.html" aria-label="חזרה לדף הבית">חזרה לדף הבית</a>'
+                + '</div>';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('⚖️ Hours Reconciliation Control - Loading...');
+
+            window.initAuthGuard({
+                pageName: 'reconciliation',
+                timeoutMs: 5000,
+
+                onAuthenticated: async (user) => {
+                    console.log('✅ [Reconciliation] User authenticated, verifying admin role...');
+
+                    if (window.Navigation) {
+                        window.Navigation.init('reconciliation');
+                    }
+
+                    // ════════════════════════════════════════════════════════
+                    // EXPLICIT ADMIN ROLE GATE (render-time) — fail CLOSED
+                    // ════════════════════════════════════════════════════════
+                    // initAuthGuard only checks AUTHENTICATION. This page CONTROLS
+                    // a production-write enabler (flipping to "enforce" lets the
+                    // loop write to production). So we re-verify the ADMIN ROLE
+                    // from the Firebase ID token claims BEFORE rendering any
+                    // control UI or calling any callable / flag read. The backend
+                    // callables are also admin-gated (role==='admin'); this gate
+                    // mirrors that at the UI. Mirrors employee-costs.html +
+                    // profitability.html + js/core/auth.js checkIfAdmin Layer-1.
+                    let isAdmin = false;
+                    try {
+                        const tokenResult = await firebase.auth().currentUser.getIdTokenResult();
+                        const ADMIN_ROLE = (window.ADMIN_PANEL_CONSTANTS
+                            && window.ADMIN_PANEL_CONSTANTS.USER_ROLES
+                            && window.ADMIN_PANEL_CONSTANTS.USER_ROLES.ADMIN) || 'admin';
+                        isAdmin = tokenResult.claims.role === ADMIN_ROLE;
+                    } catch (err) {
+                        // Token read failed — fail CLOSED (treat as non-admin).
+                        console.error('❌ [Reconciliation] Admin role check failed:', err && err.code);
+                        isAdmin = false;
+                    }
+
+                    if (!isAdmin) {
+                        console.warn('🔒 [Reconciliation] Non-admin user blocked from the control page');
+                        renderAccessDenied();
+                        return;
+                    }
+
+                    console.log('✅ [Reconciliation] Admin verified, loading control page...');
+
+                    if (window.ReconciliationPage) {
+                        // init() reads the current mode + recent runs (on-demand,
+                        // no live listener) — all AFTER this gate.
+                        window.ReconciliationPage.init('reconciliation-section');
+                    }
+                    console.log('✅ Hours Reconciliation Control - Ready');
+                },
+
+                onUnauthenticated: () => {
+                    window.location.replace('index.html');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

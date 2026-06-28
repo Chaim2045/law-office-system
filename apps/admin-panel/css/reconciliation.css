@@ -1,0 +1,638 @@
+/* ═══════════════════════════════════════════
+   Hours Reconciliation Control (OWN-3 — "סנכרון שעות")
+   ───────────────────────────────────────────
+   New page — clears the Design Bar from day one.
+   - design-system.css tokens ONLY (no hex/px literals beyond the documented
+     channel-derived status tints + #fff — the same convention profitability.css
+     and employee-costs.css use). No --*-bg token exists, so the 8-10% status
+     tints are expressed from the --green/--orange/--red channel values the same
+     way design-system.css derives its blue focus ring (rgb(59 130 246 / 10%)).
+     Status TEXT uses the -dark accent variant for WCAG AA on white.
+   - RTL Hebrew · :focus-visible on every interactive element (--blue ring).
+   - Motion via --transition-* tokens (reduced-motion-safe), never literals.
+   ═══════════════════════════════════════════ */
+
+.rc-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4);
+}
+
+/* ── Header ─────────────────────────────────── */
+
+.rc-header {
+  margin-bottom: var(--space-5);
+}
+
+.rc-header h1 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--gray-900);
+  margin: 0 0 var(--space-1);
+}
+
+.rc-header h1 i {
+  color: var(--gray-500);
+  font-size: var(--text-2xl);
+}
+
+.rc-subtitle {
+  font-size: var(--text-base);
+  color: var(--gray-600);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Persistent enforce banner ──────────────── */
+
+.rc-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  margin-bottom: var(--space-4);
+}
+
+.rc-banner--enforce {
+  background: rgb(239 68 68 / 10%);
+  border: 1px solid var(--red);
+  color: var(--red-dark);
+}
+
+.rc-banner--enforce i {
+  font-size: var(--text-lg);
+}
+
+/* ── Panels ─────────────────────────────────── */
+
+.rc-panel {
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+.rc-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.rc-panel-head h2 {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--gray-900);
+  margin: 0;
+}
+
+.rc-panel-note {
+  font-size: var(--text-sm);
+  color: var(--gray-600);
+  line-height: 1.5;
+  margin: 0 0 var(--space-4);
+}
+
+/* current-mode chip */
+.rc-current-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.rc-current-mode-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gray-400);
+}
+
+.rc-current-mode--off .rc-current-mode-dot { background: var(--gray-400); }
+
+.rc-current-mode--dry_run { background: rgb(59 130 246 / 10%); color: var(--blue-dark); }
+
+.rc-current-mode--dry_run .rc-current-mode-dot { background: var(--blue); }
+
+.rc-current-mode--enforce { background: rgb(239 68 68 / 10%); color: var(--red-dark); }
+
+.rc-current-mode--enforce .rc-current-mode-dot { background: var(--red); }
+
+/* ── Mode switch (3 cards) ──────────────────── */
+
+.rc-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.rc-mode-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  position: relative;
+  padding: var(--space-4);
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  color: var(--gray-800);
+  cursor: pointer;
+  text-align: start;
+  font-family: inherit;
+  transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.rc-mode-card > i {
+  font-size: var(--text-xl);
+  color: var(--gray-500);
+}
+
+.rc-mode-card-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--gray-900);
+}
+
+.rc-mode-card-desc {
+  font-size: var(--text-sm);
+  color: var(--gray-600);
+  line-height: 1.4;
+}
+
+.rc-mode-card-badge {
+  position: absolute;
+  inset-block-start: var(--space-3);
+  inset-inline-end: var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--gray-200);
+  color: var(--gray-700);
+}
+
+.rc-mode-card:hover:not(:disabled) {
+  background: #fff;
+  border-color: var(--gray-400);
+  box-shadow: var(--shadow-sm);
+}
+
+.rc-mode-card:focus-visible {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 25%);
+}
+
+.rc-mode-card:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* active card per mode (channel-derived tints, -dark text for AA) */
+.rc-mode-card--active.rc-mode-card--off {
+  border-color: var(--gray-400);
+  background: var(--gray-100);
+}
+
+.rc-mode-card--active.rc-mode-card--dry_run {
+  border-color: var(--blue);
+  background: rgb(59 130 246 / 8%);
+}
+
+.rc-mode-card--active.rc-mode-card--dry_run > i,
+.rc-mode-card--active.rc-mode-card--dry_run .rc-mode-card-title {
+  color: var(--blue-dark);
+}
+
+.rc-mode-card--active.rc-mode-card--enforce {
+  border-color: var(--red);
+  background: rgb(239 68 68 / 8%);
+}
+
+.rc-mode-card--active.rc-mode-card--enforce > i,
+.rc-mode-card--active.rc-mode-card--enforce .rc-mode-card-title {
+  color: var(--red-dark);
+}
+
+.rc-mode-card--active .rc-mode-card-badge {
+  background: var(--gray-700);
+  color: #fff;
+}
+
+/* ── Kill-switch row ────────────────────────── */
+
+.rc-killswitch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--gray-100);
+}
+
+.rc-killswitch-hint {
+  font-size: var(--text-sm);
+  color: var(--gray-500);
+}
+
+/* ── Buttons ────────────────────────────────── */
+
+.rc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.rc-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 25%);
+}
+
+.rc-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rc-btn--primary {
+  background: var(--blue-dark);
+  color: #fff;
+}
+
+.rc-btn--primary:hover:not(:disabled) {
+  background: var(--blue);
+}
+
+.rc-btn--secondary {
+  background: var(--gray-50);
+  color: var(--gray-900);
+  border-color: var(--gray-300);
+}
+
+.rc-btn--secondary:hover:not(:disabled) {
+  background: #fff;
+  border-color: var(--gray-400);
+  box-shadow: var(--shadow-sm);
+}
+
+.rc-btn--danger {
+  background: var(--red-dark);
+  color: #fff;
+}
+
+.rc-btn--danger:hover:not(:disabled) {
+  background: var(--red);
+}
+
+/* ── Run result block ───────────────────────── */
+
+.rc-result {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-200);
+  background: var(--gray-50);
+}
+
+.rc-result--error {
+  border-color: var(--red-light);
+  background: rgb(239 68 68 / 8%);
+}
+
+.rc-result--warning {
+  border-color: var(--orange-light);
+  background: rgb(249 115 22 / 8%);
+}
+
+.rc-result--ok {
+  border-color: var(--green-light);
+  background: rgb(16 185 129 / 8%);
+}
+
+.rc-result-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--gray-800);
+  margin-bottom: var(--space-3);
+}
+
+.rc-result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.rc-result-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.rc-result-item dt {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--gray-500);
+}
+
+.rc-result-item dd {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--gray-900);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Table ──────────────────────────────────── */
+
+.rc-list-wrap {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.rc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.rc-table thead th {
+  text-align: start;
+  padding: var(--space-3) var(--space-4);
+  background: var(--gray-50);
+  color: var(--gray-700);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+  border-bottom: 1px solid var(--gray-200);
+  white-space: nowrap;
+}
+
+.rc-table tbody td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--gray-100);
+  color: var(--gray-900);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.rc-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.rc-table tbody tr:hover td {
+  background: var(--gray-50);
+}
+
+.rc-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-mono {
+  font-variant-numeric: tabular-nums;
+  color: var(--gray-600);
+}
+
+.rc-when {
+  color: var(--gray-600);
+  font-size: var(--text-xs);
+}
+
+/* ── Mode pill (runs table) ─────────────────── */
+
+.rc-mode-pill {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  background: var(--gray-100);
+  color: var(--gray-700);
+  white-space: nowrap;
+}
+
+.rc-mode-pill--dry_run {
+  background: rgb(59 130 246 / 10%);
+  color: var(--blue-dark);
+}
+
+.rc-mode-pill--enforce {
+  background: rgb(239 68 68 / 10%);
+  color: var(--red-dark);
+}
+
+/* ── Status badges ──────────────────────────── */
+
+.rc-badge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  white-space: nowrap;
+}
+
+.rc-badge.rc-level-ok {
+  background: rgb(16 185 129 / 10%);
+  color: var(--green-dark);
+}
+
+.rc-badge.rc-level-warning {
+  background: rgb(249 115 22 / 10%);
+  color: var(--orange-dark);
+}
+
+.rc-badge.rc-level-error {
+  background: rgb(239 68 68 / 10%);
+  color: var(--red-dark);
+}
+
+/* ── Empty / loading / error states ─────────── */
+
+.rc-empty,
+.rc-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-10) var(--space-4);
+  color: var(--gray-500);
+  text-align: center;
+}
+
+.rc-empty--small {
+  padding: var(--space-6) var(--space-4);
+}
+
+.rc-empty i {
+  font-size: var(--text-3xl);
+  color: var(--gray-300);
+}
+
+.rc-empty p,
+.rc-state p {
+  margin: 0;
+  font-size: var(--text-base);
+}
+
+.rc-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--gray-200);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: rc-spin var(--transition-slow) linear infinite;
+}
+
+.rc-spinner--inline {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+  display: inline-block;
+  vertical-align: -2px;
+}
+
+@keyframes rc-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rc-spinner {
+    animation-duration: 1200ms;
+  }
+}
+
+/* ── Enforce-confirm modal body ─────────────── */
+
+.rc-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.rc-confirm-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: rgb(239 68 68 / 8%);
+  border: 1px solid var(--red-light);
+  color: var(--red-dark);
+}
+
+.rc-confirm-warn i {
+  font-size: var(--text-lg);
+  margin-top: 2px;
+}
+
+.rc-confirm-warn p {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  font-weight: var(--font-medium);
+}
+
+.rc-confirm-label {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--gray-800);
+}
+
+.rc-input {
+  padding: var(--space-3);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--gray-900);
+  font-size: var(--text-base);
+  font-family: inherit;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.rc-input:focus-visible {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 25%);
+}
+
+.rc-confirm-hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--gray-500);
+}
+
+/* ── Access-denied + load-error states ──────── */
+
+.rc-access-denied,
+.rc-load-error {
+  max-width: 480px;
+  margin: var(--space-12) auto;
+  padding: var(--space-8) var(--space-6);
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+}
+
+.rc-access-denied i,
+.rc-load-error i {
+  font-size: var(--text-3xl);
+  color: var(--gray-400);
+  margin-bottom: var(--space-3);
+}
+
+.rc-load-error i {
+  color: var(--orange-dark);
+}
+
+.rc-access-denied h1,
+.rc-load-error h1 {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--gray-900);
+  margin: 0 0 var(--space-2);
+}
+
+.rc-access-denied p,
+.rc-load-error p {
+  font-size: var(--text-base);
+  color: var(--gray-600);
+  line-height: 1.5;
+  margin: 0 0 var(--space-5);
+}
+
+/* ── Responsive ─────────────────────────────── */
+
+@media (width <= 768px) {
+  .rc-mode-grid {
+    grid-template-columns: 1fr;
+  }
+}
