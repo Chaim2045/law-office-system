@@ -13,9 +13,15 @@
  * removes those provably-dead remnants. This guard locks the removal so it can't
  * silently regress.
  *
- * STILL OUT OF SCOPE here (later PRs / tracked): the ui-components
- * NotificationBellSystem dead class + the smart-faq-bot/virtual-assistant guarded
- * no-ops (PR1b), and the CROSS-APP admin-side decommission + rules (PR2-4).
+ * PR1b ALSO removes the orphaned `ui-components.js` NotificationBellSystem class
+ * (exported but never instantiated — `new NotificationBellSystem` appears nowhere
+ * and nothing imports it — the dead owner of the now-removed dropdown DOM).
+ *
+ * STILL OUT OF SCOPE here (tracked): the guarded no-op notification tabs in
+ * `smart-faq-bot.js` + `virtual-assistant-complete.js` — those components are
+ * entirely DISABLED (their <script> tags are commented out in index.html, never
+ * loaded), so their tabs were never user-visible; the whole-component fate is a
+ * separate decision. And the CROSS-APP admin-side decommission + rules (PR2-4).
  *
  * Created: 2026-06-29 — chore/retire-messaging-crossapp-remnants
  */
@@ -71,5 +77,18 @@ describe('PR1 — the orphaned dropdown markup is removed, the login-flag wrappe
     // main.js isInApp + authentication.js login/logout toggle this element's `hidden`
     // class — it must survive the dropdown removal as an (empty) flag element.
     expect(html, '#interfaceElements must still exist').toContain('id="interfaceElements"');
+  });
+});
+
+describe('PR1b — the orphaned ui-components NotificationBellSystem class is removed', () => {
+  it('ui-components.js no longer defines or exports NotificationBellSystem (dead, never instantiated)', () => {
+    const src = read('js/modules/ui-components.js');
+    expect(src, 'the dead NotificationBellSystem class must be gone').not.toContain('NotificationBellSystem');
+  });
+
+  it('the still-used ui-components exports survive (DOMCache / ActionFlowManager)', () => {
+    const src = read('js/modules/ui-components.js');
+    expect(src, 'DOMCache must remain').toContain('class DOMCache');
+    expect(src, 'ActionFlowManager must remain').toContain('class ActionFlowManager');
   });
 });
