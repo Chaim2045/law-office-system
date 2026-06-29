@@ -161,8 +161,6 @@ async function handleLogin() {
       ).catch(err => console.warn('PresenceSystem:', err));
     }
 
-    this.initAIChatSystem();
-
   } catch (error) {
     console.error('Login error:', error);
 
@@ -687,9 +685,6 @@ btn.disabled = false;
     showApp.call(this);
     console.log('✅ showApp completed');
 
-    // ⚡ Lazy load AI Chat System AFTER successful login
-    this.initAIChatSystem();
-
   } catch (error) {
     console.error('❌ Google Login Error:', error);
 
@@ -827,9 +822,6 @@ btn.disabled = false;
     console.log('🎯 Calling showApp...');
     showApp.call(this);
     console.log('✅ showApp completed');
-
-    // ⚡ Lazy load AI Chat System AFTER successful login
-    this.initAIChatSystem();
 
   } catch (error) {
     console.error('❌ Apple Login Error:', error);
@@ -1168,94 +1160,6 @@ allFilled = false;
   });
 }
 
-/**
- * ⚡ Lazy load AI Chat System
- * טעינה דינמית של מערכת AI Chat אחרי התחברות מוצלחת
- * @description מייעל ביצועים - חוסך ~70KB בטעינה ראשונית
- */
-async function initAIChatSystem() {
-  try {
-    // בדיקה אם כבר נטען
-    if (window.aiChat) {
-      Logger.log('[AI Chat] Already initialized, skipping');
-      return;
-    }
-
-    // בדיקה אם LazyLoader זמין
-    if (!window.lazyLoader) {
-      console.error('[AI Chat] LazyLoader not available');
-      return;
-    }
-
-    Logger.log('[AI Chat] 🚀 Starting lazy load...');
-    const startTime = performance.now();
-
-    // Phase 0: Load config first — alone
-    await window.lazyLoader.loadScript(
-      'js/modules/ai-system/ai-config.js',
-      { version: '2.0.0' }
-    );
-
-    // Phase 0.5: Check if AI is configured
-    if (!window.AI_CONFIG || !window.AI_CONFIG.apiKey || window.AI_CONFIG.apiKey === 'YOUR_API_KEY_HERE') {
-      Logger.log('[AI Chat] Not configured — skipping initialization');
-      return;
-    }
-
-    // Phase 1: Load remaining AI scripts (config already loaded)
-    const aiScripts = [
-      { src: 'js/modules/ai-system/ai-engine.js', options: { version: '2.0.0' } },
-      { src: 'js/modules/ai-system/ai-context-builder.js', options: { version: '2.0.0' } },
-      { src: 'js/modules/UserReplyModal.js', options: { version: '1.0.3-threads' } },
-      { src: 'js/config/message-categories.js', options: { version: '1.0.0' } },
-      { src: 'js/modules/notification-bell.js', options: { version: '20251210-fix' } },
-      { src: 'js/modules/ai-system/ThreadView.js', options: { version: '1.0.4-mark-as-read' } }
-    ];
-    await window.lazyLoader.loadScripts(aiScripts);
-
-    // טען את ה-UI אחרון (תלוי בשאר)
-    await window.lazyLoader.loadScript(
-      'js/modules/ai-system/ai-chat-ui.js',
-      { version: '2.0.7-categories' }
-    );
-
-    // אתחל את מערכת AI Chat
-    if (window.AIChatUI && !window.aiChat) {
-      window.aiChat = new window.AIChatUI();
-
-      const loadTime = (performance.now() - startTime).toFixed(0);
-      Logger.log(`[AI Chat] ✅ Initialized successfully (${loadTime}ms)`);
-    } else {
-      console.warn('[AI Chat] ⚠️ AIChatUI class not available after loading');
-    }
-
-    // ✅ אתחל את מערכת ההודעות (NotificationBell)
-    if (window.NotificationBellSystem) {
-      // יצירת instance אם לא קיים
-      if (!window.notificationBell) {
-        window.notificationBell = new window.NotificationBellSystem();
-        Logger.log('[NotificationBell] Instance created');
-      }
-
-      // חיבור למשתמש - גם אם ה-instance כבר קיים
-      if (this.currentUser && window.firebaseDB) {
-        const user = { email: this.currentUser };
-        window.notificationBell.startListeningToAdminMessages(user, window.firebaseDB);
-        Logger.log(`[NotificationBell] ✅ Listening to admin messages for ${user.email}`);
-      } else {
-        console.warn('[NotificationBell] ⚠️ Cannot start listening - missing user or DB', {
-          currentUser: this.currentUser,
-          firebaseDB: !!window.firebaseDB
-        });
-      }
-    }
-
-  } catch (error) {
-    console.error('[AI Chat] ❌ Failed to lazy load:', error);
-    // לא חוסם את המערכת - AI Chat הוא optional
-  }
-}
-
 // ════════════════════════════════════════════════════════════
 // FEATURE FLAG INITIALIZATION
 // ════════════════════════════════════════════════════════════
@@ -1314,6 +1218,5 @@ export {
   togglePasswordVisibility, // ← Toggle password visibility
   showError,                // ← Show error message
   hideError,                // ← Hide error message
-  initAIChatSystem,         // ⚡ Lazy loading
   initOAuthFeatureFlags     // ← Feature flags for OAuth
 };

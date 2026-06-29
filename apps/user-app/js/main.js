@@ -49,10 +49,6 @@ import SystemAnnouncementPopup from './modules/system-announcement-popup.js';
 // Break Manager - Floating break button with timer and timesheet recording
 import BreakManager from './modules/break-manager.js';
 
-// Notification System
-// NotificationBellSystem is loaded via script tag and available on window.notificationBell
-// No import needed here - it's initialized globally
-
 // Firebase Operations
 import * as FirebaseOps from './modules/firebase-operations.js';
 
@@ -169,7 +165,6 @@ class LawOfficeManager {
 
     // Module Instances
     this.domCache = new DOMCache();
-    this.notificationBell = window.notificationBell; // Use globally initialized instance
     this.clientValidation = new ClientValidation(this); // Pass 'this' as manager
     this.announcementTicker = new SystemAnnouncementTicker(); // System Announcement Ticker
     this.announcementPopup = new SystemAnnouncementPopup(); // System Announcement Popup
@@ -252,9 +247,8 @@ class LawOfficeManager {
     // Always show login screen - login only happens on manual button click
     this.showLogin();
 
-    // ✅ CRITICAL: Setup permanent auth state listener for NotificationBell
-    // This ensures NotificationBell starts even if page loads after login
-    this.setupNotificationBellListener();
+    // ✅ Setup permanent auth-state listener for system services (announcement ticker + popup)
+    this.setupServicesAuthListener();
 
     Logger.log('✅ System initialized');
   }
@@ -284,30 +278,6 @@ class LawOfficeManager {
 
         UIComponents.updateUserDisplay(this.currentUsername);
 
-        // ✅ CRITICAL: Start listening to admin messages in notification bell
-        console.log('🔍 [DEBUG] About to start NotificationBell listener...');
-        console.log('🔍 [DEBUG] this.notificationBell:', !!this.notificationBell);
-        console.log('🔍 [DEBUG] window.firebaseDB:', !!window.firebaseDB);
-        console.log('🔍 [DEBUG] user:', user);
-
-        if (this.notificationBell && window.firebaseDB) {
-          console.log('🔔 Starting NotificationBell listener for', user.email);
-          try {
-            this.notificationBell.startListeningToAdminMessages(user, window.firebaseDB);
-            console.log('✅ NotificationBell listener started successfully');
-            console.log('✅ [DEBUG] Listener confirmed active:', !!this.notificationBell.messagesListener);
-          } catch (error) {
-            console.error('❌ Failed to start NotificationBell listener:', error);
-          }
-        } else {
-          console.error('⚠️ CRITICAL: Cannot start NotificationBell listener!', {
-            hasNotificationBell: !!this.notificationBell,
-            hasFirebaseDB: !!window.firebaseDB,
-            notificationBell: this.notificationBell,
-            firebaseDB: window.firebaseDB
-          });
-        }
-
         // Load data and show app
         await this.loadData();
         this.showApp();
@@ -326,30 +296,15 @@ class LawOfficeManager {
   }
 
   /**
-   * Setup permanent NotificationBell auth listener
+   * Setup permanent auth-state listener for system services (announcement ticker + popup)
    * ✅ CRITICAL: This runs ALWAYS, even after page refresh
    */
-  setupNotificationBellListener() {
-    console.log('🔔 Setting up permanent NotificationBell listener...');
+  setupServicesAuthListener() {
+    console.log('🔔 Setting up permanent services auth listener...');
 
     firebase.auth().onAuthStateChanged((user) => {
       if (user && window.firebaseDB) {
         console.log('🔔 Auth state changed - User logged in:', user.email);
-
-        // ✅ Start NotificationBell if available
-        if (this.notificationBell) {
-          console.log('🔔 Starting NotificationBell listener...');
-          try {
-            // Start listening (safe to call multiple times - it checks internally)
-            this.notificationBell.startListeningToAdminMessages(user, window.firebaseDB);
-            console.log('✅ NotificationBell listener started successfully');
-            console.log('✅ Listener active:', !!this.notificationBell.messagesListener);
-          } catch (error) {
-            console.error('❌ Failed to start NotificationBell listener:', error);
-          }
-        } else {
-          console.log('ℹ️ NotificationBell not yet loaded - will auto-init when ready');
-        }
 
         // ✅ Start System Announcement Ticker - ONLY if user is inside the app (not on login screen)
         const interfaceElements = document.getElementById('interfaceElements');
@@ -372,9 +327,6 @@ class LawOfficeManager {
         }
       } else if (!user) {
         console.log('🔔 Auth state changed - User logged out, cleaning up...');
-        if (this.notificationBell) {
-          this.notificationBell.cleanup();
-        }
         // ✅ Cleanup System Announcement Ticker
         if (this.announcementTicker) {
           this.announcementTicker.cleanup();
@@ -509,10 +461,6 @@ class LawOfficeManager {
       clearInterval(this.refreshInterval);
     }
 
-    if (this.notificationBell?.cleanup) {
-      this.notificationBell.cleanup();
-    }
-
     // ✅ Stop real-time listeners
     this.stopRealTimeListeners();
 
@@ -597,11 +545,6 @@ class LawOfficeManager {
 
   async loginWithApple() {
     await Auth.loginWithApple.call(this);
-  }
-
-  // ⚡ Lazy Loading - AI Chat System
-  async initAIChatSystem() {
-    await Auth.initAIChatSystem.call(this);
   }
 
   /* ========================================
@@ -901,25 +844,6 @@ class LawOfficeManager {
       // 🔄 Update client validation and selectors (for old system)
       if (this.clientValidation) {
         this.clientValidation.updateBlockedClients();
-      }
-
-      // Update notifications bell with urgent tasks and critical clients
-      if (this.notificationBell) {
-        const urgentTasks = budgetTasks.filter(task => {
-          if (task.status === 'הושלם') {
-return false;
-}
-          const deadline = new Date(task.deadline);
-          const now = new Date();
-          const daysUntilDeadline = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
-          return daysUntilDeadline <= 3 && daysUntilDeadline >= 0;
-        });
-
-        // Get blocked/critical clients from validation
-        const blockedClients = this.clientValidation?.blockedClients || [];
-        const criticalClients = this.clientValidation?.criticalClients || [];
-
-        this.notificationBell.updateFromSystem(blockedClients, criticalClients, urgentTasks);
       }
 
       // ✅ Initialize Daily Meter (sidebar ring)
@@ -3292,10 +3216,6 @@ window.addEventListener('pagehide', () => {
   console.log('🧹 Page hiding - cleaning up resources');
   manager.cleanup();
 });
-
-// Expose notification systems globally
-window.notificationBell = manager.notificationBell;
-// window.notificationSystem already exists from notification-system.js (global instance)
 
 // Expose navigation functions globally (for onclick handlers)
 window.switchTab = Navigation.switchTab;
