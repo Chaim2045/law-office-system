@@ -3219,8 +3219,6 @@ window.addEventListener('pagehide', () => {
 
 // Expose navigation functions globally (for onclick handlers)
 window.switchTab = Navigation.switchTab;
-window.toggleNotifications = Navigation.toggleNotifications;
-window.clearAllNotifications = Navigation.clearAllNotifications;
 window.openSmartForm = Navigation.openSmartForm;
 window.logout = Auth.logout;
 window.confirmLogout = Auth.confirmLogout;

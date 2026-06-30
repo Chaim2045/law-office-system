@@ -329,31 +329,9 @@
   </head>
 
   <body>
-    <!-- ===== מערכת התראות (מוסתרת עד כניסה למערכת) ===== -->
-    <!-- NOTIFICATION SYSTEM (Hidden until login) -->
-    <div id="interfaceElements" class="hidden">
-      <div class="notifications-dropdown" id="notificationsDropdown">
-        <div class="notifications-header">
-          <div class="notifications-title">
-            <i class="fas fa-bell"></i>
-            <span>התראות מערכת</span>
-          </div>
-          <button class="clear-all-btn" onclick="clearAllNotifications()">
-            <i class="fas fa-trash"></i>
-            <span class="clear-all-text">נקה הכל</span>
-          </button>
-        </div>
-        <div class="notifications-content" id="notificationsContent">
-          <!-- Dynamic notifications will be inserted here -->
-        </div>
-        <div class="notifications-footer">
-          <button class="clear-all-btn-mobile" onclick="clearAllNotifications()">
-            <i class="fas fa-trash"></i>
-            נקה את כל ההתראות
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- ===== דגל מצב-אפליקציה (מוסתר עד כניסה למערכת) ===== -->
+    <!-- App-visibility flag (hidden until login; toggled by authentication.js, read by main.js isInApp) -->
+    <div id="interfaceElements" class="hidden"></div>
 
     <!-- ===== מכל האפליקציה הראשי ===== -->
     <!-- MAIN APPLICATION CONTAINER -->
@@ -1638,19 +1616,6 @@
           setDateTimeDefaults();
         }
       })();
-    </script>
-
-    <!-- Notification Bell Helper Functions -->
-    <script>
-      // Global helper function for clearing notifications
-      // NotificationBell is lazy-loaded, so this provides safe fallback
-      function clearAllNotifications() {
-        if (window.notificationBell) {
-          window.notificationBell.clearAllNotifications();
-        } else {
-          console.warn('NotificationBell not loaded yet');
-        }
-      }
     </script>
   </body>
 </html>
