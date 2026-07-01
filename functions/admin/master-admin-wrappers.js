@@ -619,8 +619,7 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
       authUserData,
       clientsSnapshot,
       tasksSnapshot,
-      timesheetSnapshot,
-      messagesSnapshot
+      timesheetSnapshot
     ] = await Promise.all([
       // שליפת נתוני Auth
       employeeData.authUID ? auth.getUser(employeeData.authUID).catch(() => null) : Promise.resolve(null),
@@ -643,13 +642,6 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
         .where('date', '>=', startOfMonth)
         .where('date', '<=', endOfMonth)
         .orderBy('date', 'desc')
-        .get(),
-
-      // שליפת הודעות (messages sent to this user)
-      db.collection('user_messages')
-        .where('to', '==', data.email)
-        .orderBy('createdAt', 'desc')
-        .limit(50)
         .get()
     ]);
 
@@ -692,11 +684,6 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
     // ✅ REFACTOR: activity removed - loaded lazily via getUserActivity
     // Activity will be loaded on-demand when user clicks on "Activity" tab
 
-    // עיבוד הודעות
-    const messages = messagesSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
 
     // בניית תשובה
     const response = {
@@ -720,7 +707,6 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
       tasks: tasks,
       timesheet: timesheet,
       activity: [], // ✅ REFACTOR: Empty - loaded lazily via getUserActivity
-      messages: messages, // ✅ הוספת הודעות
       stats: {
         totalClients: clients.length,
         activeTasks: tasks.filter(t => t.status === 'פעיל').length, // ✅ System uses "פעיל" (not "ממתין"/"בטיפול")
