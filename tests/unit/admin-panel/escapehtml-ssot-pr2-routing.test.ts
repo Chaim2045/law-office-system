@@ -60,12 +60,10 @@ function escaperBody(src: string, sig: string): string {
 
 // [file, escaper-signature (unique within the file), parameter name]
 const ROUTED: ReadonlyArray<readonly [string, string, string]> = [
-  ['js/ui/MessagesFullscreenModal.js', 'escapeHTML(text) {', 'text'],
   ['js/fluent/FluentDataGrid.js', 'escapeHtml(text) {', 'text'],
   ['js/ui/DeleteDataSidePanel.js', 'escapeHtml(text) {', 'text'],
   ['js/features/ServiceOverdraftResolution.js', 'escapeHtml(text) {', 'text'],
   ['js/ui/AnnouncementCard.js', 'static escapeHtml(text) {', 'text'],
-  ['js/ui/AdminThreadView.js', '_escapeHTML(str) {', 'str'],
   ['js/ui/ClientReportModal.js', 'escapeHtml(text) {', 'text'],
   ['js/ui/ClientManagementModal.js', 'escapeHtml(text) {', 'text'],
   ['js/ui/ReadStatusModal.js', 'escapeHtml(text) {', 'text'],
@@ -79,8 +77,8 @@ const ROUTED: ReadonlyArray<readonly [string, string, string]> = [
 ];
 
 describe('escapeHtml PR2 — every routed escaper delegates to the SSOT', () => {
-  it('routes all 16 escapers (and the count is exactly 16)', () => {
-    expect(ROUTED).toHaveLength(16);
+  it('routes all 14 escapers (and the count is exactly 14)', () => {
+    expect(ROUTED).toHaveLength(14);
   });
 
   for (const [file, sig, param] of ROUTED) {
@@ -121,7 +119,6 @@ describe('escapeHtml PR2 — load-order invariant (escape-html.js before EVERY r
     ['index.html', [
       'js/ui/UsersTable.js', 'js/ui/UserDetailsModal.js', 'js/ui/DeleteDataSidePanel.js',
       'js/managers/WhatsAppMessageDialog.js', 'js/ui/UserAlertsPanel.js',
-      'js/ui/MessagesFullscreenModal.js', 'js/ui/AdminThreadView.js',
       'js/ui/TaskApprovalSidePanel.js', 'js/managers/ReportGenerator.js'
     ]],
     ['system-announcements.html', ['js/ui/AnnouncementCard.js', 'js/ui/ReadStatusModal.js']],

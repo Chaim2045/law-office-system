@@ -84,20 +84,9 @@ describe('escapeHtml PR3a/PR3c — WorkloadCard escapes via the SSOT', () => {
   });
 });
 
-describe('escapeHtml PR3a — notification-bell text sites routed (onclick site deferred to PR3c)', () => {
-  const src = read('js/modules/notification-bell.js');
-
-  it('the 3 notification text sites now use window.escapeHtml', () => {
-    const count = (src.match(/\$\{window\.escapeHtml\(/g) || []).length;
-    expect(count, 'expected the 3 notification-title/description/time sites to route').toBeGreaterThanOrEqual(3);
-  });
-
-  it('safeText is KEPT for the onclick JS-string site (PR3c handles the data-attr refactor)', () => {
-    expect(src, 'safeText must remain for the openReplyModal onclick').toContain('function safeText(');
-    // the openReplyModal onclick still uses safeText + the apostrophe escaping — untouched here
-    expect(src, 'the onclick JS-string site must be left for PR3c').toContain(".replace(/'/g");
-  });
-});
+// NOTE: the "notification-bell text sites routed" block was removed when PR2
+// (chore/retire-messaging-admin-decommission) deleted js/modules/notification-bell.js
+// as part of retiring the dead admin↔employee user_messages messaging.
 
 describe('escapeHtml PR3a — SSOT behavioral contract the routing depends on', () => {
   it('escapes all 5 entities', () => {

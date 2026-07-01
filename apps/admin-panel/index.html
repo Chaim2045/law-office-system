@@ -47,8 +47,6 @@
     <link rel="stylesheet" href="css/components.css?v=e02c45c">
     <link rel="stylesheet" href="css/user-details.css?v=e02c45c">
     <link rel="stylesheet" href="css/delete-data-side-panel.css?v=e02c45c">
-    <link rel="stylesheet" href="css/admin-thread-view.css?v=e02c45c">
-    <link rel="stylesheet" href="css/message-categories.css?v=e02c45c">
     <link rel="stylesheet" href="css/performance-tab.css?v=e02c45c">
     <link rel="stylesheet" href="css/task-approval-side-panel.css?v=e02c45c">
     <link rel="stylesheet" href="components/task-approval-system/styles/task-approval-dialog.css?v=e02c45c">
@@ -249,12 +247,7 @@
     <!-- ===== WhatsApp Messaging System ===== -->
     <script src="js/managers/WhatsAppMessageDialog.js?v=20260621-escapehtml-pr2"></script>
 
-    <script src="js/config/message-categories.js?v=e02c45c"></script>
-    <script src="js/managers/AlertCommunicationManager.js?v=e02c45c"></script>
     <script src="js/ui/UserAlertsPanel.js?v=20260621-escapehtml-pr2"></script>
-    <script src="js/ui/QuickMessageDialog.js?v=e02c45c"></script>
-    <script src="js/ui/MessagesFullscreenModal.js?v=20260621-escapehtml-pr2"></script>
-    <script src="js/ui/AdminThreadView.js?v=20260621-escapehtml-pr2"></script>
 
     <!-- ===== Task Approval System (for Side Panel) ===== -->
     <script type="module">
@@ -271,17 +264,6 @@
     <script src="js/core/budget-status.js?v=e02c45c"></script>
     <script src="js/ui/TaskApprovalSidePanel.js?v=20260621-escapehtml-pr2"></script>
 
-    <!-- ✅ NotificationBell - For admins who are also users -->
-    <script src="js/modules/notification-bell.js?v=20260621-escapehtml-pr3a"></script>
-    <script>
-        // NotificationBell is already initialized by the module itself
-        // Just verify it's available
-        if (window.notificationBell) {
-            console.log('✅ [Admin Panel] NotificationBell available');
-        } else {
-            console.error('❌ [Admin Panel] NotificationBell not available!');
-        }
-    </script>
 
     <!-- ===== Floating Action Button ===== -->
     <script src="js/ui/FloatingActionButton.js?v=e02c45c"></script>
@@ -358,44 +340,6 @@
                     } catch (error) {
                         console.error('❌ Failed to initialize WhatsApp Message Dialog:', error);
                     }
-                }
-
-                // Initialize Alert Communication System
-                if (window.AlertCommunicationManager && window.firebaseDB && window.DataManager) {
-                    try {
-                        const adminUser = window.firebaseAuth.currentUser;
-                        window.alertCommManager = new window.AlertCommunicationManager(
-                            window.firebaseDB,
-                            window.DataManager,
-                            window.alertEngine || null
-                        );
-                        await window.alertCommManager.init(adminUser);
-                        console.log('✅ Alert Communication Manager initialized');
-
-                        // Start listening to user responses
-                        window.alertCommManager.listenToResponses(async (responses) => {
-                            console.log(`📬 Admin has ${responses.length} responses from users`);
-
-                            // Update UsersTable response counts
-                            if (window.UsersTable) {
-                                await window.UsersTable.loadResponseCounts();
-                            }
-
-                            // Show badge or notification if there are new responses
-                            if (responses.length > 0) {
-                                console.log('💬 Latest responses:', responses.slice(0, 3).map(r => ({
-                                    from: r.toName,
-                                    message: r.message,
-                                    response: r.response
-                                })));
-                            }
-                        });
-                        console.log('✅ Listening to user responses');
-                    } catch (error) {
-                        console.error('❌ Failed to initialize Alert Communication Manager:', error);
-                    }
-                } else {
-                    console.warn('⚠️ Alert Communication Manager not available or dependencies missing');
                 }
 
                 // Initialize Floating Action Button
