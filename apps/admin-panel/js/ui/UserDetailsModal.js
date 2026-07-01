@@ -13,29 +13,6 @@
     'use strict';
 
     /**
-     * ========================================
-     * Message Type Constants
-     * קבועי סוגי הודעות
-     * ========================================
-     *
-     * הודעות מערכת (לא להציג בתקשורת מנהל-משתמש):
-     * - task_approval: הודעת אישור תקציב משימה
-     * - task_rejection: הודעת דחיית תקציב משימה
-     * - task_update: עדכון סטטוס משימה
-     * - system_notification: הודעות מערכת כלליות
-     *
-     * הודעות תקשורת (להציג):
-     * - admin_message: הודעה שהמנהל שלח למשתמש
-     * - user_reply: תגובת משתמש למנהל
-     */
-    const SYSTEM_MESSAGE_TYPES = [
-        'task_approval',
-        'task_rejection',
-        'task_update',
-        'system_notification'
-    ];
-
-    /**
      * UserDetailsModal Class
      * מנהל את מודאל פרטי המשתמש
      */
@@ -45,7 +22,6 @@
             this.modalId = null;
             this.activeTab = 'general';
             this.userData = null; // Full user data from backend
-            this.threadListener = null; // Real-time listener for thread updates
 
             // ✅ Activity tab state (Lazy Loading)
             this.activityLoaded = false;  // האם פעילות נטענה?
@@ -73,9 +49,6 @@
             // Tasks tab state
             this.tasksSubTab = 'active'; // 'active' or 'completed'
             this.tasksPanelSubTab = 'active'; // 'active' or 'completed' (for slide-in panel)
-
-            // Messages tab state
-            this.messageFilter = 'all'; // all / unread / read / archived
 
             // Performance tab state — separate from userData.hours to avoid side effects
             this.performanceHours = null;        // Timesheet entries for performance tab (separate month)
@@ -157,24 +130,13 @@
                     console.log('✅ User data loaded from Firestore (fast fallback)');
                 }
 
-                // ✅ Find active thread with user
-                const threadInfo = await this.findActiveThread(this.currentUser.email);
-                if (threadInfo) {
-                    this.userData.threadInfo = threadInfo;
-                    console.log(`✅ Active thread found: ${threadInfo.messageId}`);
-                } else {
-                    this.userData.threadInfo = null;
-                    console.log('📭 No active thread');
-                }
-
                 // Update modal content with full data
                 console.log('🔄 Updating modal content with loaded data:', {
                     clients: this.userData?.clients?.length || 0,
                     tasks: this.userData?.tasks?.length || 0,
                     activity: this.userData?.activity?.length || 0,
                     clientsCount: this.userData?.clientsCount,
-                    tasksCount: this.userData?.tasksCount,
-                    hasThread: !!this.userData?.threadInfo
+                    tasksCount: this.userData?.tasksCount
                 });
 
                 window.ModalManager.updateContent(this.modalId, this.renderContent());
@@ -182,9 +144,6 @@
 
                 // Setup events after content is rendered
                 this.setupEvents();
-
-                // 👂 Start real-time listener for thread updates
-                this.startThreadListener();
 
             } catch (error) {
                 console.error('❌ Error loading user data:', error);
@@ -199,7 +158,6 @@
                     timesheet: [],
                     hours: [], // Alias for compatibility
                     activity: [],
-                    messages: [], // ✅ תיקון: הוספת messages
                     stats: {},
                     clientsCount: 0,
                     tasksCount: 0,
@@ -242,7 +200,6 @@
                 timesheet: responseData.timesheet || [],
                 hours: responseData.timesheet || [],
                 activity: responseData.activity || [],
-                messages: responseData.messages || [], // ✅ תיקון: הוספת messages
                 stats: responseData.stats || {},
                 clientsCount: responseData.stats?.totalClients || 0,
                 tasksCount: responseData.stats?.activeTasks || 0,
@@ -306,7 +263,7 @@
             const userId = userData.uid || this.currentUser.uid || this.currentUser.id;
 
             // Load related data in parallel for speed
-            const [clientsSnapshot, tasksSnapshot, timesheetSnapshot, activitySnapshot, messagesSnapshot] = await Promise.all([
+            const [clientsSnapshot, tasksSnapshot, timesheetSnapshot, activitySnapshot] = await Promise.all([
                 // Get user's clients (limit to recent 50)
                 db.collection('cases')
                     .where('assignedTo', 'array-contains', userEmail)
@@ -346,25 +303,6 @@
                     .orderBy('timestamp', 'desc')
                     .limit(100)
                     .get()
-                    .catch(() => ({ docs: [] })),
-
-                // Get admin messages sent to this user (last 100)
-                // ✅ סינון מקצועי: רק תקשורת ידנית מנהל↔משתמש (לא הודעות מערכת)
-                // הודעות מערכת (task_approval, task_rejection וכו') לא מוצגות כאן
-                db.collection('user_messages')
-                    .where('to', '==', userEmail)
-                    .orderBy('createdAt', 'desc')
-                    .limit(200)  // Fetch more to ensure 100+ after filtering
-                    .get()
-                    .then(snapshot => {
-                        // Filter out system messages using type field
-                        const filtered = snapshot.docs.filter(doc => {
-                            const type = doc.data().type;
-                            return !SYSTEM_MESSAGE_TYPES.includes(type);
-                        });
-                        // Return only first 100 after filtering
-                        return { docs: filtered.slice(0, 100) };
-                    })
                     .catch(() => ({ docs: [] }))
             ]);
 
@@ -398,21 +336,6 @@
                 ...doc.data()
             }));
 
-            // Process messages
-            const messages = messagesSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-
-            // 🔍 DEBUG: Log messages with repliesCount
-            console.log(`📨 Loaded ${messages.length} messages`);
-            const messagesWithReplies = messages.filter(m => m.repliesCount > 0);
-            console.log(`💬 Messages with replies: ${messagesWithReplies.length}`, messagesWithReplies.map(m => ({
-                id: m.id,
-                repliesCount: m.repliesCount,
-                message: m.message?.substring(0, 50)
-            })));
-
             // Calculate stats
             const now = new Date();
             const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
@@ -443,7 +366,6 @@
                 timesheet,
                 hours: timesheet,
                 activity,
-                messages,
                 stats: {
                     totalClients: clientsCount,
                     activeTasks: tasksCount,
@@ -461,122 +383,8 @@
             this.initialLoadMonth = this.selectedMonth;
             this.initialLoadYear = this.selectedYear;
 
-            console.log(`✅ Loaded user data: ${clients.length} clients, ${tasks.length} tasks, ${timesheet.length} timesheet entries, ${activity.length} activity logs, ${messages.length} messages`);
+            console.log(`✅ Loaded user data: ${clients.length} clients, ${tasks.length} tasks, ${timesheet.length} timesheet entries, ${activity.length} activity logs`);
             console.log(`✅ Stats from DataManager: clientsCount=${clientsCount}, tasksCount=${tasksCount}, hoursThisMonth=${hoursThisMonthCalc}`);
-        }
-
-        /**
-         * Load original message from Firestore
-         * טעינת הודעה מקורית מ-Firestore
-         * @param {string} messageId - Message ID
-         * @returns {Promise<Object|null>} - Message data or null
-         */
-        async loadOriginalMessage(messageId) {
-            if (!window.firebaseDB) {
-                console.error('❌ Firestore not available');
-                return null;
-            }
-
-            try {
-                const doc = await window.firebaseDB
-                    .collection('user_messages')
-                    .doc(messageId)
-                    .get();
-
-                if (!doc.exists) {
-                    console.error('❌ Message not found:', messageId);
-                    return null;
-                }
-
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    ...data,
-                    createdAt: data.createdAt?.toDate(),
-                    lastReplyAt: data.lastReplyAt?.toDate()
-                };
-            } catch (error) {
-                console.error('❌ Error loading original message:', error);
-                return null;
-            }
-        }
-
-        /**
-         * Find active thread with user
-         * חיפוש שיחה פעילה עם משתמש
-         * @param {string} userEmail - User email
-         * @returns {Promise<Object|null>} - Thread info or null
-         */
-        async findActiveThread(userEmail) {
-            if (!window.firebaseDB) {
-                console.warn('⚠️ Firestore not available');
-                return null;
-            }
-
-            try {
-                console.log(`🔍 Searching for active thread with user: ${userEmail}`);
-
-                // ✅ FIX: Search for messages in BOTH directions
-                // Query 1: Messages sent TO the user (admin → user)
-                const sentToUserPromise = window.firebaseDB
-                    .collection('user_messages')
-                    .where('to', '==', userEmail)
-                    .orderBy('createdAt', 'desc')
-                    .limit(1)
-                    .get();
-
-                // Query 2: Messages sent FROM the user (user → admin or user replies)
-                const sentFromUserPromise = window.firebaseDB
-                    .collection('user_messages')
-                    .where('from', '==', userEmail)
-                    .orderBy('createdAt', 'desc')
-                    .limit(1)
-                    .get();
-
-                // Execute both queries in parallel
-                const [sentToUser, sentFromUser] = await Promise.all([
-                    sentToUserPromise,
-                    sentFromUserPromise
-                ]);
-
-                // Combine results
-                const allDocs = [...sentToUser.docs, ...sentFromUser.docs];
-
-                if (allDocs.length === 0) {
-                    console.log('📭 No active thread found (checked both directions)');
-                    return null;
-                }
-
-                // Sort by createdAt to get the most recent thread
-                allDocs.sort((a, b) => {
-                    const aTime = a.data().createdAt?.toDate() || new Date(0);
-                    const bTime = b.data().createdAt?.toDate() || new Date(0);
-                    return bTime - aTime;
-                });
-
-                const doc = allDocs[0];
-                const data = doc.data();
-
-                const threadInfo = {
-                    messageId: doc.id,
-                    message: data.message,
-                    repliesCount: data.repliesCount || 0,
-                    lastReplyAt: data.lastReplyAt?.toDate() || data.createdAt?.toDate(),
-                    lastReplyBy: data.lastReplyBy || data.from,
-                    status: data.status || 'sent',
-                    from: data.from,
-                    fromName: data.fromName,
-                    to: data.to,
-                    toName: data.toName
-                };
-
-                console.log(`✅ Found active thread: ${doc.id}, ${threadInfo.repliesCount} replies (direction: ${data.from === userEmail ? 'user→admin' : 'admin→user'})`);
-                return threadInfo;
-
-            } catch (error) {
-                console.error('❌ Error finding active thread:', error);
-                return null;
-            }
         }
 
         /**
@@ -712,9 +520,6 @@
                             </div>
                         </div>
 
-                        <!-- Communication Section -->
-                        ${this.renderCommunicationSection()}
-
                         <!-- Actions -->
                         <div class="user-info-section">
                             <h4 class="section-title">
@@ -743,337 +548,6 @@
                     </div>
                 </div>
             `;
-        }
-
-        /**
-         * Render communication section (dynamic button based on thread status)
-         * רינדור קטע תקשורת
-         */
-        renderCommunicationSection() {
-            const user = this.userData || this.currentUser;
-            const threadInfo = user.threadInfo;
-
-            // ✅ Check if thread EXISTS (not just if repliesCount > 0)
-            // If there's a messageId, a thread exists (even with 0 replies)
-            if (!threadInfo || !threadInfo.messageId) {
-                // אין שיחה פעילה - כפתור "שלח הודעה ראשונה"
-                return `
-                    <div class="user-info-section">
-                        <h4 class="section-title">
-                            <i class="fas fa-comments"></i>
-                            <span>תקשורת</span>
-                        </h4>
-                        <div class="communication-no-thread">
-                            <p class="no-thread-message">
-                                <i class="fas fa-envelope-open-text"></i>
-                                אין שיחה פעילה עם משתמש זה
-                            </p>
-                            <button
-                                class="btn btn-primary btn-send-first-message"
-                                data-user-email="${user.email}"
-                                data-user-name="${this.escapeHtml(user.displayName || user.username)}">
-                                <i class="fas fa-paper-plane"></i>
-                                שלח הודעה ראשונה
-                            </button>
-                        </div>
-                    </div>
-                `;
-            } else {
-                // יש שיחה פעילה - כפתור "צפה בשיחה" + מידע
-                const isAdminLastReply = threadInfo.lastReplyBy === window.currentAdminUser?.email;
-                const statusBadge = isAdminLastReply
-                    ? '<span class="badge badge-waiting">⏳ ממתין לתגובה מהמשתמש</span>'
-                    : '<span class="badge badge-pending">❗ ממתין לתגובתך</span>';
-
-                // ✅ Total messages = 1 (original) + repliesCount
-                const totalMessages = 1 + (threadInfo.repliesCount || 0);
-
-                return `
-                    <div class="user-info-section">
-                        <h4 class="section-title">
-                            <i class="fas fa-comments"></i>
-                            <span>תקשורת</span>
-                        </h4>
-                        <div class="communication-active-thread">
-                            <div class="thread-summary">
-                                <p><strong>שיחה פעילה:</strong> ${totalMessages} ${totalMessages === 1 ? 'הודעה' : 'הודעות'}</p>
-                                <p><strong>עדכון אחרון:</strong> ${this.formatRelativeTime(threadInfo.lastReplyAt)}</p>
-                                <p><strong>סטטוס:</strong> ${statusBadge}</p>
-                            </div>
-                            <button
-                                class="btn btn-primary btn-view-thread"
-                                data-message-id="${threadInfo.messageId}">
-                                <i class="fas fa-comments"></i>
-                                צפה בשיחה (${totalMessages})
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        /**
-         * Refresh communication section after sending first message
-         * רענון אזור התקשורת אחרי שליחת הודעה ראשונה
-         */
-        async refreshCommunicationSection() {
-            if (!this.userData || !window.firebaseDB) {
-                console.error('❌ Cannot refresh communication section - missing data');
-                return;
-            }
-
-            console.log('🔄 Refreshing communication section...');
-
-            try {
-                // חיפוש thread חדש
-                const threadInfo = await this.findActiveThread(this.userData.email);
-
-                // Update userData with new thread info
-                this.userData.threadInfo = threadInfo;
-
-                // מציאת אזור התקשורת ב-DOM (multiple selectors for robustness)
-                let commSection = document.querySelector('.btn-send-first-message')?.closest('.user-info-section');
-
-                if (!commSection) {
-                    commSection = document.querySelector('.btn-view-thread')?.closest('.user-info-section');
-                }
-
-                if (!commSection) {
-                    // Try to find by section heading
-                    const sections = document.querySelectorAll('.user-info-section');
-                    for (const section of sections) {
-                        const heading = section.querySelector('.section-title');
-                        if (heading && heading.textContent.includes('תקשורת')) {
-                            commSection = section;
-                            break;
-                        }
-                    }
-                }
-
-                if (!commSection) {
-                    console.warn('⚠️ Communication section not found in DOM - full refresh needed');
-                    // Full modal refresh as fallback
-                    window.ModalManager.updateContent(this.modalId, this.renderContent());
-                    this.setupEvents();
-                    return;
-                }
-
-                // רינדור מחדש של סקציית התקשורת
-                const newHTML = await this.renderCommunicationSection(threadInfo);
-
-                // החלפת ה-HTML
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = newHTML;
-                const newSection = tempDiv.firstElementChild;
-
-                if (newSection) {
-                    commSection.replaceWith(newSection);
-
-                    // צירוף מחדש של event listeners
-                    this.reattachCommunicationListeners();
-
-                    console.log('✅ Communication section refreshed successfully');
-
-                    if (threadInfo) {
-                        console.log(`   New state: Thread exists with ${threadInfo.repliesCount} replies`);
-                    } else {
-                        console.log('   New state: No thread yet');
-                    }
-                }
-
-            } catch (error) {
-                console.error('❌ Error refreshing communication section:', error);
-            }
-        }
-
-        /**
-         * Start listening to thread updates in real-time
-         * התחל להאזין לעדכוני שיחה בזמן אמת
-         */
-        startThreadListener() {
-            if (!this.userData || !window.firebaseDB) {
-                console.warn('⚠️ Cannot start thread listener - missing data');
-                return;
-            }
-
-            // Stop existing listeners if any
-            if (this.threadListener) {
-                this.threadListener();
-                this.threadListener = null;
-            }
-            if (this.threadListenerFromUser) {
-                this.threadListenerFromUser();
-                this.threadListenerFromUser = null;
-            }
-
-            const userEmail = this.userData.email;
-
-            console.log(`👂 Starting real-time listeners for threads with: ${userEmail} (both directions)`);
-
-            // Handler function to process thread updates
-            const handleThreadUpdate = (snapshot, direction) => {
-                if (snapshot.empty) {
-                    console.log(`📭 No messages found (${direction}) - checking other direction...`);
-                    return null;
-                }
-
-                const doc = snapshot.docs[0];
-                const data = doc.data();
-
-                return {
-                    messageId: doc.id,
-                    message: data.message,
-                    repliesCount: data.repliesCount || 0,
-                    lastReplyAt: data.lastReplyAt?.toDate() || data.createdAt?.toDate(),
-                    lastReplyBy: data.lastReplyBy || data.from,
-                    status: data.status || 'sent',
-                    from: data.from,
-                    fromName: data.fromName,
-                    to: data.to,
-                    toName: data.toName,
-                    direction: direction
-                };
-            };
-
-            // Shared state for comparing which thread is more recent
-            let latestThreadToUser = null;
-            let latestThreadFromUser = null;
-
-            const updateUI = () => {
-                // Compare timestamps and use the most recent thread
-                let mostRecentThread = null;
-
-                if (latestThreadToUser && latestThreadFromUser) {
-                    const toUserTime = latestThreadToUser.lastReplyAt?.getTime() || 0;
-                    const fromUserTime = latestThreadFromUser.lastReplyAt?.getTime() || 0;
-                    mostRecentThread = fromUserTime > toUserTime ? latestThreadFromUser : latestThreadToUser;
-                } else {
-                    mostRecentThread = latestThreadToUser || latestThreadFromUser;
-                }
-
-                const currentThreadInfo = this.userData?.threadInfo;
-
-                if (!mostRecentThread) {
-                    console.log('📭 No threads found in either direction - showing "send first message" button');
-                    this.userData.threadInfo = null;
-                    this.refreshCommunicationSection();
-                    return;
-                }
-
-                // Only refresh if data actually changed
-                if (
-                    !currentThreadInfo ||
-                    currentThreadInfo.messageId !== mostRecentThread.messageId ||
-                    currentThreadInfo.repliesCount !== mostRecentThread.repliesCount
-                ) {
-                    console.log(`🔄 Thread data changed - refreshing UI... (${mostRecentThread.direction})`);
-                    this.userData.threadInfo = mostRecentThread;
-                    this.refreshCommunicationSection();
-                } else {
-                    console.log('ℹ️ Thread data unchanged - skipping refresh');
-                }
-            };
-
-            // ✅ Listener 1: Messages sent TO the user (admin → user)
-            this.threadListener = window.firebaseDB
-                .collection('user_messages')
-                .where('to', '==', userEmail)
-                .orderBy('createdAt', 'desc')
-                .limit(1)
-                .onSnapshot(
-                    (snapshot) => {
-                        latestThreadToUser = handleThreadUpdate(snapshot, 'admin→user');
-                        console.log(`📨 Listener 1 (admin→user): ${latestThreadToUser ? latestThreadToUser.messageId : 'none'}`);
-                        updateUI();
-                    },
-                    (error) => {
-                        console.error('❌ Thread listener error (admin→user):', error);
-                    }
-                );
-
-            // ✅ Listener 2: Messages sent FROM the user (user → admin)
-            this.threadListenerFromUser = window.firebaseDB
-                .collection('user_messages')
-                .where('from', '==', userEmail)
-                .orderBy('createdAt', 'desc')
-                .limit(1)
-                .onSnapshot(
-                    (snapshot) => {
-                        latestThreadFromUser = handleThreadUpdate(snapshot, 'user→admin');
-                        console.log(`📨 Listener 2 (user→admin): ${latestThreadFromUser ? latestThreadFromUser.messageId : 'none'}`);
-                        updateUI();
-                    },
-                    (error) => {
-                        console.error('❌ Thread listener error (user→admin):', error);
-                    }
-                );
-
-            console.log('✅ Thread listener started successfully');
-        }
-
-        /**
-         * Reattach event listeners for communication buttons
-         * צירוף מחדש של event listeners לכפתורי תקשורת
-         */
-        reattachCommunicationListeners() {
-            const modal = document.getElementById(this.modalId);
-            if (!modal) {
-return;
-}
-
-            // "שלח הודעה ראשונה" button
-            const sendFirstMessageBtn = modal.querySelector('.btn-send-first-message');
-            if (sendFirstMessageBtn) {
-                sendFirstMessageBtn.addEventListener('click', async () => {
-                    const userEmail = sendFirstMessageBtn.dataset.userEmail;
-                    const userName = sendFirstMessageBtn.dataset.userName;
-
-                    console.log('📤 Opening new thread for user:', userEmail);
-
-                    if (window.adminThreadView) {
-                        await window.adminThreadView.openNewThread({
-                            to: userEmail,
-                            toName: userName
-                        });
-
-                        setTimeout(async () => {
-                            await this.refreshCommunicationSection();
-                        }, 500);
-                    } else {
-                        console.error('❌ AdminThreadView not available');
-                        if (window.notify) {
-                            window.notify.error('מודל השיחות לא זמין');
-                        }
-                    }
-                });
-            }
-
-            // "צפה בשיחה" button
-            const viewThreadBtn = modal.querySelector('.btn-view-thread');
-            if (viewThreadBtn) {
-                viewThreadBtn.addEventListener('click', async () => {
-                    const messageId = viewThreadBtn.dataset.messageId;
-
-                    console.log('👁️ Opening existing thread:', messageId);
-
-                    const originalMessage = await this.loadOriginalMessage(messageId);
-                    if (!originalMessage) {
-                        if (window.notify) {
-                            window.notify.error('שגיאה בטעינת השיחה');
-                        }
-                        return;
-                    }
-
-                    if (window.adminThreadView) {
-                        await window.adminThreadView.open(messageId, originalMessage);
-                    } else {
-                        console.error('❌ AdminThreadView not available');
-                        if (window.notify) {
-                            window.notify.error('מודל השיחות לא זמין');
-                        }
-                    }
-                });
-            }
         }
 
         /**
@@ -1481,491 +955,6 @@ return;
                     ` : ''}
                 </div>
             `;
-        }
-
-        /**
-         * Render Messages Tab - Timeline of admin ← user messages
-         * טאב הודעות - Timeline של הודעות מנהל ← משתמש
-         */
-        renderMessagesTab() {
-            if (!this.userData || !this.currentUser) {
-                return '<div class="tab-loading">טוען נתונים...</div>';
-            }
-
-            const messages = this.userData.messages || [];
-
-            // Calculate counts for filter tabs (excluding archived from active counts)
-            const activeMessages = messages.filter(m => !m.archived);
-            const allCount = activeMessages.length; // Only active (non-archived) messages
-            const unreadCount = messages.filter(m => m.status === 'unread' && !m.archived).length;
-            const readCount = messages.filter(m => (m.status === 'read' || m.status === 'responded') && !m.archived).length;
-            const archivedCount = messages.filter(m => m.archived === true).length;
-
-            // Filter messages based on selected filter
-            const filteredMessages = this.filterMessages(messages, this.messageFilter);
-
-            // Sort by createdAt descending (newest first)
-            const sortedMessages = [...filteredMessages].sort((a, b) => {
-                const timeA = a.createdAt?.toMillis?.() || 0;
-                const timeB = b.createdAt?.toMillis?.() || 0;
-                return timeB - timeA;
-            });
-
-            const respondedCount = messages.filter(m => m.status === 'responded').length;
-
-            return `
-                <div class="tab-panel tab-messages">
-                    <!-- Messages Header -->
-                    <div class="messages-header">
-                        <div class="messages-stats">
-                            <span class="stat-badge">
-                                <i class="fas fa-envelope"></i>
-                                <strong>${messages.length}</strong> הודעות
-                            </span>
-                            <span class="stat-badge ${unreadCount > 0 ? 'stat-badge-unread' : ''}">
-                                <i class="fas fa-circle"></i>
-                                <strong>${unreadCount}</strong> לא נקראו
-                            </span>
-                            <span class="stat-badge ${respondedCount > 0 ? 'stat-badge-responded' : ''}">
-                                <i class="fas fa-check-double"></i>
-                                <strong>${respondedCount}</strong> נענו
-                            </span>
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn btn-secondary messages-fullscreen-btn" data-action="open-fullscreen">
-                                <i class="fas fa-expand"></i>
-                                הצג בחלון מלא
-                            </button>
-                            <button class="btn btn-primary messages-new-msg-btn" data-action="send-new-message">
-                                <i class="fas fa-plus"></i>
-                                שלח הודעה חדשה
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Filter Tabs -->
-                    <div style="text-align: center; padding: 16px 20px; background: white; border-bottom: 2px solid var(--gray-200);">
-                        <div class="messages-filter-tabs">
-                            <button class="filter-tab ${this.messageFilter === 'all' ? 'active' : ''}" data-filter="all">
-                                <i class="fas fa-inbox"></i>
-                                <span>פעילות</span>
-                                <span class="filter-count">${allCount}</span>
-                            </button>
-                            <button class="filter-tab ${this.messageFilter === 'unread' ? 'active' : ''}" data-filter="unread">
-                                <i class="fas fa-envelope"></i>
-                                <span>לא נקראו</span>
-                                <span class="filter-count">${unreadCount}</span>
-                            </button>
-                            <button class="filter-tab ${this.messageFilter === 'read' ? 'active' : ''}" data-filter="read">
-                                <i class="fas fa-envelope-open"></i>
-                                <span>נקראו</span>
-                                <span class="filter-count">${readCount}</span>
-                            </button>
-                            <button class="filter-tab ${this.messageFilter === 'archived' ? 'active' : ''}" data-filter="archived">
-                                <i class="fas fa-archive"></i>
-                                <span>ארכיון</span>
-                                <span class="filter-count">${archivedCount}</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Messages Timeline -->
-                    <div class="messages-timeline">
-                        ${sortedMessages.length === 0 ? this.renderEmptyMessages() : ''}
-                        ${sortedMessages.map(msg => this.renderMessageTimelineItem(msg)).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        /**
-         * Filter messages based on selected filter
-         * סינון הודעות לפי מסנן נבחר
-         */
-        filterMessages(messages, filter) {
-            switch (filter) {
-                case 'unread':
-                    return messages.filter(m => m.status === 'unread' && !m.archived);
-                case 'read':
-                    return messages.filter(m => (m.status === 'read' || m.status === 'responded') && !m.archived);
-                case 'archived':
-                    return messages.filter(m => m.archived === true);
-                case 'all':
-                default:
-                    return messages.filter(m => !m.archived); // Show all non-archived by default
-            }
-        }
-
-        /**
-         * Render empty messages state
-         * רינדור מצב ריק של הודעות
-         */
-        renderEmptyMessages() {
-            return `
-                <div class="messages-empty">
-                    <div class="messages-empty-icon">
-                        <i class="fas fa-inbox"></i>
-                    </div>
-                    <h3 class="messages-empty-title">אין הודעות</h3>
-                    <p class="messages-empty-text">עדיין לא נשלחו הודעות למשתמש זה</p>
-                </div>
-            `;
-        }
-
-        /**
-         * Render single message in timeline
-         * רינדור הודעה בודדת ב-Timeline
-         */
-        renderMessageTimelineItem(message) {
-            // 🔍 DEBUG: Log repliesCount for each message
-            console.log(`📝 Rendering message ${message.id}:`, {
-                repliesCount: message.repliesCount,
-                hasRepliesCount: 'repliesCount' in message,
-                repliesCountValue: message.repliesCount,
-                repliesCountType: typeof message.repliesCount,
-                willShowButton: !!(message.repliesCount && message.repliesCount > 0)
-            });
-
-            const typeIcons = {
-                'info': 'fa-info-circle',
-                'warning': 'fa-exclamation-triangle',
-                'urgent': 'fa-exclamation-circle'
-            };
-
-            const typeColors = {
-                'info': 'msg-blue',
-                'warning': 'msg-orange',
-                'urgent': 'msg-red'
-            };
-
-            const typeLabels = {
-                'info': 'מידע',
-                'warning': 'אזהרה',
-                'urgent': 'דחוף'
-            };
-
-            const sentDate = message.createdAt ? this.formatTimestamp(message.createdAt) : 'לא ידוע';
-            const relativeTime = message.createdAt ? this.getRelativeTime(message.createdAt) : '';
-
-            return `
-                <div class="timeline-item message-${message.status}">
-                    <!-- Timeline Dot -->
-                    <div class="timeline-dot ${typeColors[message.type] || 'msg-blue'}"></div>
-
-                    <!-- Timeline Content -->
-                    <div class="timeline-content">
-                        <!-- Message Sent -->
-                        <div class="message-sent">
-                            <div class="message-header">
-                                <span class="message-icon"><i class="fas fa-paper-plane"></i></span>
-                                <strong>נשלחה הודעה</strong>
-                                <span class="message-date">${sentDate}</span>
-                                ${relativeTime ? `<span class="message-relative">(${relativeTime})</span>` : ''}
-
-                                <!-- Action Buttons -->
-                                <div class="message-actions">
-                                    ${(message.repliesCount && message.repliesCount > 0) ? `
-                                        <button class="btn-icon btn-view-thread"
-                                                data-message-id="${message.id}"
-                                                title="צפה בשיחה (${message.repliesCount} תשובות)">
-                                            <i class="fas fa-comments"></i>
-                                            <span style="font-size: 10px; margin-right: 4px;">${message.repliesCount}</span>
-                                        </button>
-                                    ` : ''}
-                                    ${!message.archived ? `
-                                        <button class="btn-icon btn-archive-message"
-                                                data-message-id="${message.id}"
-                                                title="העבר לארכיון">
-                                            <i class="fas fa-archive"></i>
-                                        </button>
-                                    ` : `
-                                        <button class="btn-icon btn-restore-message"
-                                                data-message-id="${message.id}"
-                                                title="שחזר מארכיון">
-                                            <i class="fas fa-undo"></i>
-                                        </button>
-                                    `}
-                                </div>
-                            </div>
-                            <div class="message-body">
-                                <p>${this.escapeHtml(message.message)}</p>
-                            </div>
-                            <div class="message-meta">
-                                <span class="message-type ${typeColors[message.type] || 'msg-blue'}">
-                                    <i class="fas ${typeIcons[message.type] || typeIcons.info}"></i>
-                                    ${typeLabels[message.type] || typeLabels.info}
-                                </span>
-                                <span class="message-priority">עדיפות: ${message.priority || 1}</span>
-                                ${message.fromName ? `<span class="message-from">מאת: ${this.escapeHtml(message.fromName)}</span>` : ''}
-                            </div>
-                        </div>
-
-                        <!-- Response (if exists) -->
-                        ${this.renderMessageResponse(message)}
-                    </div>
-                </div>
-            `;
-        }
-
-        /**
-         * Render message response (if exists)
-         * רינדור תשובת משתמש (אם קיימת)
-         */
-        renderMessageResponse(message) {
-            if (message.status === 'responded' && message.response) {
-                const respondedDate = message.respondedAt ? this.formatTimestamp(message.respondedAt) : '';
-                return `
-                    <div class="message-response responded">
-                        <div class="response-header">
-                            <span class="response-icon"><i class="fas fa-check-circle"></i></span>
-                            <strong>נענתה</strong>
-                            ${respondedDate ? `<span class="response-date">${respondedDate}</span>` : ''}
-                        </div>
-                        <div class="response-body">
-                            <p>${this.escapeHtml(message.response)}</p>
-                        </div>
-                    </div>
-                `;
-            } else if (message.status === 'read') {
-                const readDate = message.readAt ? this.formatTimestamp(message.readAt) : '';
-                return `
-                    <div class="message-response read">
-                        <div class="response-header">
-                            <span class="response-icon"><i class="fas fa-eye"></i></span>
-                            <strong>נקראה</strong>
-                            ${readDate ? `<span class="response-date">${readDate}</span>` : ''}
-                            <span class="response-status">(לא נענתה עדיין)</span>
-                        </div>
-                    </div>
-                `;
-            } else if (message.status === 'dismissed') {
-                const dismissedDate = message.dismissedAt ? this.formatTimestamp(message.dismissedAt) : '';
-                return `
-                    <div class="message-response dismissed">
-                        <div class="response-header">
-                            <span class="response-icon"><i class="fas fa-times-circle"></i></span>
-                            <strong>נדחתה</strong>
-                            ${dismissedDate ? `<span class="response-date">${dismissedDate}</span>` : ''}
-                            <span class="response-status">(המשתמש לא השיב)</span>
-                        </div>
-                    </div>
-                `;
-            } else {
-                // unread
-                return `
-                    <div class="message-response unread">
-                        <div class="response-header">
-                            <span class="response-icon"><i class="fas fa-envelope-open"></i></span>
-                            <strong>לא נקראה</strong>
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        /**
-         * Send new message to user
-         * שליחת הודעה חדשה למשתמש
-         */
-        sendNewMessage() {
-            if (!this.currentUser) {
-                console.error('No user selected');
-                return;
-            }
-
-            console.log('📧 Opening NEW THREAD for:', this.currentUser.email);
-
-            // ✅ Use AdminThreadView with category system (NEW THREAD mode)
-            if (window.adminThreadView && typeof window.adminThreadView.open === 'function') {
-                window.adminThreadView.open(null, {
-                    to: this.currentUser.email,
-                    toName: this.currentUser.name || this.currentUser.email
-                });
-            } else {
-                console.error('❌ AdminThreadView not available');
-                alert('מערכת שליחת הודעות לא זמינה');
-            }
-        }
-
-        /**
-         * Open fullscreen messages modal
-         * פתיחת חלון הודעות במסך מלא
-         */
-        openFullscreenMessages() {
-            if (!this.currentUser) {
-                console.error('❌ No user selected');
-                return;
-            }
-
-            console.log('📖 Opening fullscreen messages for:', this.currentUser.email);
-            console.log('📦 window.messagesFullscreenModal exists?', !!window.messagesFullscreenModal);
-            console.log('📦 typeof open:', typeof window.messagesFullscreenModal?.open);
-
-            // Use MessagesFullscreenModal if available
-            if (window.messagesFullscreenModal && typeof window.messagesFullscreenModal.open === 'function') {
-                const messages = this.userData?.messages || [];
-                console.log(`✅ Opening fullscreen with ${messages.length} messages`);
-                window.messagesFullscreenModal.open(this.currentUser, messages);
-            } else {
-                console.error('❌ MessagesFullscreenModal not available');
-                console.error('   window.messagesFullscreenModal =', window.messagesFullscreenModal);
-                if (window.notify) {
-                    window.notify.error('חלון הודעות מלא לא זמין');
-                } else {
-                    alert('חלון הודעות מלא לא זמין');
-                }
-            }
-        }
-
-        /**
-         * Archive message
-         * העברת הודעה לארכיון
-         */
-        async archiveMessage(messageId) {
-            try {
-                console.log('🗂️ Archiving message:', messageId);
-
-                if (!messageId) {
-                    throw new Error('Message ID is missing');
-                }
-
-                if (!window.alertCommManager) {
-                    throw new Error('AlertCommunicationManager not available');
-                }
-
-                console.log('✅ Calling alertCommManager.archiveMessage...');
-                await window.alertCommManager.archiveMessage(messageId);
-
-                console.log('✅ Message archived, updating local data...');
-                // Update local message data instead of full reload
-                const messageIndex = this.userData.messages.findIndex(m => m.id === messageId);
-                if (messageIndex !== -1) {
-                    this.userData.messages[messageIndex].archived = true;
-                    this.userData.messages[messageIndex].archivedBy = window.firebaseAuth.currentUser.email;
-                    this.userData.messages[messageIndex].archivedAt = new Date();
-                }
-
-                // Re-render only the messages tab content
-                this.refreshMessagesTab();
-
-                console.log('✅ Archive complete!');
-            } catch (error) {
-                console.error('❌ Error archiving message:', error);
-                console.error('   Message ID was:', messageId);
-                console.error('   Error details:', error.message);
-                if (window.notify) {
-                    window.notify.error(`שגיאה בהעברה לארכיון: ${error.message}`);
-                }
-            }
-        }
-
-        /**
-         * Restore message from archive
-         * שחזור הודעה מארכיון
-         */
-        async restoreMessage(messageId) {
-            try {
-                console.log('♻️ Restoring message:', messageId);
-
-                if (!messageId) {
-                    throw new Error('Message ID is missing');
-                }
-
-                if (!window.alertCommManager) {
-                    throw new Error('AlertCommunicationManager not available');
-                }
-
-                console.log('✅ Calling alertCommManager.restoreMessage...');
-                await window.alertCommManager.restoreMessage(messageId);
-
-                console.log('✅ Message restored, updating local data...');
-                // Update local message data instead of full reload
-                const messageIndex = this.userData.messages.findIndex(m => m.id === messageId);
-                if (messageIndex !== -1) {
-                    this.userData.messages[messageIndex].archived = false;
-                    this.userData.messages[messageIndex].archivedBy = null;
-                    this.userData.messages[messageIndex].archivedAt = null;
-                }
-
-                // Re-render only the messages tab content
-                this.refreshMessagesTab();
-
-                console.log('✅ Restore complete!');
-            } catch (error) {
-                console.error('❌ Error restoring message:', error);
-                console.error('   Message ID was:', messageId);
-                console.error('   Error details:', error.message);
-                if (window.notify) {
-                    window.notify.error(`שגיאה בשחזור הודעה: ${error.message}`);
-                }
-            }
-        }
-
-        /**
-         * Open thread view for a message
-         * פתיחת תצוגת שיחה להודעה
-         */
-        async openThread(messageId) {
-            try {
-                console.log('💬 Opening thread view for message:', messageId);
-
-                if (!messageId) {
-                    throw new Error('Message ID is missing');
-                }
-
-                // Find the message in local data
-                const message = this.userData.messages.find(m => m.id === messageId);
-                if (!message) {
-                    throw new Error('Message not found in local data');
-                }
-
-                // Check if AdminThreadView is available
-                if (!window.adminThreadView) {
-                    throw new Error('AdminThreadView not initialized');
-                }
-
-                // Open thread view
-                await window.adminThreadView.open(messageId, message);
-
-                console.log('✅ Thread view opened successfully');
-            } catch (error) {
-                console.error('❌ Error opening thread view:', error);
-                console.error('   Message ID was:', messageId);
-                console.error('   Error details:', error.message);
-                if (window.notify) {
-                    window.notify.error(`שגיאה בפתיחת השיחה: ${error.message}`);
-                }
-            }
-        }
-
-        /**
-         * Refresh messages tab without full reload
-         * רענון טאב הודעות בלי לטעון הכל מחדש
-         */
-        refreshMessagesTab() {
-            console.log('🔄 Refreshing messages tab...');
-
-            // Find the messages tab panel in the DOM
-            const messagesTabPanel = document.querySelector('.tab-panel.tab-messages');
-            if (!messagesTabPanel) {
-                console.warn('⚠️ Messages tab panel not found in DOM');
-                return;
-            }
-
-            // Re-render the messages tab HTML
-            const updatedHTML = this.renderMessagesTab();
-
-            // Create a temporary container to parse the new HTML
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = updatedHTML;
-
-            // Get the new content
-            const newContent = tempDiv.firstElementChild;
-
-            // Replace the old tab panel with the new one
-            messagesTabPanel.replaceWith(newContent);
-
-            console.log('✅ Messages tab refreshed successfully');
         }
 
         /* ============================================
@@ -3437,10 +2426,6 @@ return -1;
          */
         renderFooter() {
             return `
-                <button class="btn btn-primary" id="userDetailsSendMessageBtn">
-                    <i class="fas fa-envelope"></i>
-                    <span>שלח הודעה</span>
-                </button>
                 <button class="btn btn-outline" id="userDetailsGenerateReportBtn">
                     <i class="fas fa-file-alt"></i>
                     <span>הפק דוח</span>
@@ -3470,14 +2455,6 @@ return;
                 });
             }
 
-            // Send Message button (footer)
-            const sendMessageBtn = modal.querySelector('#userDetailsSendMessageBtn');
-            if (sendMessageBtn) {
-                sendMessageBtn.addEventListener('click', () => {
-                    this.sendNewMessage();
-                });
-            }
-
             // Generate Report button (footer)
             const generateReportBtn = modal.querySelector('#userDetailsGenerateReportBtn');
             if (generateReportBtn) {
@@ -3503,67 +2480,6 @@ return;
                     this.handleAction(action);
                 });
             });
-
-            // ========== COMMUNICATION BUTTONS ==========
-
-            // "שלח הודעה ראשונה" button
-            const sendFirstMessageBtn = modal.querySelector('.btn-send-first-message');
-            if (sendFirstMessageBtn) {
-                sendFirstMessageBtn.addEventListener('click', async () => {
-                    const userEmail = sendFirstMessageBtn.dataset.userEmail;
-                    const userName = sendFirstMessageBtn.dataset.userName;
-
-                    console.log('📤 Opening new thread for user:', userEmail);
-
-                    // פתיחת AdminThreadView במצב "הודעה חדשה"
-                    if (window.adminThreadView) {
-                        await window.adminThreadView.openNewThread({
-                            to: userEmail,
-                            toName: userName
-                        });
-
-                        // רענון האזור התקשורת אחרי סגירת המודל
-                        // (המודל נסגר אוטומטית אחרי שליחת הודעה ראשונה)
-                        setTimeout(async () => {
-                            await this.refreshCommunicationSection();
-                        }, 500);
-                    } else {
-                        console.error('❌ AdminThreadView not available');
-                        if (window.notify) {
-                            window.notify.error('מודל השיחות לא זמין');
-                        }
-                    }
-                });
-            }
-
-            // "צפה בשיחה" button
-            const viewThreadBtn = modal.querySelector('.btn-view-thread');
-            if (viewThreadBtn) {
-                viewThreadBtn.addEventListener('click', async () => {
-                    const messageId = viewThreadBtn.dataset.messageId;
-
-                    console.log('👁️ Opening existing thread:', messageId);
-
-                    // טעינת ההודעה המקורית
-                    const originalMessage = await this.loadOriginalMessage(messageId);
-                    if (!originalMessage) {
-                        if (window.notify) {
-                            window.notify.error('שגיאה בטעינת השיחה');
-                        }
-                        return;
-                    }
-
-                    // פתיחת AdminThreadView עם השיחה הקיימת
-                    if (window.adminThreadView) {
-                        await window.adminThreadView.open(messageId, originalMessage);
-                    } else {
-                        console.error('❌ AdminThreadView not available');
-                        if (window.notify) {
-                            window.notify.error('מודל השיחות לא זמין');
-                        }
-                    }
-                });
-            }
 
             // Tasks sub-tab buttons
             const tasksSubTabs = modal.querySelectorAll('.tasks-sub-tab');
@@ -3749,86 +2665,6 @@ return;
                 });
             });
 
-            // ========== MESSAGES TAB - EVENT DELEGATION ==========
-            // Event delegation for messages tab buttons (send new message, fullscreen, archive, restore, filter tabs)
-            // Uses data-action attribute instead of inline onclick
-            console.log('🔍 Looking for .tab-panel.tab-messages in modal...');
-            console.log('   Modal exists:', !!modal);
-            console.log('   Modal innerHTML length:', modal?.innerHTML?.length || 0);
-            const messagesTabContent = modal.querySelector('.tab-panel.tab-messages');
-            console.log('   Found messagesTabContent:', !!messagesTabContent);
-            if (messagesTabContent) {
-                console.log('✅ Attaching event delegation to messages tab');
-
-                // Remove existing listener if any (prevent duplicates)
-                if (messagesTabContent._messagesClickHandler) {
-                    messagesTabContent.removeEventListener('click', messagesTabContent._messagesClickHandler);
-                    console.log('   🗑️ Removed old event listener');
-                }
-
-                // Create new handler and store reference
-                const clickHandler = async (e) => {
-                    console.log('🖱️ Messages tab click detected:', e.target);
-
-                    // Check for filter tabs
-                    const filterTab = e.target.closest('.filter-tab');
-                    if (filterTab) {
-                        console.log('📑 Filter tab clicked:', filterTab.getAttribute('data-filter'));
-                        const filter = filterTab.getAttribute('data-filter');
-                        this.messageFilter = filter;
-                        this.switchTab('messages'); // Refresh to show filtered messages
-                        return;
-                    }
-
-                    // Check for action buttons
-                    const actionBtn = e.target.closest('[data-action]');
-                    if (actionBtn) {
-                        const action = actionBtn.getAttribute('data-action');
-                        console.log('🎬 Action button clicked:', action);
-                        if (action === 'send-new-message') {
-                            this.sendNewMessage();
-                        } else if (action === 'open-fullscreen') {
-                            this.openFullscreenMessages();
-                        }
-                        return;
-                    }
-
-                    // Check for archive button
-                    const archiveBtn = e.target.closest('.btn-archive-message');
-                    if (archiveBtn) {
-                        const messageId = archiveBtn.getAttribute('data-message-id');
-                        console.log('🗂️ Archive button clicked, messageId:', messageId);
-                        await this.archiveMessage(messageId);
-                        return;
-                    }
-
-                    // Check for restore button
-                    const restoreBtn = e.target.closest('.btn-restore-message');
-                    if (restoreBtn) {
-                        const messageId = restoreBtn.getAttribute('data-message-id');
-                        console.log('♻️ Restore button clicked, messageId:', messageId);
-                        await this.restoreMessage(messageId);
-                        return;
-                    }
-
-                    // Check for view thread button
-                    const threadBtn = e.target.closest('.btn-view-thread');
-                    if (threadBtn) {
-                        const messageId = threadBtn.getAttribute('data-message-id');
-                        console.log('💬 View thread button clicked, messageId:', messageId);
-                        await this.openThread(messageId);
-                        return;
-                    }
-                };
-
-                // Store handler reference and attach
-                messagesTabContent._messagesClickHandler = clickHandler;
-                messagesTabContent.addEventListener('click', clickHandler);
-                console.log('   ✅ Event listener attached');
-            } else {
-                console.warn('⚠️ Messages tab content not found - event delegation not attached');
-            }
-
             // ========== SHOW ALL TASKS BUTTON ==========
             const showAllTasksBtn = modal.querySelector('.show-all-tasks-btn');
             if (showAllTasksBtn) {
@@ -3860,23 +2696,6 @@ return;
                 console.log('📡 Activity tab opened for first time - loading data...');
                 await this.loadActivityTab();
                 return; // loadActivityTab() will call updateModalContent()
-            }
-
-            // If switching to messages tab, mark user's responses as read by admin
-            if (tabId === 'messages' && this.currentUser && window.alertCommManager) {
-                try {
-                    const count = await window.alertCommManager.markUserResponsesAsReadByAdmin(this.currentUser.email);
-                    if (count > 0) {
-                        console.log(`✅ Marked ${count} responses as read by admin`);
-
-                        // Refresh the badge counts in the users table
-                        if (window.UsersTable && typeof window.UsersTable.loadResponseCounts === 'function') {
-                            await window.UsersTable.loadResponseCounts();
-                        }
-                    }
-                } catch (error) {
-                    console.error('❌ Failed to mark responses as read:', error);
-                }
             }
 
             // Update modal content
@@ -5515,18 +4334,6 @@ return;
          * סגירת המודאל
          */
         close() {
-            // 🔥 Unsubscribe from real-time listeners
-            if (this.threadListener) {
-                this.threadListener();
-                this.threadListener = null;
-                console.log('🔌 Thread listener (admin→user) unsubscribed');
-            }
-            if (this.threadListenerFromUser) {
-                this.threadListenerFromUser();
-                this.threadListenerFromUser = null;
-                console.log('🔌 Thread listener (user→admin) unsubscribed');
-            }
-
             if (this.modalId) {
                 window.ModalManager.close(this.modalId);
                 this.modalId = null;
@@ -5537,58 +4344,6 @@ return;
             this.activeTab = 'general';
 
             console.log('✅ UserDetailsModal closed');
-        }
-
-        /**
-         * Open message composer for this user
-         * פתיחת מלחין הודעות עבור משתמש זה
-         */
-        openMessageComposer() {
-            if (!this.currentUser) {
-                console.error('❌ No user selected for messaging');
-                return;
-            }
-
-            // Check if AlertCommunicationManager is available
-            if (!window.alertCommManager) {
-                console.error('❌ AlertCommunicationManager not initialized');
-                alert('מערכת ההודעות לא זמינה כרגע');
-                return;
-            }
-
-            console.log(`📧 Opening message composer for: ${this.currentUser.email}`);
-
-            // Use QuickMessageDialog if available
-            if (window.quickMessageDialog) {
-                window.quickMessageDialog.show({
-                    userId: this.currentUser.uid,
-                    userName: this.currentUser.displayName || this.currentUser.email,
-                    userEmail: this.currentUser.email,
-                    onSent: (message) => {
-                        console.log('✅ Message sent successfully:', message.id);
-                    }
-                });
-            } else {
-                // Fallback: Show simple prompt dialog
-                const message = prompt(`שלח הודעה ל-${this.currentUser.displayName || this.currentUser.email}:`);
-
-                if (!message || message.trim() === '') {
-                    return;
-                }
-
-                // Send message using AlertCommunicationManager
-                window.alertCommManager.sendMessage(this.currentUser.email, message.trim())
-                    .then(() => {
-                        console.log('✅ Message sent successfully');
-                        if (window.notify) {
-                            window.notify.success('ההודעה נשלחה בהצלחה');
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('❌ Failed to send message:', error);
-                        alert('שגיאה בשליחת ההודעה. נסה שוב.');
-                    });
-            }
         }
 
         /**
