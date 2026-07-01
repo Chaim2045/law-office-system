@@ -144,5 +144,15 @@ describe('Rules drift-guard — production vs test ruleset', () => {
       expect(testBlock).toBe(prodBlock);
     }
   );
+
+  // H.8.0 PR4 — DA Attack #1 defense: negative assertion proves the removal landed
+  // in the PRODUCTION rules file, not just the test mirror (which never had the block).
+  it('user_messages match block is absent from firestore.rules (H.8.0 PR4)', () => {
+    expect(prodSource).not.toContain('match /user_messages/');
+  });
+
+  it('replies subcollection is absent from firestore.rules (H.8.0 PR4)', () => {
+    expect(prodSource).not.toContain('match /replies/');
+  });
 });
 
