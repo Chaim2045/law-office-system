@@ -1,0 +1,307 @@
+/* ═══════════════════════════════════════════════════════
+   Pending Clients Page — H.6 Cutover
+   Uses design-system.css tokens exclusively.
+   ═══════════════════════════════════════════════════════ */
+
+.pc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-6);
+    flex-wrap: wrap;
+    gap: var(--space-4);
+}
+
+.pc-header h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-bold);
+    color: var(--gray-900);
+    margin: 0;
+}
+
+.pc-stats {
+    display: flex;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.pc-stat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    background: var(--gray-100);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    color: var(--gray-700);
+}
+
+.pc-stat-badge__label {
+    color: var(--gray-600);
+}
+
+.pc-stat-badge__value {
+    font-weight: var(--font-semibold);
+    color: var(--gray-900);
+}
+
+.pc-stat-badge--warning {
+    background: var(--orange-light);
+    color: var(--orange-dark);
+}
+
+.pc-stat-badge--warning .pc-stat-badge__label,
+.pc-stat-badge--warning .pc-stat-badge__value {
+    color: var(--orange-dark);
+}
+
+.pc-capped-notice {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    background: var(--orange-light);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    color: var(--orange-dark);
+    margin-bottom: var(--space-4);
+}
+
+.pc-capped-notice i {
+    flex-shrink: 0;
+}
+
+/* ── Table ── */
+
+.pc-table-wrapper {
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--gray-200);
+}
+
+.pc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+}
+
+.pc-table th,
+.pc-table td {
+    padding: var(--space-3) var(--space-4);
+    text-align: start;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.pc-table th {
+    background: var(--gray-50);
+    font-weight: var(--font-semibold);
+    color: var(--gray-700);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.pc-table tbody tr {
+    transition: background var(--transition-fast);
+}
+
+.pc-table tbody tr:hover {
+    background: var(--gray-50);
+}
+
+.pc-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.pc-amount {
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    unicode-bidi: embed;
+    white-space: nowrap;
+}
+
+.pc-date {
+    white-space: nowrap;
+    color: var(--gray-600);
+}
+
+/* ── Approve button ── */
+
+.pc-btn-approve {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--green);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--green-dark);
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+    white-space: nowrap;
+}
+
+.pc-btn-approve:hover {
+    background: var(--green);
+    color: #fff;
+}
+
+.pc-btn-approve:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+.pc-btn-approve:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pc-btn-approve:disabled:hover {
+    background: transparent;
+    color: var(--green-dark);
+}
+
+/* ── Refresh button ── */
+
+.pc-btn-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--gray-700);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.pc-btn-refresh:hover {
+    background: var(--gray-100);
+    border-color: var(--gray-400);
+}
+
+.pc-btn-refresh:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* ── States ── */
+
+.pc-empty-state,
+.pc-error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-12) var(--space-6);
+    text-align: center;
+    color: var(--gray-500);
+}
+
+.pc-empty-state i,
+.pc-error-state i {
+    font-size: var(--text-3xl);
+    margin-bottom: var(--space-4);
+}
+
+.pc-empty-state h2,
+.pc-error-state h2 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-semibold);
+    color: var(--gray-700);
+    margin: 0 0 var(--space-2) 0;
+}
+
+.pc-empty-state p,
+.pc-error-state p {
+    font-size: var(--text-sm);
+    margin: 0;
+}
+
+.pc-error-state {
+    color: var(--red);
+}
+
+.pc-error-state .pc-btn-refresh {
+    margin-top: var(--space-4);
+}
+
+.pc-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-12) var(--space-6);
+    color: var(--gray-500);
+    gap: var(--space-4);
+}
+
+.pc-loading__spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--gray-200);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: pc-spin 0.8s linear infinite;
+}
+
+@keyframes pc-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pc-loading__spinner {
+        animation: none;
+    }
+}
+
+/* ── Access denied ── */
+
+.pc-access-denied {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-12) var(--space-6);
+    text-align: center;
+}
+
+.pc-access-denied i {
+    font-size: var(--text-3xl);
+    color: var(--gray-400);
+    margin-bottom: var(--space-4);
+}
+
+.pc-access-denied h1 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-semibold);
+    color: var(--gray-700);
+    margin: 0 0 var(--space-2) 0;
+}
+
+.pc-access-denied p {
+    font-size: var(--text-sm);
+    color: var(--gray-500);
+    margin: 0 0 var(--space-4) 0;
+}
+
+.pc-access-denied a {
+    color: var(--blue);
+    text-decoration: none;
+    font-weight: var(--font-medium);
+}
+
+.pc-access-denied a:hover {
+    text-decoration: underline;
+}
+
+.pc-access-denied a:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}

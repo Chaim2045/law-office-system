@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>לקוחות ממתינים | Admin Panel</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pending-clients.css?v=20260702-h6-pr2">
+</head>
+<body class="admin-page">
+    <div id="navigationContainer"></div>
+    <main class="dashboard-main">
+        <div id="pending-clients-section" class="dashboard-content"></div>
+    </main>
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <script src="js/core/firebase.js"></script>
+    <script src="js/core/system-constants.js"></script>
+    <script src="js/core/config-loader.js"></script>
+    <script src="js/core/auth.js"></script>
+    <script src="js/core/constants.js"></script>
+    <script src="js/core/escape-html.js?v=20260621-escapehtml-pr1"></script>
+    <script src="js/core/auth-guard.js?v=20250103"></script>
+    <script src="js/ui/Navigation.js"></script>
+    <script src="js/ui/Modals.js"></script>
+    <script src="js/core/pending-clients-format.js?v=20260702-h6-pr2"></script>
+    <script src="js/modules/pending-clients.js?v=20260702-h6-pr2"></script>
+    <script>
+    (function () {
+        'use strict';
+
+        window.addEventListener('storage', function (e) {
+            if (e.key === 'logoutEvent') {
+                sessionStorage.removeItem('authState');
+                window.location.replace('index.html');
+            }
+        });
+
+        function renderAccessDenied() {
+            var section = document.getElementById('pending-clients-section');
+            if (!section) { return; }
+            section.innerHTML = ''
+                + '<div class="pc-access-denied" role="alert">'
+                + '  <i class="fas fa-lock" aria-hidden="true"></i>'
+                + '  <h1>אין הרשאת גישה</h1>'
+                + '  <p>דף זה מיועד למנהלי מערכת בלבד. אם לדעתך זו טעות, פנה למנהל המערכת.</p>'
+                + '  <a class="pc-btn-refresh" href="index.html" aria-label="חזרה לדף הבית">חזרה לדף הבית</a>'
+                + '</div>';
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            window.initAuthGuard({
+                pageName: 'pending-clients',
+                timeoutMs: 5000,
+                onAuthenticated: async function (user) {
+                    if (window.Navigation) {
+                        window.Navigation.init('pending-clients');
+                    }
+
+                    var isAdmin = false;
+                    try {
+                        var tokenResult = await firebase.auth().currentUser.getIdTokenResult();
+                        var ADMIN_ROLE = (window.ADMIN_PANEL_CONSTANTS
+                            && window.ADMIN_PANEL_CONSTANTS.USER_ROLES
+                            && window.ADMIN_PANEL_CONSTANTS.USER_ROLES.ADMIN) || 'admin';
+                        isAdmin = tokenResult.claims.role === ADMIN_ROLE;
+                    } catch (err) {
+                        console.error('[PendingClients] Admin role check failed:', err && err.code);
+                        isAdmin = false;
+                    }
+
+                    if (!isAdmin) {
+                        renderAccessDenied();
+                        return;
+                    }
+
+                    if (window.PendingClients) {
+                        window.PendingClients.init();
+                    }
+                },
+                onUnauthenticated: function () {
+                    window.location.replace('index.html');
+                }
+            });
+        });
+    })();
+    </script>
+</body>
+</html>
