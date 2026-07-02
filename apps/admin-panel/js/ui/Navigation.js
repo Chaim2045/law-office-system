@@ -54,6 +54,7 @@ return;
             const navItems = [
                 { id: 'users', label: 'ניהול עובדים', icon: 'fa-users', href: 'index.html' },
                 { id: 'clients', label: 'ניהול לקוחות', icon: 'fa-briefcase', href: 'clients.html' },
+                { id: 'pending-clients', label: 'לקוחות ממתינים', icon: 'fa-user-clock', href: 'pending-clients.html' },
                 { id: 'workload', label: 'ניתוח עומס', icon: 'fa-chart-line', href: 'workload.html' },
                 { id: 'profitability', label: 'רווחיות', icon: 'fa-money-bill-trend-up', href: 'profitability.html' },
                 { id: 'reconciliation', label: 'סנכרון שעות', icon: 'fa-scale-balanced', href: 'reconciliation.html' },
