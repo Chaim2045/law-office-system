@@ -1,14 +1,18 @@
 /**
- * pending-clients.js — H.6 PR2 "Pending Clients" admin page module.
+ * pending-clients.js — H.6 "Pending Clients" admin page module.
  *
- * Lists unlinked tofes-mecher sales records (listUnlinkedSalesRecords) and lets
- * an admin approve+create a law-office client from each (createClientFromSalesRecord).
- * Read-only display + one admin-triggered create via an already-merged, server-gated,
- * audited CF. The admin fail-closed gate lives in pending-clients.html.
+ * Lists unlinked tofes-mecher sales records (listUnlinkedSalesRecords). The admin
+ * fail-closed gate lives in pending-clients.html.
+ *
+ * H.6.c-1: the approve+create action is DISABLED. createClientFromSalesRecord now creates
+ * a PENDING (pending_signature) client via the two-phase signature-gated flow — not an
+ * active client — so the old one-click "approve → active client" UX would misrepresent the
+ * result. The action button is rendered disabled and surfaces a Hebrew "under construction"
+ * notice (H.6.c); the create+activate flow returns in a later H.6.c increment. Listing/table
+ * rendering is intact; only the create action is blocked.
  *
  * Escaping: every tofes-controlled field is passed through window.escapeHtml before
- * it reaches any innerHTML sink — both the table cells AND the ModalHelpers
- * confirm/alert messages (which interpolate `message` into innerHTML).
+ * it reaches any innerHTML sink (the table cells).
  *
  * Pure display helpers (formatAmount / formatDate) live in
  * js/core/pending-clients-format.js (window.PendingClientsFormat), unit-tested.
@@ -20,7 +24,8 @@
   const fmt = window.PendingClientsFormat;
 
   let listUnlinkedSalesRecords = null;
-  let createClientFromSalesRecord = null;
+  // H.6.c-1: createClientFromSalesRecord is intentionally NOT wired here — the create
+  // action is disabled while the signature-gated flow (H.6.c) is under construction.
   let currentData = null;
   let handlerAttached = false;
   // salesRecordId -> record (raw tofes snapshot). Avoids round-tripping
@@ -42,7 +47,6 @@
   function init() {
     const functions = firebase.app().functions('us-central1');
     listUnlinkedSalesRecords = functions.httpsCallable('listUnlinkedSalesRecords');
-    createClientFromSalesRecord = functions.httpsCallable('createClientFromSalesRecord');
 
     // Attach the delegated click handler ONCE on the persistent section element.
     const section = getSection();
@@ -149,11 +153,17 @@
         + '  <td class="pc-amount">' + window.escapeHtml(formatAmount(record.amountWithVat)) + '</td>'
         + '  <td>' + escapedType + '</td>'
         + '  <td class="pc-date">' + window.escapeHtml(formatDate(record.timestampIso)) + '</td>'
+        // H.6.c-1: the approve-and-create action is DISABLED while the signature-gated
+        // flow is under construction (H.6.c). createClientFromSalesRecord now creates a
+        // PENDING (not active) client via the two-phase pending_signature flow, so the old
+        // one-click "approve → active client" UX would misrepresent the result. The button
+        // is rendered disabled + a click surfaces a Hebrew "under construction" notice.
+        // Listing/table rendering is intact; only the create action is blocked.
         + '  <td>'
-        + '    <button class="pc-btn-approve" type="button"'
+        + '    <button class="pc-btn-approve" type="button" disabled'
         + '      data-sales-id="' + escapedSalesId + '"'
-        + '      aria-label="אישור ויצירת לקוח עבור ' + escapedName + '">'
-        + '      <i class="fas fa-user-plus" aria-hidden="true"></i> אשר וצור'
+        + '      aria-label="יצירת לקוח דרך שער החתימה — בבנייה">'
+        + '      <i class="fas fa-hard-hat" aria-hidden="true"></i> בבנייה (H.6.c)'
         + '    </button>'
         + '  </td>'
         + '</tr>';
@@ -189,82 +199,26 @@
       + '</div>';
   }
 
+  // H.6.c-1: the create action is DISABLED while the signature-gated cutover flow
+  // (H.6.c) is under construction. createClientFromSalesRecord now creates a PENDING
+  // (pending_signature) client via the two-phase flow — not an active client — so the
+  // old one-click "approve → create active client" path is intentionally blocked to avoid
+  // misrepresenting the result. Any click on the (disabled) button surfaces a Hebrew
+  // "under construction" notice instead of calling the CF. The confirmAndCreate flow was
+  // removed so no create is triggered from this page; it returns in a later H.6.c increment
+  // as a signature-gated confirm+activate flow.
   function handleApproveClick(e) {
     const btn = e.target.closest('.pc-btn-approve');
     if (!btn) {
       return;
     }
-    const salesId = btn.getAttribute('data-sales-id');
-    const record = recordsById[salesId];
-    if (!record) {
-      return;
-    }
-    confirmAndCreate(salesId, record.clientName || '', formatAmount(record.amountBeforeVat));
-  }
-
-  async function confirmAndCreate(salesRecordId, clientName, amount) {
-    if (!window.ModalHelpers) {
-      return;
-    }
-
-    // clientName is raw tofes data; ModalHelpers interpolates `message` into
-    // innerHTML, so escape at the sink (amount is our own numeric formatting).
-    const safeName = window.escapeHtml(clientName || '—');
-
-    const confirmed = await window.ModalHelpers.confirm({
-      title: 'אישור יצירת לקוח',
-      message: 'האם ליצור לקוח חדש עבור "' + safeName + '" בסכום ' + amount + '?',
-      icon: 'fa-user-plus',
-      confirmText: 'אשר וצור לקוח',
-      cancelText: 'ביטול',
-      confirmClass: 'btn-primary'
-    });
-
-    if (!confirmed) {
-      return;
-    }
-
-    const loading = window.ModalHelpers.loading({
-      title: 'יוצר לקוח...',
-      message: 'מעבד את הבקשה, אנא המתן.'
-    });
-
-    try {
-      const result = await createClientFromSalesRecord({ salesRecordId: salesRecordId });
-      loading.close();
-
-      if (result.data && result.data.created === false) {
-        await window.ModalHelpers.alert({
-          title: 'לקוח כבר קיים',
-          message: 'רשומה זו כבר קושרה ללקוח במערכת. הרשימה תתעדכן.',
-          icon: 'fa-info-circle'
-        });
-      } else if (result.data && result.data.created === true) {
-        await window.ModalHelpers.alert({
-          title: 'הלקוח נוצר בהצלחה',
-          message: 'לקוח "' + safeName + '" נוצר במערכת (מספר תיק: '
-            + window.escapeHtml(result.data.caseNumber || '') + ').',
-          icon: 'fa-check-circle'
-        });
-      }
-
-      loadData();
-    } catch (err) {
-      loading.close();
-      let errMsg = 'אירעה שגיאה ביצירת הלקוח. נסה שוב מאוחר יותר.';
-      if (err && err.code === 'not-found') {
-        errMsg = 'רשומת המכר לא נמצאה. ייתכן שנמחקה. הרשימה תתעדכן.';
-      } else if (err && err.code === 'permission-denied') {
-        errMsg = 'אין הרשאה לביצוע פעולה זו. פנה למנהל המערכת.';
-      }
-      // Dev-only diagnostic — code only, never PII, never to the DOM.
-      console.error('[PendingClients] createClientFromSalesRecord failed:', err && err.code);
-      await window.ModalHelpers.alert({
-        title: 'שגיאה',
-        message: errMsg,
-        icon: 'fa-exclamation-triangle'
+    if (window.ModalHelpers) {
+      window.ModalHelpers.alert({
+        title: 'בבנייה',
+        message: 'יצירת לקוח דרך שער החתימה — בבנייה (H.6.c). '
+          + 'הפעולה תופעל בהמשך לאחר השלמת בדיקת החתימה.',
+        icon: 'fa-hard-hat'
       });
-      loadData();
     }
   }
 

@@ -296,6 +296,17 @@ service cloud.firestore {
       allow read, write: if false; // CF-only (Admin SDK)
     }
 
+    // 🔒 pending_signature_intents: CF-only idempotency marker (Phase 2 H.6.c-1).
+    // Keyed by the tofes-mecher salesRecordId, .create()d by createClientFromSalesRecord
+    // in the SAME txn as the pending client — the race-safe backstop guaranteeing exactly
+    // one pending_signature client per sale. Holds only non-PII business ids
+    // ({ salesRecordId, caseNumber, serviceId, createdBy, createdAt, schemaVersion }) — no
+    // fee/amount/PII. FULLY CF-only (same lockdown class as sales_record_links /
+    // employee_costs); the CF writes via the Admin SDK (bypasses rules).
+    match /pending_signature_intents/{salesRecordId} {
+      allow read, write: if false; // CF-only (Admin SDK) — H.6.c-1 phase-1 idempotency marker
+    }
+
     // ✅ System Settings: Read-only for authenticated users
     // Note: Only admins can modify through Cloud Functions
     match /system_settings/{settingId} {

@@ -1,11 +1,20 @@
 /**
- * createClientFromSalesRecord — Phase 2 H.6 (the cutover core)
+ * createClientFromSalesRecord — Phase 2 H.6.c-1 (the cutover core, PENDING phase)
  * ─────────────────────────────────────────────────────────────────────────────
  * Admin-gated v2 callable that DETERMINISTICALLY creates a law-office-system
  * client + a single fixed-price service FROM a tofes-mecher `sales_record`. This is
  * the heart of the H.6 cutover (MASTER_PLAN §8.8): instead of an admin re-typing
  * client details, the already-accountant-verified sale becomes the source of truth
  * for the new case. The agreed fee = the sale's pre-VAT amount (DLR §8.2.5 D1).
+ *
+ * ─── H.6.c PHASE 1 (this file) ───────────────────────────────────────────────
+ * H.6.c gates client activation on an AI signature-presence check via a two-phase
+ * `pending_signature` flow. c-1 is phase 1: this CF now creates a client in status
+ * `pending_signature` (NOT `active`) with a `pending` service (activeServices:0), and
+ * writes a CF-only `pending_signature_intents/{salesRecordId}` idempotency marker
+ * INSTEAD of the permanent `sales_record_links` fee-snapshot doc. The later c-3
+ * activation CF flips the client to `active` (re-reading the live sale for the fee) and
+ * writes the `sales_record_links` doc. No fee snapshot is persisted in c-1.
  *
  * ─── Design contract (the locked H.6.a design — do NOT deviate) ──────────────
  *  1. v2 `onCall` with `{ secrets: [TOFES_KEY] }`; handler exported for tests.
@@ -20,34 +29,38 @@
  *       • `amountBeforeVat` null / non-finite → `failed-precondition` (no fee → no
  *         service; the admin must enter it manually).
  *  5. IDEMPOTENCY + CREATE in ONE `db.runTransaction`:
- *       • read `sales_record_links/{salesRecordId}`; if it EXISTS → return
- *         `{ created:false, caseNumber }` (a re-call creates NO second client);
+ *       • read `pending_signature_intents/{salesRecordId}`; if it EXISTS → return
+ *         `{ created:false, caseNumber, serviceId }` off the intent doc (a re-call
+ *         creates NO second pending client);
  *       • else allocate a fresh 7-digit caseNumber atomically (the same
  *         `_system/caseNumberCounter` the canonical generator uses, replicated INSIDE
  *         this txn — `generateCaseNumberWithTransaction` runs its OWN txn and cannot
  *         nest), build the FULL FIXED clientData EXACTLY as `createClient`'s `fixed`
- *         branch (procedureType:'fixed', the `srv_fixed_*` service with
+ *         branch BUT in the PENDING shape (status:'pending_signature', the `srv_fixed_*`
+ *         service status:'pending', activeServices:0, sourceSalesRecordId at the root,
  *         fixedPrice = amountBeforeVat, plan = computeClientPlan(services)), and
  *         `transaction.create(clients/{caseNumber})`.
- *  6. AUDIT-FIRST inside the txn via `logCriticalActionInTxn('CREATE_CLIENT_FROM_
- *     SALES_RECORD', adminUid, {salesRecordId, caseNumber, serviceId})` — the audit
- *     doc is part of the SAME atomic commit as the client + link, so the create can
+ *  6. AUDIT-FIRST inside the txn via `logCriticalActionInTxn('CREATE_PENDING_CLIENT_
+ *     FROM_SALES_RECORD', adminUid, {salesRecordId, caseNumber, serviceId})` — the audit
+ *     doc is part of the SAME atomic commit as the client + intent, so the create can
  *     never land without its forensic record. Payload is NON-PII (business ids only —
  *     NEVER the amount / clientName / idNumber).
- *  7. The financial snapshot (`agreedFeeSnapshot = amountBeforeVat`) is written to the
- *     CF-only `sales_record_links/{salesRecordId}` doc — OFF the world-readable
- *     `clients` doc (§7.6 / DLR D-A). The clients doc carries the fee only as the
- *     service's `fixedPrice` (intrinsic to a fixed service), plus the non-PII
- *     `salesRecordId` on the service element for traceability — NEVER a raw
- *     `agreedFee`/amount field.
+ *  7. NO fee snapshot is persisted in c-1. The old `sales_record_links` fee-snapshot
+ *     write is REMOVED — the c-3 activation CF re-reads the live sale for the
+ *     authoritative fee and writes that doc at activation. This CF writes only the CF-only
+ *     `pending_signature_intents/{salesRecordId}` idempotency marker (non-PII business
+ *     ids). The clients doc carries the fee only as the service's `fixedPrice` (intrinsic
+ *     to a fixed service), plus the non-PII `salesRecordId` on the service element and
+ *     `sourceSalesRecordId` at the root — NEVER a raw `agreedFee`/amount field.
  *  8. NO PII to `logger.*` — only uid, business ids (salesRecordId/caseNumber/
  *     serviceId), errorCode. NEVER the amount / clientName / idNumber. A static AST
  *     guard + a runtime serialization scan enforce this in the tests.
  *  9. Hebrew customer-facing errors everywhere (G1/G5).
  *
- * ⚠️ SCOPE (Option A): this PR is the deterministic create from a sale. It does NOT
- * gate on the H.5 signature-presence check / the PDF — that gate is a LATER H.6
- * increment. No PDF / AI egress happens here.
+ * ⚠️ SCOPE (H.6.c-1): this is phase 1 of the signature-gated flow — the create of a
+ * PENDING client from a sale. It does NOT gate on the H.5 signature-presence check / the
+ * PDF, and it does NOT activate the client — that is the LATER c-3 activation CF. No PDF /
+ * AI egress happens here.
  */
 import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
@@ -66,17 +79,24 @@ import { computeClientPlan } from '../profitability/client-plan';
 const TOFES_KEY = defineSecret(TOFES_MECHER_SA_KEY_SECRET);
 
 /** Stable audit action (payload is NON-PII: salesRecordId + caseNumber + serviceId). */
-const AUDIT_ACTION = 'CREATE_CLIENT_FROM_SALES_RECORD';
+const AUDIT_ACTION = 'CREATE_PENDING_CLIENT_FROM_SALES_RECORD';
 
 /** The MAIN-project collections this CF writes. */
 const CLIENTS_COLLECTION = 'clients';
-const SALES_RECORD_LINKS_COLLECTION = 'sales_record_links';
+/**
+ * H.6.c-1: the CF-only idempotency marker for the two-phase `pending_signature` flow.
+ * One doc per source sale (`{salesRecordId}` id) is `.create()`d in the same txn as the
+ * pending client — the `.create()` is the race-safe backstop: a concurrent double-call
+ * aborts + retries, so exactly one pending client is ever created per sale. Replaces the
+ * old permanent `sales_record_links` write, which now moves to the c-3 activation CF.
+ */
+const PENDING_SIGNATURE_INTENTS_COLLECTION = 'pending_signature_intents';
 
 /** The atomic case-number counter doc (mirrors functions/case-number-transaction.js). */
 const CASE_NUMBER_COUNTER_PATH = ['_system', 'caseNumberCounter'] as const;
 
-/** Link-record schema version — forward-compat anchor (DLR §8.2.5). */
-const LINK_SCHEMA_VERSION = 1;
+/** Intent-marker schema version — forward-compat anchor (DLR §8.2.5). */
+const INTENT_SCHEMA_VERSION = 1;
 
 /**
  * Input schema — strict. `salesRecordId` is a tofes Firestore auto-id (20 chars,
@@ -91,11 +111,11 @@ export const createClientFromSalesRecordInputSchema = z
   .strict();
 
 export interface CreateClientFromSalesRecordResponse {
-  /** true = a new client was created; false = the sale was already linked (idempotent no-op). */
+  /** true = a new PENDING client was created; false = an intent already existed (idempotent no-op). */
   created: boolean;
-  /** the 7-digit caseNumber of the created OR previously-linked client. */
+  /** the 7-digit caseNumber of the created OR previously-created pending client. */
   caseNumber: string;
-  /** the fixed service id (present on a create; the existing link's serviceId on a no-op). */
+  /** the fixed service id (present on a create; the existing intent's serviceId on a no-op). */
   serviceId: string | null;
 }
 
@@ -187,7 +207,9 @@ function buildFixedClientData(args: {
       type: 'fixed' as const,
       name: 'שירות קבוע',
       description: '',
-      status: 'active' as const,
+      // H.6.c-1: a pending-signature client's service is NOT active/billable yet —
+      // it is activated (→ 'active') by the c-3 activation CF after the signature gate.
+      status: 'pending' as const,
       createdAt: nowIso,
       createdBy: actorName,
       fixedPrice,
@@ -210,7 +232,14 @@ function buildFixedClientData(args: {
     idNumber,
     caseTitle,
     procedureType: 'fixed',
-    status: 'active',
+    // H.6.c-1: two-phase flow — the client is created in 'pending_signature', NOT
+    // 'active'. The c-3 activation CF flips it to 'active' after the AI signature gate.
+    status: 'pending_signature',
+    // H.6.c-1: the source sale id at the CLIENT ROOT — the join key the c-3 activation
+    // CF + the c-5 sweep use to find/activate a pending client from its sale. Non-PII
+    // business id (never the amount/name/idNumber). This create is a direct
+    // transaction.create (NOT client-writer.js), so RESTRICTED_KEYS does not apply.
+    sourceSalesRecordId: salesRecordId,
     priority: 'medium',
     description: '',
 
@@ -225,7 +254,9 @@ function buildFixedClientData(args: {
     // ─── the fixed service + aggregates ───────────────────────────────────────
     services,
     totalServices: 1,
-    activeServices: 1,
+    // H.6.c-1: a pending service is NOT active/billable → 0 active services (the c-3
+    // activation CF bumps this to 1 when it flips the service to 'active').
+    activeServices: 0,
     isOnHold: false
   };
 
@@ -332,11 +363,6 @@ export async function createClientFromSalesRecordHandler(
   const clientName = sale.clientName;
   const idNumber = sale.idNumber;
   const caseTitle = sale.transactionType ?? '';
-  // The SALE's own timestamp (captured here for the link's drift-detection field,
-  // NOT the current wall-clock) — the future DLR drift job (§8.2.5 #7) compares
-  // this linked snapshot's timestamp against the live sale. `string | null` (null =
-  // the sale carried no timestamp; honest-null beats a fabricated time).
-  const salesRecordTimestampIso = sale.timestampIso;
 
   // ─── (5) Resolve the approving admin's display username (a READ, pre-txn) ──
   // Mirrors createClient's `user.username` (employees keyed by authUID). The clients
@@ -376,17 +402,21 @@ export async function createClientFromSalesRecordHandler(
   }
 
   // ─── (6) IDEMPOTENCY + CREATE in ONE transaction ──────────────────────────
-  const linkRef = db.collection(SALES_RECORD_LINKS_COLLECTION).doc(salesRecordId);
+  // H.6.c-1: idempotency is keyed on the CF-only `pending_signature_intents/{salesRecordId}`
+  // marker (NOT the old permanent `sales_record_links` doc — that moves to the c-3
+  // activation CF). The marker carries the caseNumber/serviceId so a re-call is a cheap
+  // read → {created:false}.
+  const intentRef = db.collection(PENDING_SIGNATURE_INTENTS_COLLECTION).doc(salesRecordId);
   const serviceId = `srv_fixed_${salesRecordId}`;
   const nowIso = new Date().toISOString();
 
   let result: CreateClientFromSalesRecordResponse;
   try {
     result = await db.runTransaction(async (transaction) => {
-      // 6a. Idempotency: a link already exists → no second client.
-      const existingLink = await transaction.get(linkRef);
-      if (existingLink.exists) {
-        const existing = existingLink.data() ?? {};
+      // 6a. Idempotency: an intent already exists → no second pending client.
+      const existingIntent = await transaction.get(intentRef);
+      if (existingIntent.exists) {
+        const existing = existingIntent.data() ?? {};
         return {
           created: false,
           caseNumber: typeof existing.caseNumber === 'string' ? existing.caseNumber : '',
@@ -419,25 +449,23 @@ export async function createClientFromSalesRecordHandler(
         nowIso
       });
 
-      // 6e. Atomic writes — counter bump + client create + link.
+      // 6e. Atomic writes — counter bump + client create + intent marker.
       transaction.set(counterRef, counterUpdate, { merge: true });
       // `.create()` (not set) → a caseNumber collision aborts the txn rather than
       // silently overwriting an existing case (defensive; the counter makes it rare).
       transaction.create(clientRef, clientData);
-      // The financial snapshot lives HERE (CF-only) — OFF the world-readable client
-      // doc (§7.6 / DLR D-A). The clients doc carries the fee only as the service's
-      // fixedPrice + the non-PII salesRecordId.
-      transaction.set(linkRef, {
+      // H.6.c-1: the CF-only idempotency marker. `.create()` (NOT set) is the race-safe
+      // backstop — a concurrent double-call collides on this doc id and aborts + retries,
+      // guaranteeing exactly one pending client per sale. NO fee snapshot is persisted in
+      // c-1 (the old sales_record_links write is removed) — the c-3 activation CF re-reads
+      // the live sale for the authoritative fee. Payload is non-PII business ids only.
+      transaction.create(intentRef, {
         salesRecordId,
         caseNumber,
         serviceId,
-        agreedFeeSnapshot: fixedPrice,
-        feeFieldUsed: 'amountBeforeVat',
-        salesRecordTimestampIso,
-        snapshotAt: admin.firestore.FieldValue.serverTimestamp(),
-        confirmedBy: adminUid,
-        state: 'matched',
-        schemaVersion: LINK_SCHEMA_VERSION
+        createdBy: adminUid,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        schemaVersion: INTENT_SCHEMA_VERSION
       });
 
       return { created: true, caseNumber, serviceId };
