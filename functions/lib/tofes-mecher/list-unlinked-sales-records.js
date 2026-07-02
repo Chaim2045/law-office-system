@@ -1,0 +1,181 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.listUnlinkedSalesRecords = void 0;
+exports.listUnlinkedSalesRecordsHandler = listUnlinkedSalesRecordsHandler;
+/**
+ * listUnlinkedSalesRecords — Phase 2 H.6 (Pending Client Creation listing)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Admin-gated v2 callable that reads ALL sales_records from the tofes-mecher
+ * project (cross-project SA key) and cross-references the CF-only
+ * `sales_record_links` collection in the MAIN project to return only the
+ * UNLINKED records — sales that do NOT yet have a corresponding law-office
+ * client.
+ *
+ * ─── Dual-project read (new pattern) ────────────────────────────────────────
+ * This is the first CF that reads from BOTH projects in a single call:
+ *   1. tofes-mecher `sales_records` via the named app (SA key + defineSecret)
+ *   2. main-project `sales_record_links` via `admin.firestore()` (ADC)
+ * The two reads are independent (no cross-project transaction needed) — a
+ * small race window exists where a link is created between the two reads, but
+ * `createClientFromSalesRecord` is idempotent, so a stale "unlinked" entry
+ * simply results in a no-op {created:false} on approve.
+ *
+ * ─── Design contract (H.6 checkpoint, Haim-approved 2026-07-02) ────────────
+ *  1. v2 `onCall` with `{ secrets: [TOFES_KEY] }`.
+ *  2. Role-only admin gate (same as validateSalesRecordExists).
+ *  3. No input parameters — returns ALL unlinked records (current scale: ~161
+ *     total sales_records; hard cap at 500 for safety).
+ *  4. Uses the SSOT `projectSalesRecord` for field-minimized 9-field snapshot.
+ *  5. ONE non-PII audit entry per call (action: LIST_UNLINKED_SALES_RECORDS,
+ *     payload: {totalSales, linkedCount, unlinkedCount}). NOT per-record —
+ *     this is a listing (discovery), not a commit-read (that's H.1.b).
+ *  6. NO PII in logger output — only counts, uid, error codes.
+ *  7. Hard cap: if sales_records exceeds 500 docs, returns the first 500
+ *     unlinked + a `capped: true` flag.
+ */
+const https_1 = require("firebase-functions/v2/https");
+const params_1 = require("firebase-functions/params");
+const admin = __importStar(require("firebase-admin"));
+const config_1 = require("../config");
+const app_1 = require("./app");
+const audit_critical_1 = require("../audit-critical");
+const validate_sales_record_1 = require("./validate-sales-record");
+const logger = __importStar(require("../../shared/logger"));
+const TOFES_KEY = (0, params_1.defineSecret)(config_1.TOFES_MECHER_SA_KEY_SECRET);
+const AUDIT_ACTION = 'LIST_UNLINKED_SALES_RECORDS';
+const SALES_RECORD_LINKS_COLLECTION = 'sales_record_links';
+const HARD_CAP = 500;
+/**
+ * Internal handler — exported for unit testing.
+ */
+async function listUnlinkedSalesRecordsHandler(request) {
+    // ─── (1) Auth gate (role-only admin) ──────────────────────────────────────
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'נדרשת התחברות למערכת.');
+    }
+    const claims = (request.auth.token ?? {});
+    if (claims.role !== 'admin') {
+        throw new https_1.HttpsError('permission-denied', 'רק מנהל מערכת רשאי לצפות ברשומות מכר ממתינות.');
+    }
+    const callerUid = request.auth.uid;
+    // ─── (2) Init the tofes-mecher named app ──────────────────────────────────
+    let tofesApp;
+    try {
+        tofesApp = (0, app_1.getTofesMecherApp)(TOFES_KEY.value());
+    }
+    catch (err) {
+        const name = err instanceof app_1.TofesMecherCredentialError
+            ? err.name
+            : 'unknown_init_error';
+        logger.error('tofes_mecher.list_unlinked.init_failed', {
+            actor: { uid: callerUid },
+            errorName: name
+        });
+        throw new https_1.HttpsError('internal', 'שגיאה באתחול החיבור לטופס המכר. ודא שהמפתח הוגדר כראוי ונסה שוב, או פנה לתמיכה.');
+    }
+    // ─── (3) Read ALL sales_records from tofes-mecher ─────────────────────────
+    let allSalesDocs;
+    try {
+        const snap = await tofesApp.firestore()
+            .collection(config_1.TOFES_SALES_COLLECTION)
+            .get();
+        allSalesDocs = snap.docs;
+    }
+    catch (err) {
+        const error = err;
+        logger.error('tofes_mecher.list_unlinked.read_sales_failed', {
+            actor: { uid: callerUid },
+            errorCode: error.code
+        });
+        throw new https_1.HttpsError('unavailable', 'לא ניתן לקרוא את רשומות המכר כעת. נסה שוב מאוחר יותר.');
+    }
+    // ─── (4) Read ALL sales_record_links from MAIN project ────────────────────
+    let linkedIds;
+    try {
+        const linksSnap = await admin.firestore()
+            .collection(SALES_RECORD_LINKS_COLLECTION)
+            .select() // id-only — no field data needed, saves bandwidth
+            .get();
+        linkedIds = new Set(linksSnap.docs.map(d => d.id));
+    }
+    catch (err) {
+        const error = err;
+        logger.error('tofes_mecher.list_unlinked.read_links_failed', {
+            actor: { uid: callerUid },
+            errorCode: error.code
+        });
+        throw new https_1.HttpsError('unavailable', 'לא ניתן לקרוא את הקישורים הקיימים כעת. נסה שוב מאוחר יותר.');
+    }
+    // ─── (5) Compute unlinked set (difference) ────────────────────────────────
+    const totalSales = allSalesDocs.length;
+    const unlinkedRecords = [];
+    let capped = false;
+    for (const doc of allSalesDocs) {
+        if (linkedIds.has(doc.id))
+            continue;
+        if (unlinkedRecords.length >= HARD_CAP) {
+            capped = true;
+            break;
+        }
+        unlinkedRecords.push((0, validate_sales_record_1.projectSalesRecord)(doc.id, doc.data() ?? {}));
+    }
+    const linkedCount = linkedIds.size;
+    const unlinkedCount = unlinkedRecords.length;
+    // ─── (6) Non-PII audit (one entry per listing call) ───────────────────────
+    try {
+        await (0, audit_critical_1.logCriticalAction)(AUDIT_ACTION, callerUid, {
+            totalSales,
+            linkedCount,
+            unlinkedCount,
+            capped
+        });
+    }
+    catch {
+        throw new https_1.HttpsError('internal', 'לא ניתן לתעד את הגישה לרשומות המכר כעת. אנא נסה שוב או פנה לתמיכה.');
+    }
+    // ─── (7) Success log (non-PII) ────────────────────────────────────────────
+    logger.info('tofes_mecher.list_unlinked.success', {
+        actor: { uid: callerUid },
+        totalSales,
+        linkedCount,
+        unlinkedCount,
+        capped
+    });
+    return { unlinkedRecords, totalSales, linkedCount, unlinkedCount, capped };
+}
+// ─── v2 Cloud Function wrapper ──────────────────────────────────────────────
+exports.listUnlinkedSalesRecords = (0, https_1.onCall)({ region: config_1.REGION, secrets: [TOFES_KEY] }, listUnlinkedSalesRecordsHandler);
+//# sourceMappingURL=list-unlinked-sales-records.js.map
