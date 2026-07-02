@@ -7,14 +7,17 @@
  * logic"). `computeClientPlan` runs FOR REAL (it is pure) so the "plan stamped"
  * assertion proves the actual derivation, not a stub.
  *
- * Covers (the locked H.6.a contract):
- *   • happy path — a `procedureType:'fixed'` client with fixedPrice = amountBeforeVat,
- *     the srv_fixed_* service shape, plan stamped, the CF-only link record written;
- *   • IDEMPOTENCY — a 2nd call with an existing link returns {created:false,sameCase},
- *     and transaction.create is NOT called;
+ * Covers (the locked H.6.c-1 contract — the PENDING phase):
+ *   • happy path — a `procedureType:'fixed'` client in status 'pending_signature' with a
+ *     'pending' service, activeServices:0, sourceSalesRecordId at the root, fixedPrice =
+ *     amountBeforeVat, plan stamped, and the CF-only pending_signature_intents MARKER
+ *     written (NO sales_record_links write in c-1);
+ *   • IDEMPOTENCY — a 2nd call with an existing intent returns {created:false,sameCase},
+ *     and transaction.create is NOT called (no second pending client);
  *   • fail-closed preconditions — sale not found, amountBeforeVat null;
  *   • auth gates — non-admin (incl. legacy admin:true-only), unauth;
- *   • AUDIT-FIRST in-txn — the audit is written before the create in the SAME txn;
+ *   • AUDIT-FIRST in-txn — the audit (action CREATE_PENDING_CLIENT_FROM_SALES_RECORD) is
+ *     written before the create in the SAME txn;
  *   • NO financial PII on the clients doc (no raw amount/agreedFee field);
  *   • NO PII (amount/name/idNumber) in any logger payload (static + runtime guards).
  */
@@ -145,10 +148,10 @@ function writtenClientDoc(): Record<string, unknown> {
   return op.data;
 }
 
-/** The sales_record_links doc as written. */
-function writtenLinkDoc(): Record<string, unknown> {
-  const op = writeOps.find((w) => w.op === 'set' && w.path.startsWith('sales_record_links/'));
-  if (!op) throw new Error('no link set captured');
+/** The pending_signature_intents marker doc as written (a .create(), NOT a .set()). */
+function writtenIntentDoc(): Record<string, unknown> {
+  const op = writeOps.find((w) => w.op === 'create' && w.path.startsWith('pending_signature_intents/'));
+  if (!op) throw new Error('no intent create captured');
   return op.data;
 }
 
@@ -156,9 +159,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   loggerCalls.length = 0;
   writeOps = [];
-  // Default txn reads: link absent (so a create happens), counter at year 2026 #5.
+  // Default txn reads: intent absent (so a create happens), counter at year 2026 #5.
   txnGetResponses = new Map();
-  txnGetResponses.set(`sales_record_links/${VALID_ID}`, { exists: false });
+  txnGetResponses.set(`pending_signature_intents/${VALID_ID}`, { exists: false });
   txnGetResponses.set('_system/caseNumberCounter', {
     exists: true,
     data: () => ({ year: new Date().getFullYear().toString(), lastNumber: 5, _stats: { totalTransactions: 5 } })
@@ -303,7 +306,7 @@ describe('createClientFromSalesRecord — fail-closed preconditions', () => {
 // (e) Happy path — the FIXED clientData shape + plan + link record
 // ════════════════════════════════════════════════════════════════════════════
 describe('createClientFromSalesRecord — happy path (create)', () => {
-  it('creates a procedureType:fixed client with the canonical service shape', async () => {
+  it('creates a procedureType:fixed PENDING client with the canonical service shape', async () => {
     const res = await createClientFromSalesRecordHandler(makeReq());
     expect(res).toEqual({ created: true, caseNumber: EXPECTED_CASE, serviceId: `srv_fixed_${VALID_ID}` });
 
@@ -315,13 +318,15 @@ describe('createClientFromSalesRecord — happy path (create)', () => {
       idNumber: PII.idNumber,
       caseTitle: 'מכר דירה',
       procedureType: 'fixed',
-      status: 'active',
+      // H.6.c-1: created in the PENDING phase, not active/billable.
+      status: 'pending_signature',
+      sourceSalesRecordId: VALID_ID,
       priority: 'medium',
       mainAttorney: 'admin-display',
       createdBy: 'admin-display',
       assignedTo: ['admin-display'],
       totalServices: 1,
-      activeServices: 1,
+      activeServices: 0,
       isOnHold: false
     });
     expect(doc.services).toEqual([
@@ -330,7 +335,7 @@ describe('createClientFromSalesRecord — happy path (create)', () => {
         type: 'fixed',
         name: 'שירות קבוע',
         description: '',
-        status: 'active',
+        status: 'pending',
         createdAt: expect.any(String),
         createdBy: 'admin-display',
         fixedPrice: AMOUNT,
@@ -339,6 +344,11 @@ describe('createClientFromSalesRecord — happy path (create)', () => {
         salesRecordId: VALID_ID
       }
     ]);
+  });
+
+  it('stamps sourceSalesRecordId at the client root (the c-3 activation + c-5 sweep join key)', async () => {
+    await createClientFromSalesRecordHandler(makeReq());
+    expect(writtenClientDoc().sourceSalesRecordId).toBe(VALID_ID);
   });
 
   it('stamps the static Plan (computeClientPlan over the fixed service)', async () => {
@@ -353,22 +363,30 @@ describe('createClientFromSalesRecord — happy path (create)', () => {
     });
   });
 
-  it('writes the CF-only link record with the financial snapshot', async () => {
+  it('writes the CF-only pending_signature_intents MARKER (non-PII, no fee snapshot) and NO sales_record_links', async () => {
     await createClientFromSalesRecordHandler(makeReq());
-    expect(writtenLinkDoc()).toEqual({
+    // H.6.c-1: the permanent sales_record_links fee-snapshot write is REMOVED (moves to
+    // the c-3 activation CF). c-1 writes only the idempotency marker.
+    expect(writeOps.filter((w) => w.path.startsWith('sales_record_links/'))).toHaveLength(0);
+    expect(writtenIntentDoc()).toEqual({
       salesRecordId: VALID_ID,
       caseNumber: EXPECTED_CASE,
       serviceId: `srv_fixed_${VALID_ID}`,
-      agreedFeeSnapshot: AMOUNT,
-      feeFieldUsed: 'amountBeforeVat',
-      // The SALE's own timestamp (from the fixture), NOT the current wall-clock —
-      // proves the link captures the sale's timestamp for DLR drift-detection.
-      salesRecordTimestampIso: '2026-01-02T03:04:05.000Z',
-      snapshotAt: 'TS_SENTINEL',
-      confirmedBy: ADMIN_UID,
-      state: 'matched',
+      createdBy: ADMIN_UID,
+      createdAt: 'TS_SENTINEL',
       schemaVersion: 1
     });
+    // No fee snapshot / amount is persisted anywhere in the intent marker (§7.6).
+    const blob = JSON.stringify(writtenIntentDoc());
+    expect(blob).not.toContain(String(AMOUNT));
+    expect(blob).not.toContain('agreedFeeSnapshot');
+  });
+
+  it('creates the intent marker with .create() (race-safe backstop, not .set())', async () => {
+    await createClientFromSalesRecordHandler(makeReq());
+    const intentOps = writeOps.filter((w) => w.path.startsWith('pending_signature_intents/'));
+    expect(intentOps).toHaveLength(1);
+    expect(intentOps[0].op).toBe('create');
   });
 
   it('allocates the caseNumber from the _system counter (lastNumber+1, padded)', async () => {
@@ -398,21 +416,22 @@ describe('createClientFromSalesRecord — happy path (create)', () => {
 // (f) Idempotency — an existing link → no second client
 // ════════════════════════════════════════════════════════════════════════════
 describe('createClientFromSalesRecord — idempotency', () => {
-  it('a 2nd call with an existing link returns {created:false, sameCase} and creates NO client', async () => {
-    txnGetResponses.set(`sales_record_links/${VALID_ID}`, {
+  it('a 2nd call with an existing intent returns {created:false, sameCase} and creates NO client', async () => {
+    txnGetResponses.set(`pending_signature_intents/${VALID_ID}`, {
       exists: true,
       data: () => ({ caseNumber: '2026042', serviceId: `srv_fixed_${VALID_ID}` })
     });
     const res = await createClientFromSalesRecordHandler(makeReq());
     expect(res).toEqual({ created: false, caseNumber: '2026042', serviceId: `srv_fixed_${VALID_ID}` });
-    expect(mockTransaction.create).not.toHaveBeenCalled();
-    // no counter bump, no new link write
+    // NO client is created on the idempotent path.
     expect(writeOps.filter((w) => w.path.startsWith('clients/'))).toHaveLength(0);
+    // no counter bump, no new intent write, no link write
+    expect(writeOps.filter((w) => w.path.startsWith('pending_signature_intents/'))).toHaveLength(0);
     expect(writeOps.filter((w) => w.path.startsWith('sales_record_links/'))).toHaveLength(0);
   });
 
   it('the idempotent no-op does NOT write an audit (no create → nothing to audit)', async () => {
-    txnGetResponses.set(`sales_record_links/${VALID_ID}`, {
+    txnGetResponses.set(`pending_signature_intents/${VALID_ID}`, {
       exists: true,
       data: () => ({ caseNumber: '2026042', serviceId: 'srv_fixed_x' })
     });
@@ -443,7 +462,7 @@ describe('createClientFromSalesRecord — audit-FIRST (in transaction)', () => {
     await createClientFromSalesRecordHandler(makeReq());
     expect(mockLogCriticalInTxn).toHaveBeenCalledWith(
       mockTransaction,
-      'CREATE_CLIENT_FROM_SALES_RECORD',
+      'CREATE_PENDING_CLIENT_FROM_SALES_RECORD',
       ADMIN_UID,
       { salesRecordId: VALID_ID, caseNumber: EXPECTED_CASE, serviceId: `srv_fixed_${VALID_ID}` }
     );

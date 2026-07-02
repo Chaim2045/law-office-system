@@ -117,6 +117,15 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // The REAL pending_signature_intents path (Phase 2 H.6.c-1) — mirrors production
+    // `allow read, write: if false`. Fully CF-only (like sales_record_links /
+    // employee_costs): the H.6.c-1 idempotency marker (non-PII business ids only, no fee)
+    // that guarantees exactly one pending_signature client per sale.
+    // tests/rules/pendingSignatureIntents.test.ts asserts it denies EVERY context.
+    match /pending_signature_intents/{salesRecordId} {
+      allow read, write: if false;
+    }
+
     // Deny everything else.
     match /{document=**} {
       allow read, write: if false;

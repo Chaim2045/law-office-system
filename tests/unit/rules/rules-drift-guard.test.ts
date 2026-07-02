@@ -43,9 +43,14 @@ const HELPERS = ['isAuthenticated', 'isAdmin', 'isPartner'] as const;
  * the mirror, so a silent divergence here would be a false-green). H.3 PR3 added
  * client_profitability (the first production isAdmin()||isPartner() consumer). H.6
  * added sales_record_links (fully CF-only — the agreed-fee snapshot off the
- * world-readable clients doc).
+ * world-readable clients doc). H.6.c-1 added pending_signature_intents (fully CF-only —
+ * the phase-1 idempotency marker).
  */
-const GATED_COLLECTIONS = ['client_profitability', 'sales_record_links'] as const;
+const GATED_COLLECTIONS = [
+  'client_profitability',
+  'sales_record_links',
+  'pending_signature_intents'
+] as const;
 
 /**
  * Extracts the body of `function <name>() { ... }` from a rules file via
