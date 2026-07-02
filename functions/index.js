@@ -142,6 +142,8 @@ exports.validateSalesRecordExists = validateSalesRecordModule.validateSalesRecor
 // (dataset) + roles/bigquery.jobUser (project) — fails at FIRST RUN, not deploy.
 const exportSalesToBigQueryModule = require('./lib/tofes-mecher/export-sales-to-bigquery');
 exports.exportSalesToBigQuery = exportSalesToBigQueryModule.exportSalesToBigQuery;
+const listUnlinkedSalesRecordsModule = require('./lib/tofes-mecher/list-unlinked-sales-records');
+exports.listUnlinkedSalesRecords = listUnlinkedSalesRecordsModule.listUnlinkedSalesRecords;
 
 // Profitability — Forecast layer (TS — Phase 2 H.3 PR3). The dynamic per-case
 // cost/profit aggregate in the CF-only client_profitability/{caseNumber} collection
