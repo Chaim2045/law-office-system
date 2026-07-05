@@ -33,11 +33,12 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports._FORECAST_SKIP_STATUSES = exports.aggregateClientProfitability = exports.FORECAST_MAX_FAILURE_RATE = exports.FORECAST_SCHEMA_VERSION = exports.CLIENT_PROFITABILITY_COLLECTION = void 0;
+exports._CLIENT_SKIP_STATUSES = exports._FORECAST_SKIP_STATUSES = exports.aggregateClientProfitability = exports.FORECAST_MAX_FAILURE_RATE = exports.FORECAST_SCHEMA_VERSION = exports.CLIENT_PROFITABILITY_COLLECTION = void 0;
 exports.computeForecastForClient = computeForecastForClient;
 exports.exceedsFailureThreshold = exceedsFailureThreshold;
 exports.aggregateClientProfitabilityHandler = aggregateClientProfitabilityHandler;
 exports.recomputeProfitabilityForCase = recomputeProfitabilityForCase;
+exports._shouldSkipClientForForecast = shouldSkipClientForForecast;
 /**
  * forecast-aggregation — Phase 2 H.3 PR3 (the dynamic "Forecast" layer)
  * ─────────────────────────────────────────────────────────────────────────────
@@ -117,6 +118,24 @@ const SYS_ACTOR = 'sys:cron-profitability';
  * (`['archived']`) so Forecast and Plan sum the SAME active subset.
  */
 const FORECAST_SKIP_STATUSES = ['archived'];
+/**
+ * CLIENT-level statuses excluded from the Forecast entirely (no aggregate doc is
+ * written). Distinct from FORECAST_SKIP_STATUSES above, which is a SERVICE-status
+ * filter inside a live client — do NOT conflate the two.
+ *
+ * H.6.c-2: a `pending_signature` client (created by `createClientFromSalesRecord`
+ * in a two-phase signature gate — service `status:'pending'`, `activeServices:0`)
+ * is not yet a live case. It must NOT get a `client_profitability/{caseNumber}`
+ * doc: it has no live services to forecast, and surfacing it in the admin
+ * dashboard before the signature is confirmed would be misleading. When the
+ * client is later activated, the next scheduled run (or an on-demand recompute)
+ * materialises its Forecast normally.
+ */
+const CLIENT_SKIP_STATUSES = ['pending_signature'];
+/** Client-level Forecast skip predicate — a client with this status gets no aggregate doc. */
+function shouldSkipClientForForecast(status) {
+    return CLIENT_SKIP_STATUSES.includes(String(status ?? 'active'));
+}
 function round2(n) {
     return Math.round(n * 100) / 100;
 }
@@ -308,6 +327,11 @@ async function aggregateClientProfitabilityHandler() {
         clientsScanned += 1;
         try {
             const data = clientDoc.data() ?? {};
+            // H.6.c-2: skip pending_signature clients entirely — no aggregate doc is
+            // written for a case whose signature gate has not yet been confirmed.
+            if (shouldSkipClientForForecast(data.status)) {
+                continue;
+            }
             const forecast = await aggregateOneClient(db, clientDoc);
             await writeForecast(db, forecast, String(data.status ?? 'active'));
             clientsWritten += 1;
@@ -351,6 +375,12 @@ async function recomputeProfitabilityForCase(caseNumber) {
     if (!clientSnap.exists) {
         return null;
     }
+    // H.6.c-2: a pending_signature client has no live Forecast — treat an on-demand
+    // recompute as a clean no-op (return null → the callable resolves {found:false},
+    // never writing a client_profitability doc for a not-yet-confirmed case).
+    if (shouldSkipClientForForecast((clientSnap.data() ?? {}).status)) {
+        return null;
+    }
     const forecast = await aggregateOneClient(db, clientSnap);
     await writeForecast(db, forecast, String((clientSnap.data() ?? {}).status ?? 'active'));
     return forecast;
@@ -369,4 +399,6 @@ exports.aggregateClientProfitability = (0, scheduler_1.onSchedule)({
 });
 /** Exposed for the archived-filter drift-guard test (pins to aggregates.NON_AGGREGATING_STATUSES). */
 exports._FORECAST_SKIP_STATUSES = FORECAST_SKIP_STATUSES;
+/** Exposed for the H.6.c-2 client-skip test (pending_signature never gets an aggregate doc). */
+exports._CLIENT_SKIP_STATUSES = CLIENT_SKIP_STATUSES;
 //# sourceMappingURL=forecast-aggregation.js.map

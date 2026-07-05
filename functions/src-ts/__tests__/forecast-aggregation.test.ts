@@ -25,6 +25,8 @@ import {
   FORECAST_MAX_FAILURE_RATE,
   FORECAST_SCHEMA_VERSION,
   _FORECAST_SKIP_STATUSES,
+  _CLIENT_SKIP_STATUSES,
+  _shouldSkipClientForForecast,
   type ForecastEntry
 } from '../profitability/forecast-aggregation';
 
@@ -144,6 +146,26 @@ describe('archived-filter drift guard', () => {
     const aggregates = require('../../shared/aggregates');
     expect([..._FORECAST_SKIP_STATUSES]).toEqual([...aggregates.NON_AGGREGATING_STATUSES]);
     expect([..._FORECAST_SKIP_STATUSES]).toEqual(['archived']);
+  });
+});
+
+describe('H.6.c-2 client-level skip — pending_signature gets NO aggregate doc', () => {
+  it('_CLIENT_SKIP_STATUSES is exactly [pending_signature] (distinct from the archived service filter)', () => {
+    expect([..._CLIENT_SKIP_STATUSES]).toEqual(['pending_signature']);
+    // must NOT be conflated with the SERVICE-status archived filter
+    expect([..._CLIENT_SKIP_STATUSES]).not.toEqual([..._FORECAST_SKIP_STATUSES]);
+  });
+
+  it('a pending_signature client is skipped', () => {
+    expect(_shouldSkipClientForForecast('pending_signature')).toBe(true);
+  });
+
+  it('active / archived / missing status are NOT client-skipped (only the loop/plan filters apply)', () => {
+    expect(_shouldSkipClientForForecast('active')).toBe(false);
+    expect(_shouldSkipClientForForecast('archived')).toBe(false); // handled by the SERVICE filter, not here
+    expect(_shouldSkipClientForForecast(undefined)).toBe(false);  // defaults to 'active'
+    expect(_shouldSkipClientForForecast(null)).toBe(false);
+    expect(_shouldSkipClientForForecast('on_hold')).toBe(false);
   });
 });
 

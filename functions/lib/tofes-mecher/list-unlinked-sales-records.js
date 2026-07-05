@@ -77,6 +77,13 @@ const logger = __importStar(require("../../shared/logger"));
 const TOFES_KEY = (0, params_1.defineSecret)(config_1.TOFES_MECHER_SA_KEY_SECRET);
 const AUDIT_ACTION = 'LIST_UNLINKED_SALES_RECORDS';
 const SALES_RECORD_LINKS_COLLECTION = 'sales_record_links';
+// H.6.c-2: a `pending_signature` client (created by createClientFromSalesRecord,
+// c-1) has a CF-only `pending_signature_intents/{salesRecordId}` marker but NO
+// `sales_record_links` doc yet (the permanent link is written by the c-3
+// activation CF). Without folding this collection into `linkedIds`, that sale
+// would re-appear as "unlinked" and an admin could create a SECOND pending client
+// for it. The marker doc id == salesRecordId — the same join key as the link doc.
+const PENDING_SIGNATURE_INTENTS_COLLECTION = 'pending_signature_intents';
 const HARD_CAP = 500;
 /**
  * Internal handler — exported for unit testing.
@@ -122,14 +129,27 @@ async function listUnlinkedSalesRecordsHandler(request) {
         });
         throw new https_1.HttpsError('unavailable', 'לא ניתן לקרוא את רשומות המכר כעת. נסה שוב מאוחר יותר.');
     }
-    // ─── (4) Read ALL sales_record_links from MAIN project ────────────────────
+    // ─── (4) Read ALL sales_record_links + pending_signature_intents from MAIN ──
+    // A sale is "linked" (i.e. NOT unlinked) if it has EITHER a permanent
+    // sales_record_links doc OR a pending_signature_intents marker (a pending
+    // client already exists / is mid-creation for it). Both id-only reads; the
+    // union removes it from the "unlinked" (create-eligible) queue.
     let linkedIds;
     try {
-        const linksSnap = await admin.firestore()
-            .collection(SALES_RECORD_LINKS_COLLECTION)
-            .select() // id-only — no field data needed, saves bandwidth
-            .get();
-        linkedIds = new Set(linksSnap.docs.map(d => d.id));
+        const [linksSnap, intentsSnap] = await Promise.all([
+            admin.firestore()
+                .collection(SALES_RECORD_LINKS_COLLECTION)
+                .select() // id-only — no field data needed, saves bandwidth
+                .get(),
+            admin.firestore()
+                .collection(PENDING_SIGNATURE_INTENTS_COLLECTION)
+                .select() // id-only — the marker doc id == salesRecordId
+                .get()
+        ]);
+        linkedIds = new Set([
+            ...linksSnap.docs.map(d => d.id),
+            ...intentsSnap.docs.map(d => d.id)
+        ]);
     }
     catch (err) {
         const error = err;

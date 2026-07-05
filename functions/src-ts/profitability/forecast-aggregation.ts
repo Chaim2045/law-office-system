@@ -84,6 +84,26 @@ const SYS_ACTOR = 'sys:cron-profitability';
  */
 const FORECAST_SKIP_STATUSES: readonly string[] = ['archived'];
 
+/**
+ * CLIENT-level statuses excluded from the Forecast entirely (no aggregate doc is
+ * written). Distinct from FORECAST_SKIP_STATUSES above, which is a SERVICE-status
+ * filter inside a live client — do NOT conflate the two.
+ *
+ * H.6.c-2: a `pending_signature` client (created by `createClientFromSalesRecord`
+ * in a two-phase signature gate — service `status:'pending'`, `activeServices:0`)
+ * is not yet a live case. It must NOT get a `client_profitability/{caseNumber}`
+ * doc: it has no live services to forecast, and surfacing it in the admin
+ * dashboard before the signature is confirmed would be misleading. When the
+ * client is later activated, the next scheduled run (or an on-demand recompute)
+ * materialises its Forecast normally.
+ */
+const CLIENT_SKIP_STATUSES: readonly string[] = ['pending_signature'];
+
+/** Client-level Forecast skip predicate — a client with this status gets no aggregate doc. */
+function shouldSkipClientForForecast(status: unknown): boolean {
+  return CLIENT_SKIP_STATUSES.includes(String(status ?? 'active'));
+}
+
 /** A minimal view of a timesheet entry — only the fields the Forecast needs. */
 export interface ForecastEntry {
   /** the timesheet entry id (== the timesheet_entry_costs doc id — the JOIN key). */
@@ -346,6 +366,11 @@ export async function aggregateClientProfitabilityHandler(): Promise<AggregateRe
     clientsScanned += 1;
     try {
       const data = clientDoc.data() ?? {};
+      // H.6.c-2: skip pending_signature clients entirely — no aggregate doc is
+      // written for a case whose signature gate has not yet been confirmed.
+      if (shouldSkipClientForForecast(data.status)) {
+        continue;
+      }
       const forecast = await aggregateOneClient(db, clientDoc);
       await writeForecast(db, forecast, String(data.status ?? 'active'));
       clientsWritten += 1;
@@ -395,6 +420,12 @@ export async function recomputeProfitabilityForCase(
   if (!clientSnap.exists) {
     return null;
   }
+  // H.6.c-2: a pending_signature client has no live Forecast — treat an on-demand
+  // recompute as a clean no-op (return null → the callable resolves {found:false},
+  // never writing a client_profitability doc for a not-yet-confirmed case).
+  if (shouldSkipClientForForecast((clientSnap.data() ?? {}).status)) {
+    return null;
+  }
   const forecast = await aggregateOneClient(db, clientSnap);
   await writeForecast(db, forecast, String((clientSnap.data() ?? {}).status ?? 'active'));
   return forecast;
@@ -418,3 +449,7 @@ export const aggregateClientProfitability = onSchedule(
 
 /** Exposed for the archived-filter drift-guard test (pins to aggregates.NON_AGGREGATING_STATUSES). */
 export const _FORECAST_SKIP_STATUSES = FORECAST_SKIP_STATUSES;
+
+/** Exposed for the H.6.c-2 client-skip test (pending_signature never gets an aggregate doc). */
+export const _CLIENT_SKIP_STATUSES = CLIENT_SKIP_STATUSES;
+export { shouldSkipClientForForecast as _shouldSkipClientForForecast };
