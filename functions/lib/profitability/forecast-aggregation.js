@@ -95,6 +95,17 @@ exports.recomputeProfitabilityForCase = recomputeProfitabilityForCase;
  * intra-day drift is immaterial). A SYSTEMIC failure rate (≥ FORECAST_MAX_FAILURE_RATE)
  * THROWS so Cloud Scheduler alerts — a handful of malformed clients are tolerated
  * (per-client isolation + logged), but a majority failure must not look green.
+ *
+ * ─── pending_signature clients are skipped (H.6.c-2) ─────────────────────────
+ * A client created by `createClientFromSalesRecord` (H.6.c-1) starts in status
+ * `pending_signature` — a placeholder case (activeServices:0, one `pending`
+ * service) awaiting the signed fee agreement, NOT yet a real active case. The
+ * handler skips these WHOLESALE at the top of the per-client loop (before any
+ * entries/costs read) — no `client_profitability` doc is minted for a pending
+ * client. This is a CLIENT-status skip, tracked separately (`clientsSkippedPending`
+ * in the run summary/audit) from the SERVICE-status `FORECAST_SKIP_STATUSES`
+ * below — the two are different axes (client lifecycle vs. per-service archival)
+ * and must not be conflated.
  */
 const admin = __importStar(require("firebase-admin"));
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -291,6 +302,7 @@ async function aggregateClientProfitabilityHandler() {
     let clientsScanned = 0;
     let clientsWritten = 0;
     let clientsFailed = 0;
+    let clientsSkippedPending = 0;
     // ─── (1) Read the client list (the one read the run cannot proceed without) ──
     let clientDocs;
     try {
@@ -308,6 +320,18 @@ async function aggregateClientProfitabilityHandler() {
         clientsScanned += 1;
         try {
             const data = clientDoc.data() ?? {};
+            // H.6.c-2: a client in 'pending_signature' (c-1's two-phase intake — the
+            // client exists with activeServices:0 and a single 'pending' service, but
+            // is not yet a real active case) is skipped WHOLESALE — no Forecast doc is
+            // minted for it. Skipping here (before any read/compute) avoids wasting a
+            // per-client entries+costs read on a client that has no billable work yet,
+            // and avoids shipping a `client_profitability` doc with a status the
+            // dashboard has no honest way to render (H.3 renders Plan-vs-Forecast for
+            // active cases; a pending-signature "case" isn't one yet).
+            if (data.status === 'pending_signature') {
+                clientsSkippedPending += 1;
+                continue;
+            }
             const forecast = await aggregateOneClient(db, clientDoc);
             await writeForecast(db, forecast, String(data.status ?? 'active'));
             clientsWritten += 1;
@@ -327,7 +351,8 @@ async function aggregateClientProfitabilityHandler() {
         ok: clientsFailed === 0,
         clientsScanned,
         clientsWritten,
-        clientsFailed
+        clientsFailed,
+        clientsSkippedPending
     };
     logger.info('profitability_aggregate.complete', { ...result });
     await safeRunAudit({ ...result });

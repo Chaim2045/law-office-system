@@ -5,6 +5,11 @@
  * un-costed coverage %, and archived-service parity with the Plan layer. These
  * are unit tests of the pure function (no Firestore) — the exact invariants the
  * profitability layer exists to protect.
+ *
+ * Also covers H.6.c-2 (handler-level): `aggregateClientProfitabilityHandler`
+ * must skip a `pending_signature` CLIENT wholesale (no entries/costs read, no
+ * `client_profitability` doc written), while a normal `active` client is still
+ * aggregated as before.
  */
 
 // ─── Mocks (so importing the module's top-level onSchedule wrapper is hermetic) ─
@@ -12,14 +17,47 @@ jest.mock('firebase-functions/v2/scheduler', () => ({
   onSchedule: (_config: unknown, handler: unknown) => handler
 }));
 
+// Mutable per-test fixtures for the handler-level (mocked-Firestore) tests.
+let clientDocsFixture: Array<{ id: string; data: () => Record<string, unknown> }> = [];
+const mockClientsGet = jest.fn();
+const mockEntriesGet = jest.fn();
+const mockGetAll = jest.fn();
+const mockForecastSet = jest.fn();
+const mockAuditAdd = jest.fn();
+
 jest.mock('firebase-admin', () => {
-  const firestoreFn = (() => ({})) as unknown as Record<string, unknown>;
+  const firestoreFn = (() => ({
+    collection: (name: string) => {
+      if (name === 'clients') {
+        return { get: mockClientsGet };
+      }
+      if (name === 'timesheet_entries') {
+        return { where: () => ({ get: mockEntriesGet }) };
+      }
+      if (name === 'timesheet_entry_costs') {
+        return { doc: (id: string) => ({ id }) };
+      }
+      if (name === 'client_profitability') {
+        return { doc: () => ({ set: mockForecastSet }) };
+      }
+      // audit_log (via logCriticalAction) fallback.
+      return { add: mockAuditAdd, doc: () => ({}) };
+    },
+    getAll: mockGetAll
+  })) as unknown as Record<string, unknown>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (firestoreFn as any).FieldValue = { serverTimestamp: () => 'ts-sentinel' };
   return { firestore: firestoreFn };
 });
 
+jest.mock('../../shared/logger', () => ({
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn()
+}));
+
 import {
+  aggregateClientProfitabilityHandler,
   computeForecastForClient,
   exceedsFailureThreshold,
   FORECAST_MAX_FAILURE_RATE,
@@ -28,11 +66,24 @@ import {
   type ForecastEntry
 } from '../profitability/forecast-aggregation';
 
+function clientDoc(id: string, data: Record<string, unknown>) {
+  return { id, data: () => data };
+}
+
 const CASE = '2025724';
 
 function entry(id: string, minutes: unknown, serviceId?: string, parentServiceId?: string): ForecastEntry {
   return { id, minutes, serviceId, parentServiceId };
 }
+
+beforeEach(() => {
+  clientDocsFixture = [];
+  mockClientsGet.mockReset().mockImplementation(() => Promise.resolve({ docs: clientDocsFixture }));
+  mockEntriesGet.mockReset().mockResolvedValue({ docs: [] });
+  mockGetAll.mockReset().mockResolvedValue([]);
+  mockForecastSet.mockReset().mockResolvedValue(undefined);
+  mockAuditAdd.mockReset().mockResolvedValue({ id: 'audit-doc-id' });
+});
 
 describe('computeForecastForClient — join by entryId, null≠0, coverage, archived parity', () => {
   it('all entries costed → actualCost = Σ(min/60 × cost), coverage 0%, costed=total', () => {
@@ -179,5 +230,59 @@ describe('exceedsFailureThreshold — systemic-failure alerting (not just 0-writ
   it('the threshold constant is a sane share (0 < rate <= 1)', () => {
     expect(FORECAST_MAX_FAILURE_RATE).toBeGreaterThan(0);
     expect(FORECAST_MAX_FAILURE_RATE).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('aggregateClientProfitabilityHandler — pending_signature client skip (H.6.c-2)', () => {
+  it('a pending_signature client is skipped wholesale — no entries/costs read, no client_profitability doc written', async () => {
+    clientDocsFixture = [
+      clientDoc('2025999', { status: 'pending_signature', services: [] })
+    ];
+
+    const result = await aggregateClientProfitabilityHandler();
+
+    expect(result.clientsScanned).toBe(1);
+    expect(result.clientsSkippedPending).toBe(1);
+    expect(result.clientsWritten).toBe(0);
+    expect(result.clientsFailed).toBe(0);
+    expect(result.ok).toBe(true);
+    // no per-client entries read and no Forecast doc written for the pending client
+    expect(mockEntriesGet).not.toHaveBeenCalled();
+    expect(mockForecastSet).not.toHaveBeenCalled();
+  });
+
+  it('a normal active client is still aggregated and written as before', async () => {
+    clientDocsFixture = [
+      clientDoc('2025724', { status: 'active', services: [{ id: 's1', status: 'active' }] })
+    ];
+    mockEntriesGet.mockResolvedValueOnce({ docs: [] });
+
+    const result = await aggregateClientProfitabilityHandler();
+
+    expect(result.clientsScanned).toBe(1);
+    expect(result.clientsSkippedPending).toBe(0);
+    expect(result.clientsWritten).toBe(1);
+    expect(result.clientsFailed).toBe(0);
+    expect(mockForecastSet).toHaveBeenCalledTimes(1);
+    const written = mockForecastSet.mock.calls[0][0];
+    expect(written.status).toBe('active');
+    expect(written.caseNumber).toBe('2025724');
+  });
+
+  it('a mixed run: pending clients are skipped, active clients are written, counts stay distinct', async () => {
+    clientDocsFixture = [
+      clientDoc('2025001', { status: 'pending_signature', services: [] }),
+      clientDoc('2025002', { status: 'active', services: [] }),
+      clientDoc('2025003', { status: 'pending_signature', services: [] })
+    ];
+    mockEntriesGet.mockResolvedValue({ docs: [] });
+
+    const result = await aggregateClientProfitabilityHandler();
+
+    expect(result.clientsScanned).toBe(3);
+    expect(result.clientsSkippedPending).toBe(2);
+    expect(result.clientsWritten).toBe(1);
+    expect(result.clientsFailed).toBe(0);
+    expect(mockForecastSet).toHaveBeenCalledTimes(1);
   });
 });

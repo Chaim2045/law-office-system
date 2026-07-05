@@ -60,11 +60,26 @@ exports.listUnlinkedSalesRecordsHandler = listUnlinkedSalesRecordsHandler;
  *     total sales_records; hard cap at 500 for safety).
  *  4. Uses the SSOT `projectSalesRecord` for field-minimized 9-field snapshot.
  *  5. ONE non-PII audit entry per call (action: LIST_UNLINKED_SALES_RECORDS,
- *     payload: {totalSales, linkedCount, unlinkedCount}). NOT per-record —
- *     this is a listing (discovery), not a commit-read (that's H.1.b).
+ *     payload: {totalSales, linkedCount, pendingCount, unlinkedCount}). NOT
+ *     per-record — this is a listing (discovery), not a commit-read (H.1.b).
  *  6. NO PII in logger output — only counts, uid, error codes.
  *  7. Hard cap: if sales_records exceeds 500 docs, returns the first 500
  *     unlinked + a `capped: true` flag.
+ *
+ * ─── H.6.c-2: pending-signature intents also exclude ────────────────────────
+ * c-1's `createClientFromSalesRecord` no longer writes `sales_record_links` —
+ * it writes a CF-only idempotency marker to `pending_signature_intents/{salesRecordId}`
+ * instead (the client it creates starts in status `pending_signature`, not yet
+ * a fully-signed active case). A sale with a pending-signature intent has
+ * ALREADY been acted on (a placeholder client exists for it) even though no
+ * `sales_record_links` doc was written for it — so without this second
+ * exclusion set, that sale would incorrectly re-appear as "unlinked" every
+ * time this lister runs. Both `sales_record_links` and `pending_signature_intents`
+ * are keyed by `salesRecordId` (id-only reads), so a plain Set union of the two
+ * id sets is an exact (not approximate) exclusion — no false positives/negatives.
+ * The two counts are kept SEPARATE in the audit/log/response (`linkedCount` vs.
+ * `pendingCount`) rather than summed, so "already linked" and "pending
+ * signature" stay distinguishable signals for whoever reads the run summary.
  */
 const https_1 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
@@ -77,6 +92,11 @@ const logger = __importStar(require("../../shared/logger"));
 const TOFES_KEY = (0, params_1.defineSecret)(config_1.TOFES_MECHER_SA_KEY_SECRET);
 const AUDIT_ACTION = 'LIST_UNLINKED_SALES_RECORDS';
 const SALES_RECORD_LINKS_COLLECTION = 'sales_record_links';
+// H.6.c-2: keep in sync with cutover/create-client-from-sales-record.ts's
+// PENDING_SIGNATURE_INTENTS_COLLECTION (not imported directly — that module
+// does not export the constant, and duplicating a literal collection-name
+// string is the established pattern in this file for SALES_RECORD_LINKS_COLLECTION).
+const PENDING_SIGNATURE_INTENTS_COLLECTION = 'pending_signature_intents';
 const HARD_CAP = 500;
 /**
  * Internal handler — exported for unit testing.
@@ -139,12 +159,34 @@ async function listUnlinkedSalesRecordsHandler(request) {
         });
         throw new https_1.HttpsError('unavailable', 'לא ניתן לקרוא את הקישורים הקיימים כעת. נסה שוב מאוחר יותר.');
     }
-    // ─── (5) Compute unlinked set (difference) ────────────────────────────────
+    // ─── (4b) Read ALL pending_signature_intents from MAIN project (H.6.c-2) ──
+    // c-1 writes this idempotency marker INSTEAD OF sales_record_links for a
+    // sale it already turned into a pending-signature client — so a sale with a
+    // pending intent must be excluded here too, or it would incorrectly
+    // re-appear as "unlinked" on every listing.
+    let pendingIds;
+    try {
+        const pendingSnap = await admin.firestore()
+            .collection(PENDING_SIGNATURE_INTENTS_COLLECTION)
+            .select() // id-only — no field data needed, saves bandwidth
+            .get();
+        pendingIds = new Set(pendingSnap.docs.map(d => d.id));
+    }
+    catch (err) {
+        const error = err;
+        logger.error('tofes_mecher.list_unlinked.read_pending_failed', {
+            actor: { uid: callerUid },
+            errorCode: error.code
+        });
+        throw new https_1.HttpsError('unavailable', 'לא ניתן לקרוא את רשומות ההמתנה לחתימה כעת. נסה שוב מאוחר יותר.');
+    }
+    // ─── (5) Compute unlinked set (difference against the UNION of both sets) ─
     const totalSales = allSalesDocs.length;
+    const excludedIds = new Set([...linkedIds, ...pendingIds]);
     const unlinkedRecords = [];
     let capped = false;
     for (const doc of allSalesDocs) {
-        if (linkedIds.has(doc.id))
+        if (excludedIds.has(doc.id))
             continue;
         if (unlinkedRecords.length >= HARD_CAP) {
             capped = true;
@@ -153,12 +195,14 @@ async function listUnlinkedSalesRecordsHandler(request) {
         unlinkedRecords.push((0, validate_sales_record_1.projectSalesRecord)(doc.id, doc.data() ?? {}));
     }
     const linkedCount = linkedIds.size;
+    const pendingCount = pendingIds.size;
     const unlinkedCount = unlinkedRecords.length;
     // ─── (6) Non-PII audit (one entry per listing call) ───────────────────────
     try {
         await (0, audit_critical_1.logCriticalAction)(AUDIT_ACTION, callerUid, {
             totalSales,
             linkedCount,
+            pendingCount,
             unlinkedCount,
             capped
         });
@@ -171,10 +215,11 @@ async function listUnlinkedSalesRecordsHandler(request) {
         actor: { uid: callerUid },
         totalSales,
         linkedCount,
+        pendingCount,
         unlinkedCount,
         capped
     });
-    return { unlinkedRecords, totalSales, linkedCount, unlinkedCount, capped };
+    return { unlinkedRecords, totalSales, linkedCount, pendingCount, unlinkedCount, capped };
 }
 // ─── v2 Cloud Function wrapper ──────────────────────────────────────────────
 exports.listUnlinkedSalesRecords = (0, https_1.onCall)({ region: config_1.REGION, secrets: [TOFES_KEY] }, listUnlinkedSalesRecordsHandler);
