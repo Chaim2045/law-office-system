@@ -118,8 +118,6 @@ jest.mock('../src/modules/aggregation', () => ({
 
 jest.mock('../timesheet/helpers', () => ({
   createTimeEvent: jest.fn(),
-  checkIdempotency: jest.fn().mockResolvedValue(false),
-  registerIdempotency: jest.fn().mockResolvedValue(undefined),
   createReservation: jest.fn().mockResolvedValue(undefined),
   commitReservation: jest.fn().mockResolvedValue(undefined),
   rollbackReservation: jest.fn().mockResolvedValue(undefined)
