@@ -40,6 +40,10 @@ import { buildErrorFromResult } from './modules/error-utils.js';
 // pinned to the admin budget-status.js by a drift-guard test).
 import { detectBudgetCrossing } from './modules/budget-crossing.js';
 
+// PR-1 (duplicate-timesheet fix): per-submission idempotency key + offline guard
+// for addTimeToTask. Pure helpers (unit-tested in tests/unit/user-app).
+import { mintIdempotencyKey, isOffline } from './modules/submit-guard.js';
+
 // System Announcement Ticker - News-style ticker for system announcements
 import SystemAnnouncementTicker from './modules/system-announcement-ticker.js';
 
@@ -2916,6 +2920,31 @@ return;
       guidedInput.saveToRecent();
     }
 
+    // PR-1 (offline guard): block the submit when there is no network connection.
+    // Firing addTimeToTask offline would time out and auto-retry 3x with no server
+    // reachable — a confusing failure. Show a clean Hebrew popup and RETURN (no CF
+    // call, no retry, no queue). BEHAVIORAL CHANGE: submitting while offline is now
+    // blocked instead of attempted. Scope: submitTimeEntry / addTimeToTask only.
+    if (isOffline()) {
+      if (window.NotificationSystem && window.NotificationSystem.alert) {
+        window.NotificationSystem.alert(
+          'נראה שאין כרגע חיבור לאינטרנט. הדיווח לא נשלח — נסה שוב כשהחיבור יחזור.',
+          null,
+          // Calm gray cloud — a benign "no connection" state, not an error.
+          { title: 'אין חיבור לאינטרנט', okText: 'הבנתי', type: 'info', icon: 'fas fa-cloud', color: '#94a3b8' }
+        );
+      } else {
+        this.showNotification('אין חיבור לאינטרנט. הדיווח לא נשלח — נסה שוב כשהחיבור יחזור.', 'warning');
+      }
+      return;
+    }
+
+    // PR-1 (idempotency): mint ONE key per submission, reused across the 3 retries
+    // (created OUTSIDE the action closure so a retry sends the SAME key). If the first
+    // server call succeeded but was slow, the retry short-circuits server-side and no
+    // duplicate time entry is created.
+    const idempotencyKey = mintIdempotencyKey();
+
     // Direct call to Cloud Function - clean and simple with NotificationMessages
     const msgs = window.NotificationMessages.tasks;
 
@@ -2936,7 +2965,8 @@ return;
           taskId,
           minutes: workMinutes,
           description: workDescription,
-          date: workDate
+          date: workDate,
+          idempotencyKey
         }, {
           retries: 3,
           timeout: 15000
