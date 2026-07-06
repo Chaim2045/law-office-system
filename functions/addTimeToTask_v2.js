@@ -196,6 +196,44 @@ function sanitizeString(str) {
   return str.trim().replace(/[<>]/g, '');
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PR-1 (idempotency): exactly-once protection for addTimeToTask.
+//
+// The User App's FirebaseService.call('addTimeToTask', ...) times out at 15s and
+// auto-retries up to 3x on a slow network. If the server's first call actually
+// SUCCEEDED (just slow), the retry re-ran the write → a DUPLICATE time entry.
+// The client now mints ONE idempotencyKey per submission (reused across retries);
+// we short-circuit any duplicate inside the same transaction that does the write,
+// using the existing `processed_operations` collection convention
+// (see functions/timesheet/helpers.js — doc id = idempotencyKey).
+// ─────────────────────────────────────────────────────────────────────────────
+const PROCESSED_OPERATIONS_COLLECTION = 'processed_operations';
+const IDEMPOTENCY_TTL_HOURS = 24;
+// Non-empty, ≤200 chars, URL/UUID-safe alphabet (matches crypto.randomUUID output
+// and the frontend fallback `addtime_<ts>_<rand>`). A malformed key is rejected
+// (throw) rather than silently ignored — a bad key means a bad client and we do
+// NOT want to fall through to non-idempotent behavior for it.
+const IDEMPOTENCY_KEY_REGEX = /^[A-Za-z0-9_-]+$/;
+
+/**
+ * Validate an optional idempotency key.
+ * @param {*} key - the raw data.idempotencyKey (may be undefined/null)
+ * @returns {string|null} the validated key, or null when none was provided
+ * @throws {functions.https.HttpsError} 'invalid-argument' when a key is present but malformed
+ */
+function validateIdempotencyKey(key) {
+  if (key === undefined || key === null || key === '') {
+    return null;
+  }
+  if (typeof key !== 'string' || key.length > 200 || !IDEMPOTENCY_KEY_REGEX.test(key)) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'מזהה בקשה לא תקין'
+    );
+  }
+  return key;
+}
+
 /**
  * Pure: increment work tracking on a fixed-type service.
  *
@@ -315,6 +353,11 @@ async function addTimeToTaskWithTransaction(db, data, user) {
   // Stamped into a CF-only timesheet_entry_costs doc atomically inside the txn.
   const resolvedCost = await resolveEmployeeCost(user.email);
 
+  // PR-1 (idempotency): validate ONCE before the loop. Throws on a malformed key;
+  // returns null when no key was supplied (older cached clients mid-rollout →
+  // behaves exactly as before, no idempotency, no crash).
+  const idempotencyKey = validateIdempotencyKey(data.idempotencyKey);
+
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const result = await db.runTransaction(async (transaction) => {
@@ -360,6 +403,21 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           }
         }
 
+        // 3️⃣ PR-1 (idempotency): read the processed-operations record LAST in Phase 1
+        // (after task+client reads, before ANY write — Firestore reads-before-writes).
+        // If this key was already committed, short-circuit: return the stored result,
+        // performing NO task update, NO cost write, NO arrayUnion — the duplicate retry
+        // is blocked and hours are not double-counted.
+        let idemRef = null;
+        if (idempotencyKey) {
+          idemRef = db.collection(PROCESSED_OPERATIONS_COLLECTION).doc(idempotencyKey);
+          const idemSnap = await transaction.get(idemRef);
+          if (idemSnap.exists) {
+            console.log(`🔄 [addTimeToTask] Idempotent replay — returning stored result for key ${idempotencyKey}`);
+            return idemSnap.data().result;
+          }
+        }
+
         console.log(`✅ [Transaction Phase 1] All reads completed`);
 
         // ========================================
@@ -385,6 +443,8 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           description: data.description ? sanitizeString(data.description) : '',
           addedBy: user.username,
           addedAt: new Date().toISOString(),
+          // PR-1 (idempotency): forensic trail — which submission produced this entry.
+          _idempotencyKey: idempotencyKey || null,
           budgetStatus: {
             currentEstimate,
             totalMinutesAfter: newActualMinutes,
@@ -678,15 +738,35 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         });
         console.log(`✅ Action log created: ${logRef.id}`);
 
-        console.log(`✅ [Transaction Phase 3] All writes completed successfully`);
-
-        // החזרת תוצאה
-        return {
+        // תוצאה — JSON-safe (no serverTimestamp sentinels inside), so it is both
+        // returned to the caller AND persisted verbatim in processed_operations.
+        const result = {
           success: true,
           taskId: data.taskId,
           newActualMinutes,
           timesheetAutoCreated: true
         };
+
+        // 7️⃣ PR-1 (idempotency): record the completed operation LAST, with .create()
+        // (NOT .set()) so a truly concurrent second transaction fails atomically with
+        // ALREADY_EXISTS — the desired serialization. The serverTimestamp/expiresAt
+        // sentinels live ONLY on this wrapper doc, never inside `result`.
+        if (idemRef) {
+          const expiresAt = new Date(Date.now() + IDEMPOTENCY_TTL_HOURS * 60 * 60 * 1000);
+          transaction.create(idemRef, {
+            idempotencyKey,
+            status: 'completed',
+            result,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expiresAt: admin.firestore.Timestamp.fromDate(expiresAt)
+          });
+          console.log(`✅ [addTimeToTask] Idempotency record created: ${idempotencyKey}`);
+        }
+
+        console.log(`✅ [Transaction Phase 3] All writes completed successfully`);
+
+        // החזרת תוצאה
+        return result;
       });
 
       // הצלחה!
@@ -696,9 +776,26 @@ async function addTimeToTaskWithTransaction(db, data, user) {
     } catch (error) {
       lastError = error;
 
-      // אם זה version conflict, נסה שוב
-      if (error.code === 'aborted' && attempt < MAX_RETRIES) {
-        console.log(`⚠️ Version conflict on attempt ${attempt}, retrying...`);
+      // PR-1 (idempotency): concurrent idempotent double. A sibling call with the SAME
+      // key won the `transaction.create` race, so our create threw ALREADY_EXISTS. The
+      // operation SUCCEEDED under this key → return the stored result, NOT a failure.
+      // (Surfacing a false failure would push the user to re-submit with a fresh key —
+      // the exact duplicate this fix prevents.) If the winner's doc isn't visible yet,
+      // fall through and retry — the next attempt's Phase-1 read finds it.
+      if (idempotencyKey && error.code === 'already-exists') {
+        const doneSnap = await db.collection(PROCESSED_OPERATIONS_COLLECTION)
+          .doc(idempotencyKey).get();
+        if (doneSnap.exists) {
+          console.log(`🔄 [addTimeToTask] Concurrent idempotent replay for key ${idempotencyKey}`);
+          return doneSnap.data().result;
+        }
+      }
+
+      // Version conflict (optimistic lock) OR a not-yet-visible concurrent double → retry.
+      // On retry the Phase-1 idempotency read finds the committed doc and returns the
+      // stored result (clean replay, no duplicate).
+      if ((error.code === 'aborted' || error.code === 'already-exists') && attempt < MAX_RETRIES) {
+        console.log(`⚠️ Retryable transaction error (${error.code}) on attempt ${attempt}, retrying...`);
         await new Promise(resolve => setTimeout(resolve, 100 * attempt)); // exponential backoff
         continue;
       }
