@@ -287,7 +287,16 @@ return;
             // PR-A.4 (2026-05-16): isOnHold (manual freeze) takes precedence
             // over derived isBlocked. Show both flags distinguishably so admin
             // sees WHY a client is blocked (no hours vs manual freeze).
-            if (client.isOnHold) {
+            // H.6.c-2: pending_signature (created by createClientFromSalesRecord,
+            // service status:'pending', activeServices:0) is a lifecycle status —
+            // it takes precedence over the derived hours flags (isBlocked would be
+            // truthy for a 0-service client, but "חסום (אין שעות)" is the wrong story).
+            if (client.status === 'pending_signature') {
+                statusClass = 'warning';
+                statusText = 'ממתין לחתימה';
+                icon = 'fa-hourglass-half';
+                title = 'תיק שנוצר מטופס מכר וממתין לאישור חתימה — טרם פעיל';
+            } else if (client.isOnHold) {
                 statusClass = 'on-hold';
                 statusText = 'מוקפא ידנית';
                 icon = 'fa-pause';
