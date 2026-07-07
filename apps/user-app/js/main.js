@@ -1161,6 +1161,12 @@ class LawOfficeManager {
           // Architecture v2.0 - FirebaseService with retry
           Logger.log('  🚀 [v2.0] Using FirebaseService.call');
 
+          // PR-3a (idempotency): mint ONE key per submission, OUTSIDE the retry,
+          // so every one of FirebaseService.call's 3 retries carries the SAME key.
+          // If the first (slow) server call already created the task, the retry
+          // short-circuits server-side → no duplicate task.
+          taskData.idempotencyKey = mintIdempotencyKey();
+
           const result = await window.FirebaseService.call('createBudgetTask', taskData, {
             retries: 3,
             timeout: 15000
@@ -3139,6 +3145,13 @@ return;
 
     const msgs = window.NotificationMessages.tasks;
 
+    // PR-3a (idempotency): mint ONE key per submission, OUTSIDE the retry (and
+    // outside the action closure), so every one of FirebaseService.call's 3
+    // retries carries the SAME key. If the first (slow) server call already
+    // applied the budget adjustment, the retry short-circuits server-side → no
+    // duplicate budgetAdjustments entry.
+    const idempotencyKey = mintIdempotencyKey();
+
     await ActionFlowManager.execute({
       operationKey: `submitBudgetAdjustment_${taskId}`,
       ...msgs.loading.updateBudget(),
@@ -3149,7 +3162,8 @@ return;
         const result = await window.FirebaseService.call('adjustTaskBudget', {
           taskId,
           newEstimate: newBudgetMinutes,
-          reason
+          reason,
+          idempotencyKey
         }, {
           retries: 3,
           timeout: 10000

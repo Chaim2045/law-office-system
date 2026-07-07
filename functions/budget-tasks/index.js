@@ -6,8 +6,25 @@ const { checkUserPermissions } = require('../shared/auth');
 const { logAction } = require('../shared/audit');
 const { sanitizeString, getDescriptionLimit } = require('../shared/validators');
 const { addTimeToTaskWithTransaction } = require('../addTimeToTask_v2');
+// PR-3a (idempotency SSOT): the same atomic, transaction-scoped exactly-once
+// primitive used by functions/addTimeToTask_v2.js (PR-1) and both
+// functions/timesheet/index.js create paths (PR-2). A weak-network client
+// timeout makes FirebaseService retry a write whose server-side effect already
+// succeeded → a duplicate. These two budget-task write paths (createBudgetTask,
+// adjustTaskBudget) now short-circuit that duplicate atomically inside the same
+// transaction that does the write. See functions/shared/idempotency.js.
+const {
+  readProcessedOperation,
+  writeProcessedOperation,
+  replayAlreadyExists
+} = require('../shared/idempotency');
 
 const db = admin.firestore();
+
+// PR-3a: mirror the canonical retry budget from createQuickLogEntry /
+// createTimesheetEntry_v2 / addTimeToTask — 3 attempts on a genuine
+// already-exists before surfacing a clean Hebrew "already recorded" signal.
+const MAX_IDEMPOTENCY_RETRIES = 3;
 
 /**
  * יצירת משימת תקציב
@@ -90,9 +107,19 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
     // ═══════════════════════════════════════════════════════════════════
 
     let clientData;
-    let savedTaskData;
+    let result = null;
+    // PR-3a: true only when THIS call's transaction actually performed the
+    // writes (fresh key, or key not yet processed). False on any replay path
+    // (Phase-1 short-circuit OR concurrent already-exists) — the post-transaction
+    // audit log below is side-effect logging for the ACTUAL mutation and must
+    // NOT re-run on a replayed duplicate (that would create a duplicate
+    // CREATE_TASK audit entry even though no task was double-created).
+    let didWrite = false;
 
-    await db.runTransaction(async (transaction) => {
+    for (let attempt = 1; attempt <= MAX_IDEMPOTENCY_RETRIES; attempt++) {
+      try {
+        let txnDidWrite = true;
+        result = await db.runTransaction(async (transaction) => {
       // ========================================
       // PHASE 1: READ OPERATIONS
       // ========================================
@@ -115,6 +142,23 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       }
 
       clientData = clientDoc.data();
+
+      // PR-3a (idempotency): read the processed-operations record LAST in
+      // Phase 1 (after the client read, before ANY write — Firestore
+      // reads-before-writes). If this key was already committed, short-circuit:
+      // return the stored result verbatim, performing NO task write, NO
+      // approval write, NO audit log — the duplicate retry is blocked and no
+      // duplicate task/approval is created.
+      let idemRef = null;
+      if (data.idempotencyKey) {
+        const idemLookup = await readProcessedOperation(transaction, db, data.idempotencyKey);
+        idemRef = idemLookup.ref;
+        if (idemLookup.existingResult !== null) {
+          console.log(`🔄 [createBudgetTask] Idempotent replay — returning stored result for key ${data.idempotencyKey}`);
+          txnDidWrite = false;
+          return idemLookup.existingResult;
+        }
+      }
 
       console.log(`✅ Creating task for client ${clientId} (${clientData.clientName})`);
 
@@ -181,9 +225,6 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
 
       console.log(`💾 [Transaction Phase 3] Writing task and approval...`);
 
-      // Save taskData for response (before it goes out of scope)
-      savedTaskData = taskData;
-
       // Write #1: Task
       transaction.set(taskRef, taskData);
       console.log(`  ✅ Task creation queued: ${taskRef.id}`);
@@ -192,33 +233,121 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
       transaction.set(approvalRef, approvalRecord);
       console.log(`  ✅ Approval creation queued: ${approvalRef.id}`);
 
-      console.log(`🔒 [Transaction] All writes queued, committing...`);
-    });
-
-    console.log(`✅ Created task ${taskRef.id} for client ${clientId} (atomic)`);
-    console.log(`✅ Created approval history record for task ${taskRef.id}`);
-
-    // Audit log (OUTSIDE transaction - eventual consistency)
-    try {
-      await logAction('CREATE_TASK', user.uid, user.username, {
+      // PR-3a: build the JSON-SAFE result BEFORE persisting/returning. The
+      // external success shape stays `{ success, taskId, task }`, but the
+      // stored+returned `task` here is a TRIMMED object of primitives only —
+      // it deliberately OMITS the createdAt/lastModifiedAt/originalDeadline/
+      // deadline serverTimestamp+Timestamp sentinels that live in `taskData`,
+      // because `transaction.create` rejects sentinel values inside the stored
+      // processed_operations record. Callers use taskId; the full live task doc
+      // is re-read by the client, so dropping the sentinels from the echoed
+      // task is backward-compatible.
+      const txnResult = {
+        success: true,
         taskId: taskRef.id,
-        clientId: clientId,
-        caseNumber: clientData.caseNumber,
-        estimatedHours: estimatedHours
-      });
-    } catch (auditError) {
-      console.error('❌ שגיאה ב-audit log:', auditError);
-      // Don't fail the task creation if audit logging fails
+        task: {
+          id: taskRef.id,
+          description: taskData.description,
+          categoryId: taskData.categoryId,
+          categoryName: taskData.categoryName,
+          clientId: taskData.clientId,
+          clientName: taskData.clientName,
+          caseNumber: taskData.caseNumber,
+          serviceId: taskData.serviceId,
+          serviceName: taskData.serviceName,
+          serviceType: taskData.serviceType,
+          parentServiceId: taskData.parentServiceId,
+          branch: taskData.branch,
+          estimatedHours: taskData.estimatedHours,
+          estimatedMinutes: taskData.estimatedMinutes,
+          actualHours: taskData.actualHours,
+          actualMinutes: taskData.actualMinutes,
+          originalEstimate: taskData.originalEstimate,
+          status: taskData.status,
+          employee: taskData.employee,
+          lawyer: taskData.lawyer,
+          createdBy: taskData.createdBy,
+          lastModifiedBy: taskData.lastModifiedBy
+        }
+      };
+
+      // PR-3a (idempotency): record the completed operation LAST, with
+      // .create() (NOT .set()) so a truly concurrent second transaction fails
+      // atomically with ALREADY_EXISTS — the desired serialization. The stored
+      // record is JSON-safe (no serverTimestamp sentinels inside txnResult).
+      if (idemRef) {
+        writeProcessedOperation(transaction, idemRef, data.idempotencyKey, txnResult);
+        console.log(`  ✅ Idempotency record queued: ${data.idempotencyKey}`);
+      }
+
+      console.log(`🔒 [Transaction] All writes queued, committing...`);
+
+      return txnResult;
+        });
+
+        didWrite = txnDidWrite;
+        break; // transaction succeeded (or replayed) — exit retry loop
+
+      } catch (txnError) {
+        // PR-3a (idempotency): concurrent idempotent double. A sibling call with
+        // the SAME key won the transaction.create() race, so our create threw
+        // ALREADY_EXISTS. The operation SUCCEEDED under this key → return the
+        // stored result, NOT a failure (surfacing a false failure would push
+        // the user to re-submit with a fresh key — the exact duplicate this
+        // fix prevents). If the winner's doc isn't visible yet, fall through
+        // and retry — the next attempt's Phase-1 read finds it.
+        if (data.idempotencyKey && txnError.code === 'already-exists') {
+          const replayedResult = await replayAlreadyExists(db, data.idempotencyKey);
+          if (replayedResult !== null) {
+            console.log(`🔄 [createBudgetTask] Concurrent idempotent replay for key ${data.idempotencyKey}`);
+            result = replayedResult;
+            didWrite = false;
+            break;
+          }
+          if (attempt < MAX_IDEMPOTENCY_RETRIES) {
+            console.log(`⚠️ [createBudgetTask] already-exists (winner not visible yet) on attempt ${attempt}, retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+            continue;
+          }
+          // Retries exhausted on a genuine already-exists: a sibling committed
+          // this key but its record never became visible in the backoff window.
+          // The write SUCCEEDED under this key — do NOT surface the raw SDK
+          // 'already exists' string (that would leak English into the Hebrew UI
+          // (G1) AND train the user to re-submit with a fresh key = the exact
+          // duplicate this fix prevents). Throw a clean Hebrew "already recorded"
+          // signal instead.
+          throw new functions.https.HttpsError(
+            'aborted',
+            'הרישום כבר נקלט במערכת. רענן את המסך ובדוק לפני רישום מחדש.'
+          );
+        }
+
+        throw txnError;
+      }
     }
 
-    return {
-      success: true,
-      taskId: taskRef.id,
-      task: {
-        id: taskRef.id,
-        ...savedTaskData
+    console.log(`✅ Created task ${result.taskId} for client ${clientId} (atomic)`);
+
+    // Audit log (OUTSIDE transaction - eventual consistency)
+    // PR-3a: guarded by didWrite — on a replay no task was created, so writing
+    // a second CREATE_TASK audit entry would be a duplicate of the log trail.
+    if (didWrite) {
+      try {
+        await logAction('CREATE_TASK', user.uid, user.username, {
+          taskId: result.taskId,
+          clientId: clientId,
+          caseNumber: clientData ? clientData.caseNumber : null,
+          estimatedHours: estimatedHours
+        });
+      } catch (auditError) {
+        console.error('❌ שגיאה ב-audit log:', auditError);
+        // Don't fail the task creation if audit logging fails
       }
-    };
+    } else {
+      console.log(`🔄 [createBudgetTask] Replay — skipping audit log (no new mutation)`);
+    }
+
+    return result;
 
   } catch (error) {
     console.error('Error in createBudgetTask:', error);
@@ -744,9 +873,17 @@ exports.adjustTaskBudget = functions.https.onCall(async (data, context) => {
     // 🔒 ATOMIC TRANSACTION - Budget Adjustment
     // ═══════════════════════════════════════════════════════════════════
 
-    let taskData, oldEstimate, addedMinutes;
+    let taskData;
+    let result = null;
+    // PR-3a: true only when THIS call's transaction actually performed the
+    // update (fresh key, or key not yet processed). False on any replay path —
+    // the post-transaction audit log must NOT re-run on a replayed duplicate.
+    let didWrite = false;
 
-    await db.runTransaction(async (transaction) => {
+    for (let attempt = 1; attempt <= MAX_IDEMPOTENCY_RETRIES; attempt++) {
+      try {
+        let txnDidWrite = true;
+        result = await db.runTransaction(async (transaction) => {
       // ========================================
       // PHASE 1: READ OPERATIONS
       // ========================================
@@ -786,8 +923,24 @@ exports.adjustTaskBudget = functions.https.onCall(async (data, context) => {
         );
       }
 
-      oldEstimate = taskData.estimatedMinutes || 0;
-      addedMinutes = data.newEstimate - oldEstimate;
+      // PR-3a (idempotency): read the processed-operations record LAST in
+      // Phase 1 (after the task read, before the update — Firestore
+      // reads-before-writes). If this key was already committed, short-circuit:
+      // return the stored result verbatim, performing NO task update (no
+      // duplicate budgetAdjustments arrayUnion) and NO audit log.
+      let idemRef = null;
+      if (data.idempotencyKey) {
+        const idemLookup = await readProcessedOperation(transaction, db, data.idempotencyKey);
+        idemRef = idemLookup.ref;
+        if (idemLookup.existingResult !== null) {
+          console.log(`🔄 [adjustTaskBudget] Idempotent replay — returning stored result for key ${data.idempotencyKey}`);
+          txnDidWrite = false;
+          return idemLookup.existingResult;
+        }
+      }
+
+      const oldEstimate = taskData.estimatedMinutes || 0;
+      const addedMinutes = data.newEstimate - oldEstimate;
 
       // יצירת רשומת עדכון
       const adjustment = {
@@ -819,33 +972,85 @@ exports.adjustTaskBudget = functions.https.onCall(async (data, context) => {
       transaction.update(taskRef, updateData);
       console.log(`  ✅ Budget adjustment queued`);
 
-      console.log(`🔒 [Transaction] Update queued, committing...`);
-    });
-
-    console.log(`✅ תקציב משימה ${data.taskId} עודכן מ-${oldEstimate} ל-${data.newEstimate} דקות (atomic)`);
-
-    // Audit log (OUTSIDE transaction - eventual consistency)
-    try {
-      await logAction('ADJUST_BUDGET', user.uid, user.username, {
+      // PR-3a: JSON-safe result — plain primitives only (oldEstimate,
+      // newEstimate, addedMinutes, message). No serverTimestamp sentinels, so
+      // it stores + replays verbatim via transaction.create. Same external
+      // success shape as before.
+      const txnResult = {
+        success: true,
         taskId: data.taskId,
         oldEstimate,
         newEstimate: data.newEstimate,
         addedMinutes,
-        reason: data.reason
-      });
-    } catch (auditError) {
-      console.error('❌ שגיאה ב-audit log:', auditError);
-      // Don't fail the budget adjustment if audit logging fails
+        message: `תקציב עודכן מ-${oldEstimate} ל-${data.newEstimate} דקות`
+      };
+
+      // PR-3a (idempotency): record the completed operation LAST, with
+      // .create() (NOT .set()) so a truly concurrent second transaction fails
+      // atomically with ALREADY_EXISTS — the desired serialization.
+      if (idemRef) {
+        writeProcessedOperation(transaction, idemRef, data.idempotencyKey, txnResult);
+        console.log(`  ✅ Idempotency record queued: ${data.idempotencyKey}`);
+      }
+
+      console.log(`🔒 [Transaction] Update queued, committing...`);
+
+      return txnResult;
+        });
+
+        didWrite = txnDidWrite;
+        break; // transaction succeeded (or replayed) — exit retry loop
+
+      } catch (txnError) {
+        // PR-3a (idempotency): concurrent idempotent double — see createBudgetTask
+        // for the full rationale. Replay the winner's stored result; if not yet
+        // visible, retry; on exhaustion surface a clean Hebrew "already recorded".
+        if (data.idempotencyKey && txnError.code === 'already-exists') {
+          const replayedResult = await replayAlreadyExists(db, data.idempotencyKey);
+          if (replayedResult !== null) {
+            console.log(`🔄 [adjustTaskBudget] Concurrent idempotent replay for key ${data.idempotencyKey}`);
+            result = replayedResult;
+            didWrite = false;
+            break;
+          }
+          if (attempt < MAX_IDEMPOTENCY_RETRIES) {
+            console.log(`⚠️ [adjustTaskBudget] already-exists (winner not visible yet) on attempt ${attempt}, retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+            continue;
+          }
+          throw new functions.https.HttpsError(
+            'aborted',
+            'הרישום כבר נקלט במערכת. רענן את המסך ובדוק לפני רישום מחדש.'
+          );
+        }
+
+        throw txnError;
+      }
     }
 
-    return {
-      success: true,
-      taskId: data.taskId,
-      oldEstimate,
-      newEstimate: data.newEstimate,
-      addedMinutes,
-      message: `תקציב עודכן מ-${oldEstimate} ל-${data.newEstimate} דקות`
-    };
+    console.log(`✅ תקציב משימה ${data.taskId} עודכן ל-${data.newEstimate} דקות (atomic)`);
+
+    // Audit log (OUTSIDE transaction - eventual consistency)
+    // PR-3a: guarded by didWrite — a replay performed no update, so a second
+    // ADJUST_BUDGET audit entry would duplicate the log trail.
+    if (didWrite) {
+      try {
+        await logAction('ADJUST_BUDGET', user.uid, user.username, {
+          taskId: data.taskId,
+          oldEstimate: result.oldEstimate,
+          newEstimate: data.newEstimate,
+          addedMinutes: result.addedMinutes,
+          reason: data.reason
+        });
+      } catch (auditError) {
+        console.error('❌ שגיאה ב-audit log:', auditError);
+        // Don't fail the budget adjustment if audit logging fails
+      }
+    } else {
+      console.log(`🔄 [adjustTaskBudget] Replay — skipping audit log (no new mutation)`);
+    }
+
+    return result;
 
   } catch (error) {
     console.error('Error in adjustTaskBudget:', error);
