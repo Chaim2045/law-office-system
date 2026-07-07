@@ -188,6 +188,15 @@ const {
   buildEntryCostDoc,
   TIMESHEET_ENTRY_COSTS_COLLECTION
 } = require('./lib/employee-costs/resolve-employee-cost');
+// PR-2 (idempotency SSOT): the atomic exactly-once primitive, extracted from
+// this file's original PR-1 inline implementation so functions/timesheet/index.js
+// can share the SAME processed_operations record shape (no duplicate logic).
+const {
+  DEFAULT_IDEMPOTENCY_TTL_HOURS,
+  readProcessedOperation,
+  writeProcessedOperation,
+  replayAlreadyExists
+} = require('./shared/idempotency');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
@@ -204,11 +213,12 @@ function sanitizeString(str) {
 // SUCCEEDED (just slow), the retry re-ran the write → a DUPLICATE time entry.
 // The client now mints ONE idempotencyKey per submission (reused across retries);
 // we short-circuit any duplicate inside the same transaction that does the write,
-// using the existing `processed_operations` collection convention
-// (see functions/timesheet/helpers.js — doc id = idempotencyKey).
+// using the shared `processed_operations` primitive (functions/shared/idempotency.js
+// — PR-2 extracted this file's original inline implementation into that SSOT
+// module so functions/timesheet/index.js's create paths can share the exact
+// same record shape).
 // ─────────────────────────────────────────────────────────────────────────────
-const PROCESSED_OPERATIONS_COLLECTION = 'processed_operations';
-const IDEMPOTENCY_TTL_HOURS = 24;
+const IDEMPOTENCY_TTL_HOURS = DEFAULT_IDEMPOTENCY_TTL_HOURS;
 // Non-empty, ≤200 chars, URL/UUID-safe alphabet (matches crypto.randomUUID output
 // and the frontend fallback `addtime_<ts>_<rand>`). A malformed key is rejected
 // (throw) rather than silently ignored — a bad key means a bad client and we do
@@ -410,11 +420,11 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         // is blocked and hours are not double-counted.
         let idemRef = null;
         if (idempotencyKey) {
-          idemRef = db.collection(PROCESSED_OPERATIONS_COLLECTION).doc(idempotencyKey);
-          const idemSnap = await transaction.get(idemRef);
-          if (idemSnap.exists) {
+          const idemLookup = await readProcessedOperation(transaction, db, idempotencyKey);
+          idemRef = idemLookup.ref;
+          if (idemLookup.existingResult !== null) {
             console.log(`🔄 [addTimeToTask] Idempotent replay — returning stored result for key ${idempotencyKey}`);
-            return idemSnap.data().result;
+            return idemLookup.existingResult;
           }
         }
 
@@ -752,14 +762,7 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         // ALREADY_EXISTS — the desired serialization. The serverTimestamp/expiresAt
         // sentinels live ONLY on this wrapper doc, never inside `result`.
         if (idemRef) {
-          const expiresAt = new Date(Date.now() + IDEMPOTENCY_TTL_HOURS * 60 * 60 * 1000);
-          transaction.create(idemRef, {
-            idempotencyKey,
-            status: 'completed',
-            result,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            expiresAt: admin.firestore.Timestamp.fromDate(expiresAt)
-          });
+          writeProcessedOperation(transaction, idemRef, idempotencyKey, result, { ttlHours: IDEMPOTENCY_TTL_HOURS });
           console.log(`✅ [addTimeToTask] Idempotency record created: ${idempotencyKey}`);
         }
 
@@ -783,11 +786,10 @@ async function addTimeToTaskWithTransaction(db, data, user) {
       // the exact duplicate this fix prevents.) If the winner's doc isn't visible yet,
       // fall through and retry — the next attempt's Phase-1 read finds it.
       if (idempotencyKey && error.code === 'already-exists') {
-        const doneSnap = await db.collection(PROCESSED_OPERATIONS_COLLECTION)
-          .doc(idempotencyKey).get();
-        if (doneSnap.exists) {
+        const replayedResult = await replayAlreadyExists(db, idempotencyKey);
+        if (replayedResult !== null) {
           console.log(`🔄 [addTimeToTask] Concurrent idempotent replay for key ${idempotencyKey}`);
-          return doneSnap.data().result;
+          return replayedResult;
         }
       }
 

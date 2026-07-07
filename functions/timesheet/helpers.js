@@ -101,58 +101,19 @@ async function createTimeEvent(eventData) {
 }
 
 /**
- * ✅ ENTERPRISE: Idempotency Protection
- * מונע ביצוע כפול של אותה פעולה (למשל: לחיצה כפולה על "שמור")
+ * PR-2 (idempotency SSOT): the non-atomic checkIdempotency()/registerIdempotency()
+ * pair that used to live here was RETIRED. It read processed_operations BEFORE
+ * the write-path's transaction and wrote the record AFTER the transaction
+ * committed — a lost-ack retry on a weak network could slip between the two
+ * calls and re-run the write (a duplicate timesheet entry / duplicate hours).
  *
- * @param {string} idempotencyKey - מפתח ייחודי לפעולה
- * @returns {Promise<Object|null>} - תוצאה קיימת או null
+ * Both callers (createTimesheetEntry_v2, createQuickLogEntry in ./index.js)
+ * now use the ATOMIC, transaction-scoped primitive in
+ * functions/shared/idempotency.js — the same one functions/addTimeToTask_v2.js
+ * uses (PR-1) — which reads the processed_operations doc as part of the
+ * transaction's Phase-1 reads and writes it via `transaction.create()` in
+ * Phase-3, inside the SAME transaction as the actual mutation.
  */
-async function checkIdempotency(idempotencyKey) {
-  if (!idempotencyKey) {
-    return null;
-  }
-
-  const operationDoc = await db.collection('processed_operations')
-    .doc(idempotencyKey)
-    .get();
-
-  if (operationDoc.exists) {
-    const operation = operationDoc.data();
-
-    // ✅ הפעולה כבר בוצעה - מחזיר את התוצאה המקורית
-    console.log(`🔄 [IDEMPOTENCY] פעולה כבר בוצעה: ${idempotencyKey}`);
-    return operation.result;
-  }
-
-  return null;
-}
-
-/**
- * ✅ ENTERPRISE: Idempotency Registration
- * שמירת תוצאת פעולה למניעת ביצוע כפול
- *
- * @param {string} idempotencyKey - מפתח ייחודי
- * @param {Object} result - תוצאת הפעולה
- * @param {number} ttlHours - זמן תפוגה (24 שעות ברירת מחדל)
- */
-async function registerIdempotency(idempotencyKey, result, ttlHours = 24) {
-  if (!idempotencyKey) {
-    return;
-  }
-
-  const expiresAt = new Date();
-  expiresAt.setHours(expiresAt.getHours() + ttlHours);
-
-  await db.collection('processed_operations').doc(idempotencyKey).set({
-    idempotencyKey,
-    status: 'completed',
-    result,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    expiresAt: admin.firestore.Timestamp.fromDate(expiresAt)
-  });
-
-  console.log(`✅ [IDEMPOTENCY] נרשמה פעולה: ${idempotencyKey}`);
-}
 
 /**
  * ✅ ENTERPRISE: Two-Phase Commit - Phase 1 (Reserve)
@@ -220,8 +181,6 @@ async function rollbackReservation(reservationId, error) {
 module.exports = {
   checkVersionAndLock,
   createTimeEvent,
-  checkIdempotency,
-  registerIdempotency,
   createReservation,
   commitReservation,
   rollbackReservation

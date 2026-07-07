@@ -70,8 +70,6 @@ jest.mock('../shared/validators', () => ({
 
 jest.mock('../timesheet/helpers', () => ({
   createTimeEvent: jest.fn().mockResolvedValue(undefined),
-  checkIdempotency: jest.fn().mockResolvedValue(null),
-  registerIdempotency: jest.fn().mockResolvedValue(undefined),
   createReservation: jest.fn().mockResolvedValue('reservation1'),
   commitReservation: jest.fn().mockResolvedValue(undefined),
   rollbackReservation: jest.fn().mockResolvedValue(undefined)

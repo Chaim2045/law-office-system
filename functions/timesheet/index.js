@@ -17,6 +17,17 @@ const {
   buildEntryCostDoc,
   TIMESHEET_ENTRY_COSTS_COLLECTION
 } = require('../lib/employee-costs/resolve-employee-cost');
+// PR-2 (idempotency SSOT): the same atomic, txn-scoped exactly-once primitive
+// used by functions/addTimeToTask_v2.js (PR-1). Replaces the non-atomic
+// checkIdempotency (read BEFORE the txn) / registerIdempotency (write AFTER
+// commit) pair from ./helpers — that gap allowed a lost-ack retry to slip
+// between the check and the register on a weak network, producing a
+// duplicate write. See functions/shared/idempotency.js for the full contract.
+const {
+  readProcessedOperation,
+  writeProcessedOperation,
+  replayAlreadyExists
+} = require('../shared/idempotency');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
@@ -36,8 +47,6 @@ const {
 // Internal helpers
 const {
   createTimeEvent,
-  checkIdempotency,
-  registerIdempotency,
   createReservation,
   commitReservation,
   rollbackReservation
@@ -93,14 +102,11 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // ✅ IDEMPOTENCY: Check if this operation was already processed
-    if (data.idempotencyKey) {
-      const existingResult = await checkIdempotency(data.idempotencyKey);
-      if (existingResult) {
-        console.log(`🔄 [Quick Log] פעולה כבר בוצעה — מחזיר תוצאה קיימת: ${data.idempotencyKey}`);
-        return existingResult;
-      }
-    }
+    // PR-2: idempotency is now checked ATOMICALLY inside the transaction below
+    // (Phase 1, reads-before-writes) instead of here — see the transaction body.
+    // The old non-atomic checkIdempotency()-before / registerIdempotency()-after
+    // pair left a gap where a lost-ack retry could slip between the two calls
+    // on a weak network and re-run the write (the exact bug this PR fixes).
 
     // ═══════════════════════════════════════════════════════════════════
     // 2️⃣ VALIDATION
@@ -168,26 +174,47 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
     // 4️⃣ TRANSACTION - All operations atomic
     // ═══════════════════════════════════════════════════════════════════
 
-    const result = await db.runTransaction(async (transaction) => {
+    const MAX_IDEMPOTENCY_RETRIES = 3;
+    let result = null;
 
-      // ========================================
-      // PHASE 1: READ OPERATIONS
-      // ========================================
+    for (let attempt = 1; attempt <= MAX_IDEMPOTENCY_RETRIES; attempt++) {
+      try {
+        result = await db.runTransaction(async (transaction) => {
 
-      console.log(`📖 [Quick Log Transaction Phase 1] Reading client...`);
+          // ========================================
+          // PHASE 1: READ OPERATIONS
+          // ========================================
 
-      const clientRef = db.collection('clients').doc(data.clientId);
-      const clientDoc = await transaction.get(clientRef);
+          console.log(`📖 [Quick Log Transaction Phase 1] Reading client...`);
 
-      if (!clientDoc.exists) {
-        throw new functions.https.HttpsError(
-          'not-found',
-          'לקוח לא נמצא במערכת'
-        );
-      }
+          const clientRef = db.collection('clients').doc(data.clientId);
+          const clientDoc = await transaction.get(clientRef);
 
-      const clientData = clientDoc.data();
-      const finalClientName = data.clientName || clientData.clientName || clientData.fullName;
+          if (!clientDoc.exists) {
+            throw new functions.https.HttpsError(
+              'not-found',
+              'לקוח לא נמצא במערכת'
+            );
+          }
+
+          const clientData = clientDoc.data();
+          const finalClientName = data.clientName || clientData.clientName || clientData.fullName;
+
+          // PR-2 (idempotency): read the processed-operations record LAST in
+          // Phase 1 (after the client read, before ANY write — Firestore
+          // reads-before-writes). If this key was already committed,
+          // short-circuit: return the stored result verbatim, performing NO
+          // client write, NO timesheet entry, NO cost write, NO audit log —
+          // the duplicate retry is blocked and hours are not double-counted.
+          let idemRef = null;
+          if (data.idempotencyKey) {
+            const idemLookup = await readProcessedOperation(transaction, db, data.idempotencyKey);
+            idemRef = idemLookup.ref;
+            if (idemLookup.existingResult !== null) {
+              console.log(`🔄 [Quick Log] Idempotent replay — returning stored result for key ${data.idempotencyKey}`);
+              return idemLookup.existingResult;
+            }
+          }
 
       // ── Resolve serviceId ──
       const services = clientData.services || [];
@@ -516,6 +543,18 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       });
       console.log(`✅ Audit log will be created: ${logRef.id}`);
 
+      // PR-2 (idempotency): record the completed operation LAST, with
+      // .create() (NOT .set()) so a truly concurrent second transaction
+      // fails atomically with ALREADY_EXISTS — the desired serialization.
+      if (idemRef) {
+        writeProcessedOperation(transaction, idemRef, data.idempotencyKey, {
+          success: true,
+          entryId: timesheetRef.id,
+          message: 'רישום נוצר בהצלחה'
+        });
+        console.log(`✅ [Quick Log] Idempotency record created: ${data.idempotencyKey}`);
+      }
+
       console.log(`✅ [Quick Log Transaction Phase 3] All writes completed`);
 
       // Return result
@@ -524,11 +563,45 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
         entryId: timesheetRef.id,
         message: 'רישום נוצר בהצלחה'
       };
-    });
+      });
 
-    // ✅ IDEMPOTENCY: Register successful operation
-    if (data.idempotencyKey) {
-      await registerIdempotency(data.idempotencyKey, result);
+        break; // transaction succeeded (or replayed) — exit retry loop
+
+      } catch (txnError) {
+        // PR-2 (idempotency): concurrent idempotent double. A sibling call with
+        // the SAME key won the transaction.create() race, so our create threw
+        // ALREADY_EXISTS. The operation SUCCEEDED under this key → return the
+        // stored result, NOT a failure (surfacing a false failure would push
+        // the user to re-submit with a fresh key — the exact duplicate this
+        // fix prevents). If the winner's doc isn't visible yet, fall through
+        // and retry — the next attempt's Phase-1 read finds it.
+        if (data.idempotencyKey && txnError.code === 'already-exists') {
+          const replayedResult = await replayAlreadyExists(db, data.idempotencyKey);
+          if (replayedResult !== null) {
+            console.log(`🔄 [Quick Log] Concurrent idempotent replay for key ${data.idempotencyKey}`);
+            result = replayedResult;
+            break;
+          }
+          if (attempt < MAX_IDEMPOTENCY_RETRIES) {
+            console.log(`⚠️ [Quick Log] already-exists (winner not visible yet) on attempt ${attempt}, retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+            continue;
+          }
+          // Retries exhausted on a genuine already-exists: a sibling committed
+          // this key but its record never became visible in the backoff window.
+          // The write SUCCEEDED under this key — do NOT surface the raw SDK
+          // 'already exists' string. It would leak English into the Hebrew UI
+          // (G1) AND train the user to re-submit with a fresh key = the exact
+          // duplicate this fix prevents. Return a clean Hebrew "already recorded"
+          // signal instead.
+          throw new functions.https.HttpsError(
+            'aborted',
+            'הרישום כבר נקלט במערכת. רענן את המסך ובדוק לפני רישום מחדש.'
+          );
+        }
+
+        throw txnError;
+      }
     }
 
     console.log(`🎉 [Quick Log] רישום נוצר בהצלחה: ${result.entryId} עבור ${data.clientName || data.clientId} (${data.minutes} דקות)`);
@@ -581,14 +654,11 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
     // ================================================
     const user = await checkUserPermissions(context);
 
-    // ✅ IDEMPOTENCY: בדיקה אם הפעולה כבר בוצעה
-    if (data.idempotencyKey) {
-      const existingResult = await checkIdempotency(data.idempotencyKey);
-      if (existingResult) {
-        console.log(`🔄 [v2.0] פעולה כבר בוצעה - מחזיר תוצאה קיימת`);
-        return existingResult;
-      }
-    }
+    // PR-2: idempotency is now checked ATOMICALLY inside the transaction below
+    // (Phase 1, reads-before-writes) instead of here — see the transaction body.
+    // The old non-atomic checkIdempotency()-before / registerIdempotency()-after
+    // pair left a gap where a lost-ack retry could slip between the two calls
+    // on a weak network and re-run the write (the exact bug this PR fixes).
 
     // ================================================
     // STEP 2: Validation מורחב
@@ -665,7 +735,22 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
     // a CF-only timesheet_entry_costs doc atomically with the entry below).
     const resolvedCost = await resolveEmployeeCost(user.email);
 
-    const result = await db.runTransaction(async (transaction) => {
+    const MAX_IDEMPOTENCY_RETRIES = 3;
+    let result = null;
+    // PR-2: true only when THIS call's transaction actually performed the
+    // write (fresh key, or key not yet processed). False on any replay path
+    // (Phase-1 short-circuit OR concurrent already-exists) — the post-transaction
+    // steps below (event sourcing, reservation commit, audit log) are
+    // side-effect logging for the ACTUAL mutation and must not re-run on a
+    // replayed duplicate call (that would create a duplicate time_event +
+    // duplicate audit_log entry even though no hours were double-counted).
+    let didWrite = false;
+
+    idempotencyRetryLoop:
+    for (let idemAttempt = 1; idemAttempt <= MAX_IDEMPOTENCY_RETRIES; idemAttempt++) {
+      try {
+        let txnDidWrite = true;
+        result = await db.runTransaction(async (transaction) => {
       // ── Phase 1: READS ──
       let clientData = null;
       let currentVersion = 0;
@@ -702,6 +787,23 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
         : null;
       if (taskRef) {
         taskDoc = await transaction.get(taskRef);
+      }
+
+      // PR-2 (idempotency): read the processed-operations record LAST in
+      // Phase 1 (after the client + task reads, before ANY write — Firestore
+      // reads-before-writes). If this key was already committed, short-circuit:
+      // return the stored result verbatim, performing NO client write, NO task
+      // update, NO timesheet entry, NO cost write — the duplicate retry is
+      // blocked and hours are not double-counted.
+      let idemRef = null;
+      if (data.idempotencyKey) {
+        const idemLookup = await readProcessedOperation(transaction, db, data.idempotencyKey);
+        idemRef = idemLookup.ref;
+        if (idemLookup.existingResult !== null) {
+          console.log(`🔄 [v2.0] Idempotent replay — returning stored result for key ${data.idempotencyKey}`);
+          txnDidWrite = false;
+          return idemLookup.existingResult;
+        }
       }
 
       // ── Phase 2: RESOLVE serviceId + DEDUCTION ──
@@ -963,7 +1065,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
 
       console.log(`✅ [v2.0] נוצר רישום שעות: ${timesheetEntryId}`);
 
-      return {
+      const txnResult = {
         success: true,
         entryId: timesheetEntryId,
         entry: {
@@ -972,70 +1074,136 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
         },
         version: data.isInternal !== true ? nextVersion : null
       };
-    });
 
-    // ================================================
-    // STEP 6: EVENT SOURCING - רישום האירוע
-    // ================================================
-    await createTimeEvent({
-      eventType: 'TIME_ADDED',
-      caseId: finalClientId,
-      serviceId: result.entry.serviceId || null,
-      stageId: result.entry.stageId || null,
-      packageId: result.entry.packageId || null,
-      taskId: data.taskId || null,
-      timesheetEntryId: result.entryId,
+      // PR-2 (idempotency): record the completed operation LAST, with
+      // .create() (NOT .set()) so a truly concurrent second transaction fails
+      // atomically with ALREADY_EXISTS — the desired serialization.
+      if (idemRef) {
+        writeProcessedOperation(transaction, idemRef, data.idempotencyKey, txnResult);
+        console.log(`✅ [v2.0] Idempotency record created: ${data.idempotencyKey}`);
+      }
 
-      data: {
-        minutes: data.minutes,
-        hours: hoursWorked,
-        action: data.action,
-        date: data.date
-      },
+      return txnResult;
+        });
 
-      performedBy: user.username,
-      performedByEmail: user.email,
+        didWrite = txnDidWrite;
+        break idempotencyRetryLoop; // transaction succeeded (or replayed)
 
-      before: data.isInternal !== true ? {
-        version: result.version ? result.version - 1 : 0
-      } : {},
+      } catch (txnError) {
+        // PR-2 (idempotency): concurrent idempotent double. A sibling call with
+        // the SAME key won the transaction.create() race, so our create threw
+        // ALREADY_EXISTS. The operation SUCCEEDED under this key → return the
+        // stored result, NOT a failure (surfacing a false failure would push
+        // the user to re-submit with a fresh key — the exact duplicate this
+        // fix prevents). If the winner's doc isn't visible yet, fall through
+        // and retry — the next attempt's Phase-1 read finds it.
+        if (data.idempotencyKey && txnError.code === 'already-exists') {
+          const replayedResult = await replayAlreadyExists(db, data.idempotencyKey);
+          if (replayedResult !== null) {
+            console.log(`🔄 [v2.0] Concurrent idempotent replay for key ${data.idempotencyKey}`);
+            result = replayedResult;
+            didWrite = false;
+            break idempotencyRetryLoop;
+          }
+          if (idemAttempt < MAX_IDEMPOTENCY_RETRIES) {
+            console.log(`⚠️ [v2.0] already-exists (winner not visible yet) on attempt ${idemAttempt}, retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 100 * idemAttempt));
+            continue;
+          }
+          // Retries exhausted on a genuine already-exists: a sibling committed
+          // this key but its record never became visible in the backoff window.
+          // The write SUCCEEDED under this key — do NOT surface the raw SDK
+          // 'already exists' string. It would leak English into the Hebrew UI
+          // (G1) AND train the user to re-submit with a fresh key = the exact
+          // duplicate this fix prevents. Throw a clean Hebrew "already recorded"
+          // signal (the outer catch rolls back the reservation on this HttpsError).
+          throw new functions.https.HttpsError(
+            'aborted',
+            'הרישום כבר נקלט במערכת. רענן את המסך ובדוק לפני רישום מחדש.'
+          );
+        }
 
-      after: data.isInternal !== true ? {
-        version: result.version
-      } : {},
-
-      idempotencyKey: data.idempotencyKey || null
-    });
-
-    // ================================================
-    // STEP 7: TWO-PHASE COMMIT - Phase 2 (Commit)
-    // ================================================
-    await commitReservation(reservationId);
-
-    // ================================================
-    // STEP 8: IDEMPOTENCY REGISTRATION
-    // ================================================
-    if (data.idempotencyKey) {
-      await registerIdempotency(data.idempotencyKey, result);
+        throw txnError;
+      }
     }
 
-    // ================================================
-    // STEP 9: AUDIT LOG
-    // ================================================
-    await logAction('CREATE_TIMESHEET_ENTRY_V2', user.uid, user.username, {
-      entryId: timesheetEntryId,
-      clientId: finalClientId,
-      caseNumber: result.entry.caseNumber,
-      isInternal: data.isInternal === true,
-      minutes: data.minutes,
-      date: data.date,
-      taskId: data.taskId || null,
-      version: result.version,
-      reservationId: reservationId,
-      idempotencyKey: data.idempotencyKey || null
-    });
+    // PR-2: STEP 6 (event sourcing), STEP 7 (reservation commit) and STEP 9
+    // (audit log) are side-effect logging for the ACTUAL mutation performed
+    // by THIS call's transaction. On a replay (didWrite === false) no client/
+    // task/entry/cost write happened — the caller already gets the correct
+    // stored `result` back, but logging a SECOND time_event / audit_log entry
+    // for a mutation that did not recur here would itself be a duplicate
+    // (of the logging trail, not of the hours). So these steps are skipped
+    // on replay; they still run exactly once, on the call that actually wrote.
+    if (didWrite) {
+      // ================================================
+      // STEP 6: EVENT SOURCING - רישום האירוע
+      // ================================================
+      await createTimeEvent({
+        eventType: 'TIME_ADDED',
+        caseId: finalClientId,
+        serviceId: result.entry.serviceId || null,
+        stageId: result.entry.stageId || null,
+        packageId: result.entry.packageId || null,
+        taskId: data.taskId || null,
+        timesheetEntryId: result.entryId,
 
-    console.log(`🎉 [v2.0] רישום שעות הושלם בהצלחה! Entry: ${timesheetEntryId}, Version: ${result.version}`);
+        data: {
+          minutes: data.minutes,
+          hours: hoursWorked,
+          action: data.action,
+          date: data.date
+        },
+
+        performedBy: user.username,
+        performedByEmail: user.email,
+
+        before: data.isInternal !== true ? {
+          version: result.version ? result.version - 1 : 0
+        } : {},
+
+        after: data.isInternal !== true ? {
+          version: result.version
+        } : {},
+
+        idempotencyKey: data.idempotencyKey || null
+      });
+
+      // ================================================
+      // STEP 7: TWO-PHASE COMMIT - Phase 2 (Commit)
+      // ================================================
+      await commitReservation(reservationId);
+
+      // PR-2: idempotency registration now happens ATOMICALLY inside the
+      // transaction above (Phase 3, via writeProcessedOperation) — no separate
+      // post-transaction step needed.
+
+      // ================================================
+      // STEP 9: AUDIT LOG
+      // ================================================
+      await logAction('CREATE_TIMESHEET_ENTRY_V2', user.uid, user.username, {
+        entryId: result.entryId,
+        clientId: finalClientId,
+        caseNumber: result.entry.caseNumber,
+        isInternal: data.isInternal === true,
+        minutes: data.minutes,
+        date: data.date,
+        taskId: data.taskId || null,
+        version: result.version,
+        reservationId: reservationId,
+        idempotencyKey: data.idempotencyKey || null
+      });
+    } else {
+      console.log(`🔄 [v2.0] Replay — skipping event sourcing / reservation commit / audit log (no new mutation)`);
+      // The reservation created in STEP 3 was never committed (a replay performed
+      // no mutation). Roll it back so it doesn't dangle until its 5-min TTL —
+      // the caller already has the correct stored result.
+      if (reservationId) {
+        await rollbackReservation(reservationId, { message: 'idempotent replay — no mutation performed' });
+      }
+    }
+
+    console.log(`🎉 [v2.0] רישום שעות הושלם בהצלחה! Entry: ${result.entryId}, Version: ${result.version}`);
 
     return result;
 
