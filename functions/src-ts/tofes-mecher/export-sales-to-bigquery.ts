@@ -51,7 +51,7 @@ import {
   BIGQUERY_DATASET,
   BIGQUERY_SALES_TABLE
 } from '../config';
-import { getTofesMecherApp, TofesMecherCredentialError } from './app';
+import { getTofesMecherReader, TofesMecherCredentialError } from './app';
 import { logCriticalAction } from '../audit-critical';
 import * as logger from '../../shared/logger';
 
@@ -302,8 +302,8 @@ export async function exportSalesToBigQueryHandler(): Promise<ExportResult> {
   // ─── (1) ALL-OR-NOTHING read of the whole collection (🔴-1) ───────────────
   let docs: Array<{ id: string; data: () => Record<string, unknown> }>;
   try {
-    const app = getTofesMecherApp(TOFES_KEY.value());
-    const snap = await app.firestore().collection(TOFES_SALES_COLLECTION).get();
+    const reader = getTofesMecherReader(TOFES_KEY.value());
+    const snap = await reader.readCollection(TOFES_SALES_COLLECTION);
     docs = snap.docs;
   } catch (err: unknown) {
     const name = err instanceof TofesMecherCredentialError ? err.name : 'read_failed';

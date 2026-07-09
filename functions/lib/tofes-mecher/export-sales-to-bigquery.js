@@ -263,8 +263,8 @@ async function exportSalesToBigQueryHandler() {
     // ─── (1) ALL-OR-NOTHING read of the whole collection (🔴-1) ───────────────
     let docs;
     try {
-        const app = (0, app_1.getTofesMecherApp)(TOFES_KEY.value());
-        const snap = await app.firestore().collection(config_1.TOFES_SALES_COLLECTION).get();
+        const reader = (0, app_1.getTofesMecherReader)(TOFES_KEY.value());
+        const snap = await reader.readCollection(config_1.TOFES_SALES_COLLECTION);
         docs = snap.docs;
     }
     catch (err) {

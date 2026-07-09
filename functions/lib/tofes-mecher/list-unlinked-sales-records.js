@@ -111,10 +111,10 @@ async function listUnlinkedSalesRecordsHandler(request) {
         throw new https_1.HttpsError('permission-denied', 'רק מנהל מערכת רשאי לצפות ברשומות מכר ממתינות.');
     }
     const callerUid = request.auth.uid;
-    // ─── (2) Init the tofes-mecher named app ──────────────────────────────────
-    let tofesApp;
+    // ─── (2) Init the tofes-mecher read-only reader ───────────────────────────
+    let tofesReader;
     try {
-        tofesApp = (0, app_1.getTofesMecherApp)(TOFES_KEY.value());
+        tofesReader = (0, app_1.getTofesMecherReader)(TOFES_KEY.value());
     }
     catch (err) {
         const name = err instanceof app_1.TofesMecherCredentialError
@@ -129,9 +129,7 @@ async function listUnlinkedSalesRecordsHandler(request) {
     // ─── (3) Read ALL sales_records from tofes-mecher ─────────────────────────
     let allSalesDocs;
     try {
-        const snap = await tofesApp.firestore()
-            .collection(config_1.TOFES_SALES_COLLECTION)
-            .get();
+        const snap = await tofesReader.readCollection(config_1.TOFES_SALES_COLLECTION);
         allSalesDocs = snap.docs;
     }
     catch (err) {
