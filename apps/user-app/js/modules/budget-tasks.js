@@ -34,6 +34,8 @@ import {
   createStatusBadge
 } from './timesheet-constants.js';
 import { buildErrorFromResult } from './error-utils.js';
+// PR-3a (idempotency): ONE key per submission, mirroring main.js's use.
+import { mintIdempotencyKey } from './submit-guard.js';
 
 import DescriptionTooltips from './description-tooltips.js';
 
@@ -179,6 +181,11 @@ export async function loadBudgetTasksFromFirebase(employee, statusFilter = 'acti
  */
 export async function saveBudgetTaskToFirebase(taskData) {
   try {
+    // PR-3a (idempotency): mint ONE key per submission so any retry of this
+    // create carries the SAME key → a slow-first-call success does not produce
+    // a duplicate task.
+    taskData.idempotencyKey = mintIdempotencyKey();
+
     // Call Firebase Function for secure validation and creation
     const result = await window.callFunction('createBudgetTask', taskData);
 

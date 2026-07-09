@@ -19,6 +19,9 @@
 import { TaskFormValidator } from './TaskFormValidator.js';
 import { TaskFormManager } from './TaskFormManager.js';
 import { buildTaskData, validateTaskData } from './utils/task-data-builder.js';
+// PR-3a (idempotency): ONE key per submission, mirroring main.js's use (same
+// import as main.js:45, adjusted for this component's path).
+import { mintIdempotencyKey } from '../../js/modules/submit-guard.js';
 
 /**
  * AddTaskDialog Class
@@ -473,6 +476,11 @@ return;
 
       // Use FirebaseService if available
       if (window.FirebaseService) {
+        // PR-3a (idempotency): mint ONE key per submission, OUTSIDE the retry,
+        // so every one of FirebaseService.call's 3 retries carries the SAME key
+        // → a slow-first-call success does not produce a duplicate task.
+        taskData.idempotencyKey = mintIdempotencyKey();
+
         const result = await window.FirebaseService.call('createBudgetTask', taskData, {
           retries: 3,
           timeout: 15000
