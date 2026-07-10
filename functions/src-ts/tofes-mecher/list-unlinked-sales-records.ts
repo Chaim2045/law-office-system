@@ -49,7 +49,7 @@ import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
 
 import { REGION, TOFES_MECHER_SA_KEY_SECRET, TOFES_SALES_COLLECTION } from '../config';
-import { getTofesMecherApp, TofesMecherCredentialError } from './app';
+import { getTofesMecherReader, TofesMecherCredentialError } from './app';
 import { logCriticalAction } from '../audit-critical';
 import { projectSalesRecord, type SalesRecordSnapshot } from './validate-sales-record';
 import * as logger from '../../shared/logger';
@@ -93,10 +93,10 @@ export async function listUnlinkedSalesRecordsHandler(
   }
   const callerUid = request.auth.uid;
 
-  // ─── (2) Init the tofes-mecher named app ──────────────────────────────────
-  let tofesApp;
+  // ─── (2) Init the tofes-mecher read-only reader ───────────────────────────
+  let tofesReader;
   try {
-    tofesApp = getTofesMecherApp(TOFES_KEY.value());
+    tofesReader = getTofesMecherReader(TOFES_KEY.value());
   } catch (err: unknown) {
     const name = err instanceof TofesMecherCredentialError
       ? err.name
@@ -114,9 +114,7 @@ export async function listUnlinkedSalesRecordsHandler(
   // ─── (3) Read ALL sales_records from tofes-mecher ─────────────────────────
   let allSalesDocs;
   try {
-    const snap = await tofesApp.firestore()
-      .collection(TOFES_SALES_COLLECTION)
-      .get();
+    const snap = await tofesReader.readCollection(TOFES_SALES_COLLECTION);
     allSalesDocs = snap.docs;
   } catch (err: unknown) {
     const error = err as { code?: string };

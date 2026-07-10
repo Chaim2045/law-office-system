@@ -58,7 +58,12 @@ jest.mock('firebase-admin', () => {
 
 // defineSecret returns an object with .value(); stub the params module.
 jest.mock('firebase-functions/params', () => ({
-  defineSecret: (name: string) => ({ name, value: () => '{"fake":"sa-key"}' })
+  defineSecret: (name: string) => ({
+    name,
+    // A fake SA key — includes the tofes-mecher project_id so the app.ts
+    // wrong-project circuit-breaker (added by the read-only PR) passes.
+    value: () => '{"project_id":"law-office-sales-form","fake":"sa-key"}'
+  })
 }));
 
 jest.mock('../../shared/logger', () => ({

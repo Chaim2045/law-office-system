@@ -84,7 +84,7 @@ exports.validateSalesRecordExistsHandler = validateSalesRecordExistsHandler;
  *     mirror/live divergence worth surfacing (DLR #6/#7).
  *  8. NO PII to `logger.*` — only uid, salesRecordId, errorCode, found-bool.
  *  9. Hebrew customer-facing errors (G1/G5); sanitized credential errors (no key
- *     fragment) via `getTofesMecherApp`.
+ *     fragment) via the read-only `getTofesMecherReader`.
  */
 const https_1 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
@@ -162,12 +162,8 @@ function projectSalesRecord(salesRecordId, data) {
  * @param salesRecordId a validated 20-char tofes auto-id (charset-bounded by the caller).
  */
 async function readSalesRecordSnapshot(saKeyJson, salesRecordId) {
-    const app = (0, app_1.getTofesMecherApp)(saKeyJson);
-    const snap = await app
-        .firestore()
-        .collection(config_1.TOFES_SALES_COLLECTION)
-        .doc(salesRecordId)
-        .get();
+    const reader = (0, app_1.getTofesMecherReader)(saKeyJson);
+    const snap = await reader.readDoc(config_1.TOFES_SALES_COLLECTION, salesRecordId);
     if (!snap.exists) {
         return { exists: false };
     }
@@ -198,10 +194,10 @@ async function validateSalesRecordExistsHandler(request) {
         throw new https_1.HttpsError('invalid-argument', `נתונים לא תקינים: שדה "${fieldPath}". אנא נסה שוב.`);
     }
     const { salesRecordId } = parsed.data;
-    // ─── (3) Init the named app (sanitized credential errors) ──────────────────
-    let app;
+    // ─── (3) Init the read-only reader (sanitized credential errors) ───────────
+    let reader;
     try {
-        app = (0, app_1.getTofesMecherApp)(TOFES_KEY.value());
+        reader = (0, app_1.getTofesMecherReader)(TOFES_KEY.value());
     }
     catch (err) {
         const name = err instanceof app_1.TofesMecherCredentialError
@@ -216,10 +212,7 @@ async function validateSalesRecordExistsHandler(request) {
     // ─── (4) One live read of the specific sale (collection hard-scoped) ───────
     let snap;
     try {
-        snap = await app.firestore()
-            .collection(config_1.TOFES_SALES_COLLECTION)
-            .doc(salesRecordId)
-            .get();
+        snap = await reader.readDoc(config_1.TOFES_SALES_COLLECTION, salesRecordId);
     }
     catch (err) {
         const error = err;

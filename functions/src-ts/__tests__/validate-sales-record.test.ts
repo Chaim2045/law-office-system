@@ -51,7 +51,12 @@ jest.mock('firebase-admin', () => {
 
 // defineSecret returns an object with .value(); stub the params module.
 jest.mock('firebase-functions/params', () => ({
-  defineSecret: (name: string) => ({ name, value: () => '{"fake":"sa-key"}' })
+  defineSecret: (name: string) => ({
+    name,
+    // A fake SA key — includes the tofes-mecher project_id so the app.ts
+    // wrong-project circuit-breaker (added by the read-only PR) passes.
+    value: () => '{"project_id":"law-office-sales-form","fake":"sa-key"}'
+  })
 }));
 
 // Capture EVERY argument passed to the logger so the no-PII-in-logs runtime test
@@ -69,6 +74,7 @@ import {
 } from '../tofes-mecher/validate-sales-record';
 import {
   getTofesMecherApp,
+  getTofesMecherReader,
   __resetTofesMecherAppForTests,
   TofesMecherCredentialError
 } from '../tofes-mecher/app';
@@ -179,7 +185,13 @@ describe('validate-sales-record — static AST invariants', () => {
 // (b) getTofesMecherApp — credential + singleton (migrated from connectivity test)
 // ════════════════════════════════════════════════════════════════════════════
 describe('getTofesMecherApp — credential + singleton', () => {
-  const VALID_SA_JSON = JSON.stringify({ project_id: 'x', private_key: 'fake', client_email: 'a@b.iam' });
+  // project_id MUST be the tofes-mecher project — the wrong-project
+  // circuit-breaker asserts on the KEY's own project_id.
+  const VALID_SA_JSON = JSON.stringify({
+    project_id: 'law-office-sales-form',
+    private_key: 'fake',
+    client_email: 'a@b.iam'
+  });
 
   it('initializes the named app with the parsed credential', () => {
     getTofesMecherApp(VALID_SA_JSON);
@@ -202,6 +214,33 @@ describe('getTofesMecherApp — credential + singleton', () => {
       expect((e as Error).message).toBe('tofes-mecher credential init failed');
       expect((e as Error).message).not.toContain('SECRET-FRAGMENT');
     }
+  });
+
+  it('CIRCUIT-BREAKER: refuses a well-formed key whose project_id is NOT tofes-mecher', () => {
+    // A syntactically valid key for the WRONG project (e.g. the MAIN project, or
+    // any rotated key). Fail-CLOSED at init — never authenticate as the wrong
+    // principal against tofes Firestore. This is the load-bearing check that an
+    // `app.options.projectId` assertion (a tautology) could never catch.
+    const WRONG_PROJECT_KEY = JSON.stringify({
+      project_id: 'law-office-system-e4801',
+      private_key: 'fake',
+      client_email: 'a@b.iam'
+    });
+    expect(() => getTofesMecherApp(WRONG_PROJECT_KEY)).toThrow(TofesMecherCredentialError);
+    // NEVER reaches cert()/initializeApp when the project is wrong.
+    expect(mockCert).not.toHaveBeenCalled();
+    expect(mockInitializeApp).not.toHaveBeenCalled();
+  });
+
+  it('getTofesMecherReader exposes ONLY read methods (no write surface)', () => {
+    const reader = getTofesMecherReader(VALID_SA_JSON);
+    expect(typeof reader.readDoc).toBe('function');
+    expect(typeof reader.readCollection).toBe('function');
+    // The reader is a frozen, read-only surface — no write method is reachable.
+    for (const writeMethod of ['set', 'update', 'delete', 'add', 'batch', 'create']) {
+      expect((reader as unknown as Record<string, unknown>)[writeMethod]).toBeUndefined();
+    }
+    expect(Object.isFrozen(reader)).toBe(true);
   });
 });
 

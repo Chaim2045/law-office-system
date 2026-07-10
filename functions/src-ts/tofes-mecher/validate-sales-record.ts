@@ -42,7 +42,7 @@
  *     mirror/live divergence worth surfacing (DLR #6/#7).
  *  8. NO PII to `logger.*` — only uid, salesRecordId, errorCode, found-bool.
  *  9. Hebrew customer-facing errors (G1/G5); sanitized credential errors (no key
- *     fragment) via `getTofesMecherApp`.
+ *     fragment) via the read-only `getTofesMecherReader`.
  */
 import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
@@ -53,7 +53,7 @@ import {
   TOFES_MECHER_SA_KEY_SECRET,
   TOFES_SALES_COLLECTION
 } from '../config';
-import { getTofesMecherApp, TofesMecherCredentialError } from './app';
+import { getTofesMecherReader, TofesMecherCredentialError } from './app';
 import { logCriticalAction } from '../audit-critical';
 import * as logger from '../../shared/logger';
 
@@ -161,12 +161,8 @@ export async function readSalesRecordSnapshot(
   saKeyJson: string,
   salesRecordId: string
 ): Promise<{ exists: false } | ({ exists: true } & SalesRecordSnapshot)> {
-  const app = getTofesMecherApp(saKeyJson);
-  const snap = await app
-    .firestore()
-    .collection(TOFES_SALES_COLLECTION)
-    .doc(salesRecordId)
-    .get();
+  const reader = getTofesMecherReader(saKeyJson);
+  const snap = await reader.readDoc(TOFES_SALES_COLLECTION, salesRecordId);
   if (!snap.exists) {
     return { exists: false };
   }
@@ -208,10 +204,10 @@ export async function validateSalesRecordExistsHandler(
   }
   const { salesRecordId } = parsed.data;
 
-  // ─── (3) Init the named app (sanitized credential errors) ──────────────────
-  let app;
+  // ─── (3) Init the read-only reader (sanitized credential errors) ───────────
+  let reader;
   try {
-    app = getTofesMecherApp(TOFES_KEY.value());
+    reader = getTofesMecherReader(TOFES_KEY.value());
   } catch (err: unknown) {
     const name = err instanceof TofesMecherCredentialError
       ? err.name
@@ -229,10 +225,7 @@ export async function validateSalesRecordExistsHandler(
   // ─── (4) One live read of the specific sale (collection hard-scoped) ───────
   let snap;
   try {
-    snap = await app.firestore()
-      .collection(TOFES_SALES_COLLECTION)
-      .doc(salesRecordId)
-      .get();
+    snap = await reader.readDoc(TOFES_SALES_COLLECTION, salesRecordId);
   } catch (err: unknown) {
     const error = err as { code?: string };
     // errorCode only — never error.message (could echo project/collection data).
