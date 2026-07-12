@@ -142,7 +142,7 @@ describe('renderPackagesTable — escapes service name and package description/r
       { type: 'נוספת', hours: 5, hoursUsed: 1, hoursRemaining: 4, purchaseDate: '2026-01-01', description: XSS },
       { type: 'נוספת', hours: 5, hoursUsed: 1, hoursRemaining: 4, purchaseDate: '2026-01-02', reason: XSS }
     ];
-    const html = reportGenerator.renderPackagesTable(packages, XSS, null, null);
+    const html = reportGenerator.renderPackagesTable(packages, packages, XSS, null, null);
     expect(html).not.toContain(XSS_LIVE);
     expect(html).toContain(XSS_ESCAPED);
     // serviceName title + 2 package notes
