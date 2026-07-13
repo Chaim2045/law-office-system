@@ -202,3 +202,65 @@ describe('_mins — entry.minutes coercion (E2 fix)', () => {
     expect(reportGenerator._mins({ minutes: 0 })).toBe(0);
   });
 });
+
+// --- PR-REPORT-3: Service matching SSOT + cross-service bleed fix --------
+
+describe('findServiceByFormData — cross-service bleed (BLEED1 fix)', () => {
+  it('exact match wins over partial substring: "ייעוץ" does NOT match "ייעוץ מס"', () => {
+    const client = {
+      services: [
+        { id: 'svc_a', name: 'ייעוץ', displayName: 'ייעוץ', status: 'active' },
+        { id: 'svc_b', name: 'ייעוץ מס', displayName: 'ייעוץ מס', status: 'active' }
+      ]
+    };
+    const result = reportGenerator.findServiceByFormData(client, { service: 'ייעוץ' });
+    expect(result).toBeTruthy();
+    expect(result.id).toBe('svc_a');
+  });
+
+  it('"ייעוץ מס" matches only itself, not the shorter "ייעוץ"', () => {
+    const client = {
+      services: [
+        { id: 'svc_a', name: 'ייעוץ', displayName: 'ייעוץ', status: 'active' },
+        { id: 'svc_b', name: 'ייעוץ מס', displayName: 'ייעוץ מס', status: 'active' }
+      ]
+    };
+    const result = reportGenerator.findServiceByFormData(client, { service: 'ייעוץ מס' });
+    expect(result).toBeTruthy();
+    expect(result.id).toBe('svc_b');
+  });
+
+  it('no includes() fallback: a displayName that contains target does NOT match', () => {
+    const client = {
+      services: [
+        { id: 'svc_long', name: 'ייעוץ משפטי כללי', displayName: 'ייעוץ משפטי כללי', status: 'active' }
+      ]
+    };
+    const result = reportGenerator.findServiceByFormData(client, { service: 'ייעוץ' });
+    expect(result).toBeNull();
+  });
+});
+
+describe('findServiceByFormData — whitespace trim', () => {
+  it('trailing space in stored name still matches trimmed formData', () => {
+    const client = {
+      services: [
+        { id: 'svc_ws', name: 'ייעוץ ', displayName: 'ייעוץ ', status: 'active' }
+      ]
+    };
+    const result = reportGenerator.findServiceByFormData(client, { service: 'ייעוץ' });
+    expect(result).toBeTruthy();
+    expect(result.id).toBe('svc_ws');
+  });
+
+  it('leading space in formData still matches clean stored name', () => {
+    const client = {
+      services: [
+        { id: 'svc_clean', name: 'ייעוץ', displayName: 'ייעוץ', status: 'active' }
+      ]
+    };
+    const result = reportGenerator.findServiceByFormData(client, { service: ' ייעוץ' });
+    expect(result).toBeTruthy();
+    expect(result.id).toBe('svc_clean');
+  });
+});
