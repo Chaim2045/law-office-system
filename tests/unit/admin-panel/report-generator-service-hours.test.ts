@@ -264,3 +264,60 @@ describe('findServiceByFormData — whitespace trim', () => {
     expect(result.id).toBe('svc_clean');
   });
 });
+
+// --- PR-REPORT-4: Timezone / date boundary fix (TZ1) --------
+
+describe('_parseLocalDate — local midnight parsing (TZ1 fix)', () => {
+  it('creates local midnight, not UTC midnight, for a date string', () => {
+    const d = reportGenerator._parseLocalDate('2026-07-13');
+    expect(d).toBeInstanceOf(Date);
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(6); // July = 6 (0-indexed)
+    expect(d.getDate()).toBe(13);
+    expect(d.getHours()).toBe(0);
+    expect(d.getMinutes()).toBe(0);
+    expect(d.getSeconds()).toBe(0);
+    expect(d.getMilliseconds()).toBe(0);
+  });
+
+  it('creates local end-of-day when endOfDay=true', () => {
+    const d = reportGenerator._parseLocalDate('2026-07-13', true);
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(6);
+    expect(d.getDate()).toBe(13);
+    expect(d.getHours()).toBe(23);
+    expect(d.getMinutes()).toBe(59);
+    expect(d.getSeconds()).toBe(59);
+    expect(d.getMilliseconds()).toBe(999);
+  });
+
+  it('returns null for empty/falsy input', () => {
+    expect(reportGenerator._parseLocalDate('')).toBeNull();
+    expect(reportGenerator._parseLocalDate(null)).toBeNull();
+    expect(reportGenerator._parseLocalDate(undefined)).toBeNull();
+  });
+
+  it('returns null for unparseable string', () => {
+    expect(reportGenerator._parseLocalDate('not-a-date')).toBeNull();
+  });
+
+  it('endDate includes an entry at 23:30 on the same day', () => {
+    const endDate = reportGenerator._parseLocalDate('2026-07-13', true);
+    const entryAt2330 = new Date(2026, 6, 13, 23, 30, 0, 0); // 23:30 local
+    expect(entryAt2330.getTime()).toBeLessThanOrEqual(endDate.getTime());
+  });
+
+  it('endDate excludes an entry at 00:30 on the next day', () => {
+    const endDate = reportGenerator._parseLocalDate('2026-07-13', true);
+    const entryNextDay = new Date(2026, 6, 14, 0, 30, 0, 0); // 00:30 next day local
+    expect(entryNextDay.getTime()).toBeGreaterThan(endDate.getTime());
+  });
+
+  it('regression: new Date("YYYY-MM-DD") would fail the 23:30 test', () => {
+    const utcMidnight = new Date('2026-07-13'); // UTC midnight
+    const entryAt2330Local = new Date(2026, 6, 13, 23, 30, 0, 0);
+    // UTC midnight = some hour on July 13 in local time (e.g., 03:00 for UTC+3)
+    // An entry at 23:30 local has a higher timestamp than UTC midnight of that date
+    expect(entryAt2330Local.getTime()).toBeGreaterThan(utcMidnight.getTime());
+  });
+});
