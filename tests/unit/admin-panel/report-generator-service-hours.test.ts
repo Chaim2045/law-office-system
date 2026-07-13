@@ -135,43 +135,6 @@ describe('resolveServiceHours — hour packages (non-staged)', () => {
   });
 });
 
-describe('resolveServiceHours — all services', () => {
-  it('sums billable services for "all"', () => {
-    const client = {
-      totalHours: 0,
-      hoursRemaining: 0,
-      services: [
-        hourPackageService(),
-        hourPackageService({ id: 'p2', name: 'p2', totalHours: 5, hoursRemaining: 5, hoursUsed: 0 })
-      ]
-    };
-    const r = reportGenerator.resolveServiceHours(client, { service: 'all', stage: '' });
-    expect(r.matchType).toBe('all');
-    expect(r.totalHours).toBe(20); // 15 + 5
-    expect(r.remainingHours).toBe(15); // 10 + 5
-    expect(r.usedHours).toBe(5); // 20 - 15
-  });
-
-  it('excludes archived services from "all" (PR-G.3.14)', () => {
-    const client = {
-      services: [
-        hourPackageService(),
-        hourPackageService({ id: 'arch', name: 'arch', status: 'archived', totalHours: 100, hoursRemaining: 100, hoursUsed: 0 })
-      ]
-    };
-    const r = reportGenerator.resolveServiceHours(client, { service: 'כל השירותים', stage: '' });
-    expect(r.totalHours).toBe(15); // archived 100 excluded
-    expect(r.remainingHours).toBe(10);
-  });
-
-  it('falls back to client totals for "all" only when services[] is empty', () => {
-    const client = { totalHours: 42, hoursRemaining: 7, services: [] };
-    const r = reportGenerator.resolveServiceHours(client, { service: 'all', stage: '' });
-    expect(r.totalHours).toBe(42);
-    expect(r.remainingHours).toBe(7);
-  });
-});
-
 describe('resolveServiceHours — no match (the safety property)', () => {
   it('returns zeros and matchType "none" — never borrows client.totalHours', () => {
     const client = { totalHours: 999, hoursRemaining: 888, services: [hourPackageService()] };

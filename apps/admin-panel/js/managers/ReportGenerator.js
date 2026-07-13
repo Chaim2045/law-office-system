@@ -85,7 +85,7 @@
             );
 
             // Filter by service if selected
-            if (formData.service && formData.service !== 'all') {
+            if (formData.service) {
                 const matchService = (entry) => {
                     if (formData.serviceId && entry.serviceId === formData.serviceId) {
 return true;
@@ -503,7 +503,7 @@ return true;
         <!-- Hours Info (if applicable) -->
         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' || formData.service ? `
         <div class="section">
-            <h3 class="section-title"><i class="fas fa-clock"></i> מידע על ${formData.service === 'all' ? 'כל השירותים' : this.escapeHtml(formData.service)}</h3>
+            <h3 class="section-title"><i class="fas fa-clock"></i> מידע על ${this.escapeHtml(formData.service)}</h3>
             <div class="info-grid">
                 ${this.renderServiceInfo(client, formData)}
             </div>
@@ -612,10 +612,9 @@ return true;
          * to client-level totals (client.totalHours / client.hoursRemaining) — that
          * fallback was the over-count bug, where a stage report showed the sum of ALL
          * the client's services/stages instead of just the selected one:
-         *   (a) 'all' / 'כל השירותים' -> aggregate of billable (non-archived) services
-         *   (b) formData.stage set     -> the matching legal_procedure stage only
-         *   (c) top-level service match -> that service (hour packages / non-staged)
-         *   (d) no match               -> matchType 'none', zeros. The caller MAY derive
+         *   (a) formData.stage set     -> the matching legal_procedure stage only
+         *   (b) top-level service match -> that service (hour packages / non-staged)
+         *   (c) no match               -> matchType 'none', zeros. The caller MAY derive
          *       used-hours from its own service-scoped timesheet entries, but MUST NOT
          *       borrow client.totalHours.
          *
@@ -633,30 +632,36 @@ return true;
                 && window.ClientTypeDisplay.isFixedService(svc));
         }
 
+        /**
+         * איתור השירות לפי נתוני הטופס — לוגיקת התאמה משותפת (SSOT)
+         * משמש הן ב-resolveServiceHours והן ב-renderPackagesBreakdown
+         */
+        findServiceByFormData(client, formData) {
+            const services = Array.isArray(client && client.services) ? client.services : [];
+            const target = (formData.service || '').trim();
+            if (formData.serviceId) {
+                const byId = services.find(s => s.id === formData.serviceId);
+                if (byId) {
+                    return byId;
+                }
+            }
+            return services.find(s => {
+                const sName = (s.name || '').trim();
+                const sServiceName = (s.serviceName || '').trim();
+                const sDisplayName = (s.displayName || '').trim();
+                return sName === target ||
+                    sServiceName === target ||
+                    sDisplayName === target ||
+                    (s.stage && target.includes(s.stage)) ||
+                    (sDisplayName && sDisplayName.includes(target)) ||
+                    (formData.stage && Array.isArray(s.stages) && s.stages.some(st => st.id === formData.stage));
+            }) || null;
+        }
+
         resolveServiceHours(client, formData) {
             const services = Array.isArray(client && client.services) ? client.services : [];
 
-            // (a) All services — the ONLY path allowed to read client-level numbers,
-            // and only as a last resort when the services[] array is empty.
-            if (formData.service === 'all' || formData.service === 'כל השירותים') {
-                if (services.length > 0) {
-                    // PR-G.3.14: exclude archived services (consistent with aggregates.js).
-                    const billable = services.filter(s => (s && s.status || 'active') !== 'archived');
-                    const totalHours = billable.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
-                    const remainingHours = billable.reduce((sum, s) => sum + (s.hoursRemaining || s.remainingHours || 0), 0);
-                    // 'all' counts as fixed ONLY when every billable service is fixed (a mix keeps the hourly framing).
-                    const allFixed = billable.length > 0 && billable.every(s => this._isFixedService(s));
-                    const totalFixedPrice = allFixed
-                        ? billable.reduce((sum, s) => sum + Number(s.totalFixedPrice || s.totalPrice || 0), 0)
-                        : null;
-                    return { totalHours, usedHours: totalHours - remainingHours, remainingHours, matchType: 'all', isFixed: allFixed, fixedPrice: null, totalFixedPrice };
-                }
-                const totalHours = client.totalHours || 0;
-                const remainingHours = client.hoursRemaining || 0;
-                return { totalHours, usedHours: totalHours - remainingHours, remainingHours, matchType: 'all', isFixed: false, fixedPrice: null, totalFixedPrice: null };
-            }
-
-            // (b) Legal-procedure stage — scope to the SELECTED stage only.
+            // (a) Legal-procedure stage — scope to the SELECTED stage only.
             if (formData.stage) {
                 let selectedStage = null;
                 let parentService = null;
@@ -695,14 +700,8 @@ return true;
                 }
             }
 
-            // (c) Top-level service match (hour packages and any non-staged service).
-            const selectedService = services.find(s =>
-                s.name === formData.service ||
-                s.serviceName === formData.service ||
-                s.displayName === formData.service ||
-                (s.stage && formData.service.includes(s.stage)) ||
-                (s.displayName && s.displayName.includes(formData.service))
-            );
+            // (b) Top-level service match (hour packages and any non-staged service).
+            const selectedService = this.findServiceByFormData(client, formData);
             if (selectedService) {
                 const totalHours = selectedService.totalHours || selectedService.hours ||
                                    selectedService.allocatedHours || selectedService.stageHours || 0;
@@ -717,7 +716,7 @@ return true;
                 };
             }
 
-            // (d) No match — zeros. Caller may derive used-hours from service-scoped
+            // (c) No match — zeros. Caller may derive used-hours from service-scoped
             // timesheet entries, but MUST NOT fall back to client.totalHours.
             return { totalHours: 0, usedHours: 0, remainingHours: 0, matchType: 'none', isFixed: false, fixedPrice: null, totalFixedPrice: null };
         }
@@ -1181,17 +1180,8 @@ return '0:00';
          * פירוט חבילות שעות לשלב
          */
         renderPackagesBreakdown(client, formData) {
-            // Only show for legal procedures or hour packages
-            if (formData.service === 'all' || formData.service === 'כל השירותים') {
-                return ''; // Don't show packages breakdown for "all services"
-            }
-
-            // Find the service
-            const service = client.services?.find(s => {
-                return s.name === formData.service ||
-                       s.serviceName === formData.service ||
-                       s.displayName === formData.service;
-            });
+            // Find the service (SSOT — same matcher as resolveServiceHours)
+            const service = this.findServiceByFormData(client, formData);
 
             if (!service) {
                 return '';
@@ -1203,12 +1193,13 @@ return '0:00';
 
             // Check if it's a legal procedure
             if (service.type === 'legal_procedure') {
-                // Find the specific stage
-                const stage = service.stages?.find(s => {
-                    const stageName = s.name || s.id;
-                    return formData.service.includes(stageName) ||
-                           formData.service.includes(s.id);
-                });
+                // עדיפות להתאמה מדויקת לפי מזהה השלב מהטופס; נפילה חזרה להתאמת שם (legacy)
+                const stage = service.stages?.find(s => formData.stage && s.id === formData.stage)
+                    || service.stages?.find(s => {
+                        const stageName = s.name || s.id;
+                        return formData.service.includes(stageName) ||
+                               formData.service.includes(s.id);
+                    });
 
                 if (!stage || !stage.packages || stage.packages.length === 0) {
                     return '';
@@ -1221,7 +1212,7 @@ return '0:00';
                     return ''; // No packages in this date range
                 }
 
-                return this.renderPackagesTable(filteredPackages, formData.service, startDate, endDate);
+                return this.renderPackagesTable(filteredPackages, stage.packages, formData.service, startDate, endDate);
             }
 
             // For hour packages (non-legal procedures)
@@ -1233,7 +1224,7 @@ return '0:00';
                     return ''; // No packages in this date range
                 }
 
-                return this.renderPackagesTable(filteredPackages, formData.service, startDate, endDate);
+                return this.renderPackagesTable(filteredPackages, service.packages, formData.service, startDate, endDate);
             }
 
             return '';
@@ -1254,13 +1245,24 @@ return '0:00';
             }
 
             return packages.filter(pkg => {
+                // חבילה פעילה עם יתרת שעות מוצגת תמיד — סינון תאריכים חל רק על חבילות שמוצו
+                const remaining = Number.isFinite(pkg.hoursRemaining)
+                    ? pkg.hoursRemaining
+                    : (pkg.hours || 0) - (pkg.hoursUsed || 0);
+                if (pkg.status !== 'completed' && remaining > 0) {
+                    return true;
+                }
+
                 // Get package purchase date
                 const pkgDate = pkg.purchaseDate || pkg.createdAt;
                 if (!pkgDate) {
                     return true; // Include packages without date (shouldn't happen)
                 }
 
-                const packageDate = new Date(pkgDate);
+                const packageDate = pkgDate?.toDate ? pkgDate.toDate() : new Date(pkgDate);
+                if (isNaN(packageDate.getTime())) {
+                    return true;
+                }
 
                 // Check if package is within date range
                 if (startDate && packageDate < startDate) {
@@ -1279,15 +1281,18 @@ return '0:00';
          * Render packages table HTML
          * יצירת טבלת חבילות
          */
-        renderPackagesTable(packages, serviceName, startDate, endDate) {
+        renderPackagesTable(packages, allPackages, serviceName, startDate, endDate) {
             if (!packages || packages.length === 0) {
                 return '';
             }
 
-            // Calculate totals
-            const totalHours = packages.reduce((sum, pkg) => sum + (pkg.hours || 0), 0);
-            const totalUsed = packages.reduce((sum, pkg) => sum + (pkg.hoursUsed || 0), 0);
-            const totalRemaining = packages.reduce((sum, pkg) => sum + (pkg.hoursRemaining || pkg.hours - (pkg.hoursUsed || 0)), 0);
+            // סיכום מלא — מכלל החבילות בשירות (לא מהמסוננות) כדי שיתאים לכותרת הדוח
+            const fullList = Array.isArray(allPackages) && allPackages.length > 0 ? allPackages : packages;
+            const totalHours = fullList.reduce((sum, pkg) => sum + (pkg.hours || 0), 0);
+            const totalUsed = fullList.reduce((sum, pkg) => sum + (pkg.hoursUsed || 0), 0);
+            const totalRemaining = fullList.reduce((sum, pkg) =>
+                sum + (Number.isFinite(pkg.hoursRemaining) ? pkg.hoursRemaining : (pkg.hours || 0) - (pkg.hoursUsed || 0)), 0);
+            const hiddenCount = fullList.length - packages.length;
 
             // Create date range subtitle
             let dateRangeText = '';
@@ -1341,7 +1346,7 @@ return '0:00';
 
                     <tr class="summary-row" style="font-weight: bold; background-color: #f8f9fa; border-top: 2px solid #dee2e6;">
                         <td>סה"כ</td>
-                        <td>${packages.length} חבילות</td>
+                        <td>${fullList.length} חבילות</td>
                         <td class="highlight">${totalHours.toFixed(1)}</td>
                         <td>${totalUsed.toFixed(1)}</td>
                         <td>${totalRemaining.toFixed(1)}</td>
@@ -1349,6 +1354,12 @@ return '0:00';
                     </tr>
                 </tbody>
             </table>
+
+            ${hiddenCount > 0 ? `
+            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #6b7280;">
+                <i class="fas fa-filter"></i>
+                מציג ${packages.length} מתוך ${fullList.length} חבילות בטווח התאריכים — שורת הסה"כ משקפת את כלל חבילות השירות.
+            </div>` : ''}
 
             <div style="margin-top: 1rem; padding: 0.75rem; background-color: #e3f2fd; border-right: 4px solid #1877F2; border-radius: 4px;">
                 <p style="margin: 0; font-size: 0.9rem; color: #1976d2;">
