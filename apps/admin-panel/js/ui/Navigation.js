@@ -1,34 +1,49 @@
 /**
- * Navigation Component
- * קומפוננטת ניווט
+ * Navigation Component — Adaptive Sidebar (PR-NAV-2)
+ * קומפוננטת ניווט — סרגל צד אדפטיבי
  *
- * נוצר: 23/11/2025
- * גרסה: 1.0.0
- * Phase: 5 - Navigation
- *
- * תפקיד: ניווט בין דפים שונים באדמין פאנל
+ * Mobile (<768px): bottom bar, 5 primary + "More" overflow
+ * Tablet (768-1023px): icon-only sidebar 68px on right
+ * Desktop (≥1024px): full sidebar 200px, collapsible to 68px
  */
 
 (function() {
     'use strict';
 
-    /**
-     * Navigation Class
-     * ניווט
-     */
+    const SUB_PAGE_PARENTS = {
+        'employee-costs': 'users',
+        'tasks': 'users',
+        'timesheet': 'users'
+    };
+
+    const PRIMARY_NAV = [
+        { id: 'users', label: 'ניהול עובדים', icon: 'fa-users', href: 'index.html' },
+        { id: 'clients', label: 'ניהול לקוחות', icon: 'fa-briefcase', href: 'clients.html' },
+        { id: 'pending-clients', label: 'לקוחות ממתינים', icon: 'fa-user-clock', href: 'pending-clients.html' },
+        { id: 'workload', label: 'ניתוח עומס', icon: 'fa-chart-line', href: 'workload.html' },
+        { id: 'profitability', label: 'רווחיות', icon: 'fa-money-bill-trend-up', href: 'profitability.html' },
+        { id: 'reconciliation', label: 'סנכרון שעות', icon: 'fa-scale-balanced', href: 'reconciliation.html' },
+        { id: 'announcements', label: 'הודעות מערכת', icon: 'fa-bullhorn', href: 'system-announcements.html' }
+    ];
+
+    const MOBILE_PRIMARY_COUNT = 5;
+
+    const UTILITY_NAV = [
+        { id: 'approvals', label: 'חריגות תקציב', icon: 'fa-triangle-exclamation', type: 'button' },
+        { id: 'audit-trail', label: 'לוג פעילות', icon: 'fa-history', href: 'audit-trail.html' },
+        { id: 'settings', label: 'הגדרות', icon: 'fa-cog', href: 'settings.html' }
+    ];
+
     class Navigation {
         constructor() {
             this.container = null;
             this.currentPage = null;
-            this.approvalCountInterval = null; // Polling interval לספירת אישורים
+            this.approvalCountInterval = null;
+            this._desktopMQ = null;
         }
 
-        /**
-         * Initialize navigation
-         * אתחול ניווט
-         */
         init(currentPage = 'users') {
-            this.currentPage = currentPage;
+            this.currentPage = SUB_PAGE_PARENTS[currentPage] || currentPage;
             this.container = document.getElementById('navigationContainer');
 
             if (!this.container) {
@@ -37,89 +52,226 @@
             }
 
             this.render();
-
-            // התחל להקשיב למספר חריגות התקציב הפעילות
+            this.setupEventListeners();
+            this.setupCollapseToggle();
+            this.setupMobileOverflow();
             this.startApprovalCountListener();
         }
 
-        /**
-         * Render navigation
-         * רינדור ניווט
-         */
         render() {
             if (!this.container) {
 return;
 }
 
-            const navItems = [
-                { id: 'users', label: 'ניהול עובדים', icon: 'fa-users', href: 'index.html' },
-                { id: 'clients', label: 'ניהול לקוחות', icon: 'fa-briefcase', href: 'clients.html' },
-                { id: 'pending-clients', label: 'לקוחות ממתינים', icon: 'fa-user-clock', href: 'pending-clients.html' },
-                { id: 'workload', label: 'ניתוח עומס', icon: 'fa-chart-line', href: 'workload.html' },
-                { id: 'profitability', label: 'רווחיות', icon: 'fa-money-bill-trend-up', href: 'profitability.html' },
-                { id: 'reconciliation', label: 'סנכרון שעות', icon: 'fa-scale-balanced', href: 'reconciliation.html' },
-                { id: 'announcements', label: 'הודעות מערכת', icon: 'fa-bullhorn', href: 'system-announcements.html' }
-            ];
+            const primaryHTML = PRIMARY_NAV.map(item => `
+                <a href="${item.href}" class="nav-item ${item.id === this.currentPage ? 'active' : ''}" data-id="${item.id}" aria-current="${item.id === this.currentPage ? 'page' : 'false'}">
+                    <i class="fas ${item.icon}"></i>
+                    <span class="nav-label">${item.label}</span>
+                </a>
+            `).join('');
+
+            const utilityHTML = UTILITY_NAV.map(item => {
+                const isActive = item.id === this.currentPage ? 'active' : '';
+                if (item.type === 'button') {
+                    return `
+                        <button class="nav-item ${isActive}" id="navApprovalsBtn" data-id="${item.id}">
+                            <span id="approvalCountBadge" class="approval-count-badge" style="display: none;"></span>
+                            <i class="fas ${item.icon}"></i>
+                            <span class="nav-label">${item.label}</span>
+                        </button>`;
+                }
+                return `
+                    <a href="${item.href}" class="nav-item ${isActive}" data-id="${item.id}" aria-current="${item.id === this.currentPage ? 'page' : 'false'}">
+                        <i class="fas ${item.icon}"></i>
+                        <span class="nav-label">${item.label}</span>
+                    </a>`;
+            }).join('');
+
+            const overflowItems = PRIMARY_NAV.slice(MOBILE_PRIMARY_COUNT);
+            const overflowHTML = [
+                ...overflowItems.map(item => `
+                    <a href="${item.href}" class="nav-overflow-item ${item.id === this.currentPage ? 'active' : ''}">
+                        <i class="fas ${item.icon}"></i>
+                        <span>${item.label}</span>
+                    </a>`),
+                ...UTILITY_NAV.map(item => {
+                    if (item.type === 'button') {
+                        return `
+                            <button class="nav-overflow-item" id="navOverflowApprovalsBtn">
+                                <i class="fas ${item.icon}"></i>
+                                <span>${item.label}</span>
+                            </button>`;
+                    }
+                    return `
+                        <a href="${item.href}" class="nav-overflow-item ${item.id === this.currentPage ? 'active' : ''}">
+                            <i class="fas ${item.icon}"></i>
+                            <span>${item.label}</span>
+                        </a>`;
+                }),
+                `<button class="nav-overflow-item logout-item" id="navOverflowLogoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>יציאה</span>
+                </button>`
+            ].join('');
+
+            const isOverflowActive = [...overflowItems, ...UTILITY_NAV]
+                .some(item => item.id === this.currentPage);
 
             this.container.innerHTML = `
-                <nav class="admin-navigation">
+                <nav class="admin-navigation" role="navigation" aria-label="תפריט ניווט ראשי">
                     <div class="nav-brand">
-                        <div class="brand-logo-wrapper">
-                            <img src="assets/logo.png" alt="Logo" class="brand-logo" />
-                            <span class="brand-subtitle">Admin Panel</span>
-                        </div>
+                        <img src="assets/logo.png" alt="Logo" class="brand-logo" />
+                        <span class="brand-text">ניהול המשרד</span>
                     </div>
-                    <div class="nav-tabs-wrapper">
-                        <div class="nav-tabs">
-                            ${navItems.map(item => `
-                                <a href="${item.href}" class="nav-tab ${item.id === this.currentPage ? 'active' : ''}">
-                                    <i class="fas ${item.icon}"></i>
-                                    <span>${item.label}</span>
-                                </a>
-                            `).join('')}
-                        </div>
-                    </div>
-                    <div class="nav-user">
-                        <button class="btn-approvals ${this.currentPage === 'approvals' ? 'active' : ''}" id="navApprovalsBtn" title="חריגות תקציב משימות" style="position: relative;">
-                            <span id="approvalCountBadge" class="approval-count-badge" style="display: none;"></span>
-                            <i class="fas fa-triangle-exclamation"></i>
-                            <span>חריגות תקציב</span>
-                        </button>
-                        <a href="audit-trail.html" class="btn-settings ${this.currentPage === 'audit-trail' ? 'active' : ''}" title="לוג פעילות">
-                            <i class="fas fa-history"></i>
-                        </a>
-                        <a href="settings.html" class="btn-settings ${this.currentPage === 'settings' ? 'active' : ''}" title="הגדרות מערכת">
-                            <i class="fas fa-cog"></i>
-                        </a>
-                        <button class="btn-logout" id="navLogoutBtn">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span>יציאה</span>
-                        </button>
-                    </div>
-                </nav>
-            `;
 
-            // Setup event listeners
-            this.setupEventListeners();
+                    <div class="nav-primary">
+                        ${primaryHTML}
+                    </div>
+
+                    <div class="nav-divider"></div>
+
+                    <div class="nav-utility">
+                        ${utilityHTML}
+                    </div>
+
+                    <button class="nav-item nav-logout" id="navLogoutBtn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span class="nav-label">יציאה</span>
+                    </button>
+
+                    <button class="nav-item nav-more-btn ${isOverflowActive ? 'active' : ''}" id="navMoreBtn" aria-expanded="false" aria-controls="navOverflowMenu">
+                        <i class="fas fa-ellipsis"></i>
+                        <span class="nav-label">עוד</span>
+                    </button>
+
+                    <button class="sidebar-toggle" id="sidebarToggle" aria-label="כווץ/הרחב תפריט">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                </nav>
+
+                <div class="nav-overflow-backdrop" id="navOverflowBackdrop"></div>
+                <div class="nav-overflow-menu" id="navOverflowMenu" role="menu">
+                    ${overflowHTML}
+                </div>
+            `;
         }
 
-        /**
-         * Start polling over-budget active tasks count (H.4 PR-a — "חריגות תקציב")
-         * התחל polling למספר משימות פעילות בחריגת תקציב
-         *
-         * Counts budget_tasks where status == 'פעיל' AND actualMinutes >
-         * estimatedMinutes (the over-budget set — same as budgetStatus level
-         * 'danger'/isOver). budget_tasks is admin-readable. The badge surfaces the
-         * urgent overruns; the side panel shows the wider approaching+over set.
-         */
+        setupCollapseToggle() {
+            this._desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+            if (this._desktopMQ.matches && localStorage.getItem('admin-sidebar-collapsed') === '1') {
+                document.body.classList.add('sidebar-collapsed');
+            }
+
+            const toggle = document.getElementById('sidebarToggle');
+            if (toggle) {
+                toggle.addEventListener('click', () => {
+                    if (!this._desktopMQ.matches) {
+return;
+}
+
+                    document.body.classList.add('sidebar-animating');
+                    document.body.classList.toggle('sidebar-collapsed');
+
+                    const collapsed = document.body.classList.contains('sidebar-collapsed');
+                    localStorage.setItem('admin-sidebar-collapsed', collapsed ? '1' : '0');
+
+                    setTimeout(() => document.body.classList.remove('sidebar-animating'), 300);
+                });
+            }
+        }
+
+        setupMobileOverflow() {
+            const moreBtn = document.getElementById('navMoreBtn');
+            const backdrop = document.getElementById('navOverflowBackdrop');
+            const menu = document.getElementById('navOverflowMenu');
+
+            if (!moreBtn || !backdrop || !menu) {
+return;
+}
+
+            const open = () => {
+                menu.classList.add('visible');
+                backdrop.classList.add('visible');
+                moreBtn.setAttribute('aria-expanded', 'true');
+            };
+
+            const close = () => {
+                menu.classList.remove('visible');
+                backdrop.classList.remove('visible');
+                moreBtn.setAttribute('aria-expanded', 'false');
+            };
+
+            moreBtn.addEventListener('click', () => {
+                menu.classList.contains('visible') ? close() : open();
+            });
+
+            backdrop.addEventListener('click', close);
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && menu.classList.contains('visible')) {
+                    close();
+                    moreBtn.focus();
+                }
+            });
+
+            const overflowApprovalsBtn = document.getElementById('navOverflowApprovalsBtn');
+            if (overflowApprovalsBtn) {
+                overflowApprovalsBtn.addEventListener('click', async () => {
+                    close();
+                    if (window.taskApprovalSidePanel) {
+                        await window.taskApprovalSidePanel.init();
+                        window.taskApprovalSidePanel.open();
+                    }
+                });
+            }
+
+            const overflowLogoutBtn = document.getElementById('navOverflowLogoutBtn');
+            if (overflowLogoutBtn) {
+                overflowLogoutBtn.addEventListener('click', async () => {
+                    close();
+                    await this._doLogout();
+                });
+            }
+        }
+
+        setupEventListeners() {
+            const approvalsBtn = document.getElementById('navApprovalsBtn');
+            if (approvalsBtn) {
+                approvalsBtn.addEventListener('click', async () => {
+                    if (window.taskApprovalSidePanel) {
+                        await window.taskApprovalSidePanel.init();
+                        window.taskApprovalSidePanel.open();
+                    } else {
+                        alert('פאנל חריגות התקציב לא נטען כראוי');
+                    }
+                });
+            }
+
+            const logoutBtn = document.getElementById('navLogoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => this._doLogout());
+            }
+        }
+
+        async _doLogout() {
+            if (!window.firebaseAuth) {
+return;
+}
+            try {
+                await window.firebaseAuth.signOut();
+                window.location.href = 'index.html';
+            } catch (error) {
+                console.error('❌ Error signing out:', error);
+            }
+        }
+
         startApprovalCountListener() {
-            // וודא ש-Firebase זמין
             if (!window.firebaseDB) {
                 console.warn('⚠️ Firebase DB not available for budget overrun count');
                 return;
             }
 
-            // פונקציה לעדכון המונה
             const updateCount = async () => {
                 try {
                     const currentUser = window.currentUser || window.firebaseAuth?.currentUser;
@@ -128,7 +280,6 @@ return;
                         return;
                     }
 
-                    // קבל את כל המשימות הפעילות (admin-readable) וספור את אלו שבחריגה
                     const snapshot = await window.firebaseDB
                         .collection('budget_tasks')
                         .where('status', '==', 'פעיל')
@@ -148,19 +299,10 @@ return;
                 }
             };
 
-            // עדכון מיידי
             updateCount();
-
-            // Polling כל 30 שניות
             this.approvalCountInterval = setInterval(updateCount, 30000);
-
-            console.log('✅ Started budget overrun count polling (every 30s)');
         }
 
-        /**
-         * Update approval count badge
-         * עדכן מונה אישורים
-         */
         updateApprovalCountBadge(count) {
             const badge = document.getElementById('approvalCountBadge');
             if (!badge) {
@@ -175,69 +317,18 @@ return;
             }
         }
 
-        /**
-         * Stop approval count polling
-         * עצור polling ספירת אישורים
-         */
         stopApprovalCountListener() {
             if (this.approvalCountInterval) {
                 clearInterval(this.approvalCountInterval);
                 this.approvalCountInterval = null;
-                console.log('🛑 Stopped budget overrun count polling');
             }
         }
-
-        /**
-         * Setup event listeners
-         * הגדרת מאזיני אירועים
-         */
-        setupEventListeners() {
-            // Budget overrun button - open side panel ("חריגות תקציב")
-            const approvalsBtn = document.getElementById('navApprovalsBtn');
-            if (approvalsBtn) {
-                approvalsBtn.addEventListener('click', async () => {
-                    console.log('📋 Opening Budget Overrun Side Panel');
-                    if (window.taskApprovalSidePanel) {
-                        await window.taskApprovalSidePanel.init();
-                        window.taskApprovalSidePanel.open();
-                    } else {
-                        console.error('❌ Budget Overrun Side Panel not found');
-                        alert('פאנל חריגות התקציב לא נטען כראוי');
-                    }
-                });
-            }
-
-            // Logout button
-            const logoutBtn = document.getElementById('navLogoutBtn');
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', async () => {
-                    if (!window.firebaseAuth) {
-                        console.error('❌ Firebase Auth not found');
-                        return;
-                    }
-
-                    try {
-                        await window.firebaseAuth.signOut();
-                        window.location.href = 'index.html';
-                    } catch (error) {
-                        console.error('❌ Error signing out:', error);
-                    }
-                });
-            }
-        }
-
-
     }
 
-    // Create global instance
     const navigation = new Navigation();
-
-    // Make available globally
     window.Navigation = navigation;
 
-    // Export for ES6 modules (if needed)
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = navigation;
     }
-
 })();
