@@ -26,7 +26,7 @@
          * הפקת דוח
          */
         async generate(formData) {
-            console.log('📄 Generating report with data:', formData);
+            console.log('📄 Generating report for client:', formData.clientId);
 
             if (!window.ClientsDataManager) {
                 throw new Error('ClientsDataManager not found');
@@ -200,6 +200,12 @@ return true;
 
             // Open in new window
             const newWindow = window.open('', '_blank');
+            if (!newWindow) {
+                if (window.notify) {
+                    window.notify.error('הדפדפן חסם את החלון. אנא אפשר חלונות קופצים ונסה שוב.', 'שגיאה');
+                }
+                return;
+            }
             newWindow.document.write(html);
             newWindow.document.close();
 
@@ -802,7 +808,7 @@ return null;
             // (d) Service/stage not matched in client.services: derive USED hours from
             // this service's own timesheet entries. NEVER borrow client.totalHours.
             if (hours.matchType === 'none' && this.dataManager) {
-                console.warn(`Service "${formData.service}" not matched in client.services; deriving used-hours from timesheet (no client-total fallback).`);
+                console.warn('Service not matched in client.services; deriving used-hours from timesheet (no client-total fallback).');
                 const stageMapping = window.SYSTEM_CONSTANTS?.STAGE_NAMES || {
                     'stage_a': 'שלב א',
                     'stage_b': 'שלב ב',
@@ -1071,8 +1077,8 @@ return null;
             let csv = '\uFEFF'; // BOM for Hebrew support
 
             // Header
-            csv += `דוח פעילות ללקוח - ${client.fullName}\n`;
-            csv += `מספר תיק: ${client.caseNumber || '-'}\n`;
+            csv += `דוח פעילות ללקוח - ${window.CsvSafe.cell(client.fullName)}\n`;
+            csv += `מספר תיק: ${window.CsvSafe.cell(client.caseNumber || '-')}\n`;
             csv += `תקופה: ${this.formatDate(reportData.formData.startDate)} - ${this.formatDate(reportData.formData.endDate)}\n`;
             csv += '\n';
 
@@ -1881,7 +1887,7 @@ return '0.00';
          * שליפת נתוני דוח ללא יצירת הדוח
          */
         async fetchReportData(formData) {
-            console.log('📊 Fetching report data for preview...', formData);
+            console.log('📊 Fetching report data for preview...');
 
             try {
                 if (!window.ClientsDataManager) {
@@ -1896,12 +1902,12 @@ return '0.00';
                     throw new Error('Client not found');
                 }
 
-                console.log('✅ Client found:', client.name);
+                console.log('✅ Client found:', formData.clientId);
 
                 // Collect data
                 const reportData = await this.collectReportData(client, formData);
 
-                console.log('✅ Report data collected:', reportData);
+                console.log('✅ Report data collected, entries:', reportData.timesheetEntries?.length ?? 0);
 
                 // Add client to reportData
                 reportData.client = client;
