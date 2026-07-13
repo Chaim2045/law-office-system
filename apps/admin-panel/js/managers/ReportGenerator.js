@@ -133,7 +133,7 @@ return true;
          */
         calculateStatistics(client, timesheetEntries, budgetTasks) {
             // Total minutes/hours
-            const totalMinutes = timesheetEntries.reduce((sum, entry) => sum + (entry.minutes || 0), 0);
+            const totalMinutes = timesheetEntries.reduce((sum, entry) => sum + this._mins(entry), 0);
             const totalHours = totalMinutes / 60;
 
             // Group by employee
@@ -149,7 +149,7 @@ return true;
                         entries: 0
                     };
                 }
-                byEmployee[employee].minutes += entry.minutes || 0;
+                byEmployee[employee].minutes += this._mins(entry);
                 byEmployee[employee].hours = byEmployee[employee].minutes / 60;
                 byEmployee[employee].entries++;
             });
@@ -166,7 +166,7 @@ return true;
                         entries: 0
                     };
                 }
-                byService[service].minutes += entry.minutes || 0;
+                byService[service].minutes += this._mins(entry);
                 byService[service].hours = byService[service].minutes / 60;
                 byService[service].entries++;
             });
@@ -632,6 +632,13 @@ return true;
                 && window.ClientTypeDisplay.isFixedService(svc));
         }
 
+        // Coerces a timesheet entry's `minutes` field to a number, guarding against
+        // string-coerced values (e.g. "60") and null/undefined — never lets `||`
+        // silently treat a numeric 0 or a non-numeric string as a valid amount.
+        _mins(entry) {
+            return Number(entry.minutes) || 0;
+        }
+
         /**
          * איתור השירות לפי נתוני הטופס — לוגיקת התאמה משותפת (SSOT)
          * משמש הן ב-resolveServiceHours והן ב-renderPackagesBreakdown
@@ -676,13 +683,13 @@ return true;
                     }
                 }
                 if (selectedStage) {
-                    const totalHours = selectedStage.totalHours || selectedStage.hours || 0;
+                    const totalHours = selectedStage.totalHours ?? selectedStage.hours ?? 0;
                     // Number.isFinite (not `!== undefined`): a stored `null` aggregate
                     // (legacy/uninitialized stage) must fall through to the recompute,
                     // not slip past the guard and crash later at `.toFixed()`.
                     const remainingHours = Number.isFinite(selectedStage.hoursRemaining)
                         ? selectedStage.hoursRemaining
-                        : (totalHours - (selectedStage.hoursUsed || 0));
+                        : (totalHours - (selectedStage.hoursUsed ?? 0));
                     const usedHours = Number.isFinite(selectedStage.hoursUsed)
                         ? selectedStage.hoursUsed
                         : (totalHours - remainingHours);
@@ -703,9 +710,9 @@ return true;
             // (b) Top-level service match (hour packages and any non-staged service).
             const selectedService = this.findServiceByFormData(client, formData);
             if (selectedService) {
-                const totalHours = selectedService.totalHours || selectedService.hours ||
-                                   selectedService.allocatedHours || selectedService.stageHours || 0;
-                const remainingHours = selectedService.hoursRemaining || selectedService.remainingHours || 0;
+                const totalHours = selectedService.totalHours ?? selectedService.hours ??
+                                   selectedService.allocatedHours ?? selectedService.stageHours ?? 0;
+                const remainingHours = selectedService.hoursRemaining ?? selectedService.remainingHours ?? 0;
                 return {
                     totalHours, usedHours: totalHours - remainingHours, remainingHours, matchType: 'service',
                     isFixed: this._isFixedService(selectedService),
@@ -789,7 +796,11 @@ return true;
                     'stage_b': 'שלב ב',
                     'stage_c': 'שלב ג'
                 };
-                const allEntries = this.dataManager.getClientTimesheetEntries(client.fullName);
+                const allEntries = this.dataManager.getClientTimesheetEntries(
+                    client.fullName,
+                    formData.startDate ? new Date(formData.startDate) : undefined,
+                    formData.endDate ? new Date(formData.endDate) : undefined
+                );
                 const serviceEntries = allEntries.filter(entry =>
                     entry.serviceName === formData.service ||
                     entry.service === formData.service ||
@@ -798,7 +809,7 @@ return true;
                     (entry.serviceId && stageMapping[entry.serviceId] === formData.service)
                 );
                 if (serviceEntries.length > 0) {
-                    const totalMinutes = serviceEntries.reduce((sum, e) => sum + (e.minutes || 0), 0);
+                    const totalMinutes = serviceEntries.reduce((sum, e) => sum + this._mins(e), 0);
                     serviceUsedHours = totalMinutes / 60;
                 }
             }
@@ -851,7 +862,7 @@ return true;
                     (formData.stage && entry.serviceId === formData.stage) ||
                     (entry.serviceId && stageMapping[entry.serviceId] === formData.service)
                 );
-                const totalMinutes = serviceEntries.reduce((sum, e) => sum + (e.minutes || 0), 0);
+                const totalMinutes = serviceEntries.reduce((sum, e) => sum + this._mins(e), 0);
                 return totalMinutes / 60;
             }
             return 0;
@@ -915,7 +926,7 @@ return true;
             let accumulatedMinutes = 0;
 
             return sortedEntries.map(entry => {
-                const minutes = entry.minutes || 0;
+                const minutes = this._mins(entry);
 
                 // Calculate accumulated minutes
                 accumulatedMinutes += minutes;
@@ -976,7 +987,7 @@ return true;
             // (d) Not matched: derive used-hours from the already service-scoped timesheet
             // entries passed in (collectReportData filters them). NEVER borrow client.totalHours.
             if (hours.matchType === 'none') {
-                serviceUsedHours = timesheetEntries.reduce((sum, e) => sum + ((e.minutes || 0) / 60), 0);
+                serviceUsedHours = timesheetEntries.reduce((sum, e) => sum + (this._mins(e) / 60), 0);
                 serviceTotalHours = 0;
                 serviceRemainingHours = -serviceUsedHours;
             }
@@ -1124,6 +1135,10 @@ return '-';
                 return '-';
             }
 
+            if (isNaN(d.getTime())) {
+                return '-';
+            }
+
             return d.toLocaleDateString('he-IL');
         }
 
@@ -1246,10 +1261,10 @@ return '0:00';
 
             return packages.filter(pkg => {
                 // חבילה פעילה עם יתרת שעות מוצגת תמיד — סינון תאריכים חל רק על חבילות שמוצו
-                const remaining = Number.isFinite(pkg.hoursRemaining)
-                    ? pkg.hoursRemaining
-                    : (pkg.hours || 0) - (pkg.hoursUsed || 0);
-                if (pkg.status !== 'completed' && remaining > 0) {
+                // Active packages always shown (they still contribute hours).
+                const isActive = (pkg.hoursRemaining ?? 0) > 0 ||
+                                 ((pkg.hours ?? 0) - (pkg.hoursUsed ?? 0)) > 0;
+                if (isActive) {
                     return true;
                 }
 
@@ -1288,10 +1303,10 @@ return '0:00';
 
             // סיכום מלא — מכלל החבילות בשירות (לא מהמסוננות) כדי שיתאים לכותרת הדוח
             const fullList = Array.isArray(allPackages) && allPackages.length > 0 ? allPackages : packages;
-            const totalHours = fullList.reduce((sum, pkg) => sum + (pkg.hours || 0), 0);
-            const totalUsed = fullList.reduce((sum, pkg) => sum + (pkg.hoursUsed || 0), 0);
+            const totalHours = fullList.reduce((sum, pkg) => sum + (pkg.hours ?? 0), 0);
+            const totalUsed = fullList.reduce((sum, pkg) => sum + (pkg.hoursUsed ?? 0), 0);
             const totalRemaining = fullList.reduce((sum, pkg) =>
-                sum + (Number.isFinite(pkg.hoursRemaining) ? pkg.hoursRemaining : (pkg.hours || 0) - (pkg.hoursUsed || 0)), 0);
+                sum + (Number.isFinite(pkg.hoursRemaining) ? pkg.hoursRemaining : (pkg.hours ?? 0) - (pkg.hoursUsed ?? 0)), 0);
             const hiddenCount = fullList.length - packages.length;
 
             // Create date range subtitle
@@ -1324,8 +1339,8 @@ return '0:00';
                 <tbody>
                     ${packages.map(pkg => {
                         const pkgType = pkg.type === 'initial' || pkg.type === 'חבילה ראשונית' ? 'ראשונית' : 'נוספת';
-                        const pkgHours = pkg.hours || 0;
-                        const pkgUsed = pkg.hoursUsed || 0;
+                        const pkgHours = pkg.hours ?? 0;
+                        const pkgUsed = pkg.hoursUsed ?? 0;
                         // Number.isFinite (not `!== undefined`): a stored `null` package
                         // aggregate must fall through to (pkgHours - pkgUsed), not reach .toFixed().
                         const pkgRemaining = Number.isFinite(pkg.hoursRemaining) ? pkg.hoursRemaining : (pkgHours - pkgUsed);

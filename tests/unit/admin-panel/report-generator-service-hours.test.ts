@@ -152,3 +152,53 @@ describe('resolveServiceHours — no match (the safety property)', () => {
     expect(r.totalHours).toBe(0);
   });
 });
+
+describe('resolveServiceHours — zero values preserved (A1/A2 fix)', () => {
+  it('totalHours: 0 is preserved, not replaced by fallback', () => {
+    const client = {
+      services: [{
+        id: 'svc1', name: 'test', type: 'hours', status: 'active',
+        totalHours: 0, hoursUsed: 0, hoursRemaining: 0
+      }]
+    };
+    const r = reportGenerator.resolveServiceHours(client, { service: 'test', serviceId: 'svc1' });
+    expect(r.totalHours).toBe(0);
+    expect(r.usedHours).toBe(0);
+    expect(r.remainingHours).toBe(0);
+  });
+});
+
+describe('formatDate — Invalid Date guard (G1-INV fix)', () => {
+  it('returns dash for hyphen input, not "Invalid Date"', () => {
+    expect(reportGenerator.formatDate('-')).toBe('-');
+  });
+  it('returns dash for empty string', () => {
+    expect(reportGenerator.formatDate('')).toBe('-');
+  });
+  it('returns dash for garbage string', () => {
+    expect(reportGenerator.formatDate('not-a-date')).toBe('-');
+  });
+  it('returns a valid date string for a real date', () => {
+    const result = reportGenerator.formatDate('2026-01-15');
+    expect(result).not.toBe('-');
+    expect(result).not.toContain('Invalid');
+  });
+});
+
+describe('_mins — entry.minutes coercion (E2 fix)', () => {
+  it('converts string minutes to number', () => {
+    expect(reportGenerator._mins({ minutes: '60' })).toBe(60);
+  });
+  it('preserves number minutes', () => {
+    expect(reportGenerator._mins({ minutes: 60 })).toBe(60);
+  });
+  it('returns 0 for undefined minutes', () => {
+    expect(reportGenerator._mins({})).toBe(0);
+  });
+  it('returns 0 for null minutes', () => {
+    expect(reportGenerator._mins({ minutes: null })).toBe(0);
+  });
+  it('returns 0 for zero minutes (not falsy-trapped)', () => {
+    expect(reportGenerator._mins({ minutes: 0 })).toBe(0);
+  });
+});
