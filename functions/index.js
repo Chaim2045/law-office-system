@@ -222,6 +222,7 @@ exports.moveToNextStage = services.moveToNextStage;
 exports.completeService = services.completeService;
 exports.changeServiceStatus = services.changeServiceStatus;
 exports.deleteService = services.deleteService;
+exports.updatePackagePurchaseDate = services.updatePackagePurchaseDate;
 
 // Timesheet Functions (imported from ./timesheet)
 const timesheet = require('./timesheet');
