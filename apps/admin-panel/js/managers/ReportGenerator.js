@@ -638,14 +638,22 @@ return true;
          */
         findServiceByFormData(client, formData) {
             const services = Array.isArray(client && client.services) ? client.services : [];
-            return services.find(s =>
-                s.name === formData.service ||
-                s.serviceName === formData.service ||
-                s.displayName === formData.service ||
-                (s.stage && formData.service.includes(s.stage)) ||
-                (s.displayName && s.displayName.includes(formData.service)) ||
-                (formData.stage && Array.isArray(s.stages) && s.stages.some(st => st.id === formData.stage))
-            ) || null;
+            const target = (formData.service || '').trim();
+            if (formData.serviceId) {
+                const byId = services.find(s => s.id === formData.serviceId);
+                if (byId) return byId;
+            }
+            return services.find(s => {
+                const sName = (s.name || '').trim();
+                const sServiceName = (s.serviceName || '').trim();
+                const sDisplayName = (s.displayName || '').trim();
+                return sName === target ||
+                    sServiceName === target ||
+                    sDisplayName === target ||
+                    (s.stage && target.includes(s.stage)) ||
+                    (sDisplayName && sDisplayName.includes(target)) ||
+                    (formData.stage && Array.isArray(s.stages) && s.stages.some(st => st.id === formData.stage));
+            }) || null;
         }
 
         resolveServiceHours(client, formData) {
