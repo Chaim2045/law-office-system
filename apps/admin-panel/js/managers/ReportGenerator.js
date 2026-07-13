@@ -641,7 +641,9 @@ return true;
             const target = (formData.service || '').trim();
             if (formData.serviceId) {
                 const byId = services.find(s => s.id === formData.serviceId);
-                if (byId) { return byId; }
+                if (byId) {
+                    return byId;
+                }
             }
             return services.find(s => {
                 const sName = (s.name || '').trim();
