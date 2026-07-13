@@ -303,8 +303,41 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       );
     }
 
+    // Validate purchaseDate (type + range + format) — mirrors addHoursPackageToStage
+    let purchaseDate;
+
+    if (data.purchaseDate) {
+      const parsed = new Date(data.purchaseDate);
+
+      if (isNaN(parsed.getTime())) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'תאריך רכישה לא תקין. פורמט צריך להיות: YYYY-MM-DD'
+        );
+      }
+
+      if (parsed > new Date()) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'תאריך רכישה לא יכול להיות בעתיד'
+        );
+      }
+
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+      if (parsed < oneYearAgo) {
+        console.warn(`⚠️ Purchase date is more than 1 year old: ${parsed.toISOString()}`);
+      }
+
+      purchaseDate = parsed.toISOString();
+    }
+
     // ── Generate IDs OUTSIDE Transaction (retry-safe) ──
     const now = new Date().toISOString();
+    if (!purchaseDate) {
+      purchaseDate = now;
+    }
     const packageId = `pkg_${Date.now()}`;
     const clientRef = db.collection('clients').doc(clientId);
 
@@ -361,7 +394,7 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
         hours: data.hours,
         hoursUsed: 0,
         hoursRemaining: round2(data.hours),
-        purchaseDate: now,
+        purchaseDate: purchaseDate,
         status: 'active',
         description: data.description ? sanitizeString(data.description.trim()) : `חבילה נוספת - ${new Date().toLocaleDateString('he-IL')}`
       };
