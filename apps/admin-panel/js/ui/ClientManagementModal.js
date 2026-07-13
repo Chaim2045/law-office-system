@@ -1388,46 +1388,132 @@ return; // user cancelled
         }
 
         async renewServiceHours(service) {
-            // Prompt for hours to add
-            const hoursToAdd = prompt(`כמה שעות להוסיף לשירות "${service.serviceName}"?`, '10');
+            const serviceName = window.escapeHtml ? window.escapeHtml(service.serviceName || '') : (service.serviceName || '');
 
-            if (!hoursToAdd || isNaN(hoursToAdd) || parseFloat(hoursToAdd) <= 0) {
-                if (hoursToAdd !== null) { // User didn't click cancel
-                    this.showNotification('יש להזין מספר שעות תקין', 'warning');
+            const modalId = window.ModalManager.create({
+                title: `הוספת שעות - ${serviceName}`,
+                content: `
+                    <form id="renewHoursForm" style="display: flex; flex-direction: column; gap: 16px;">
+                        <div class="form-group">
+                            <label for="renewHoursAmount" class="form-label" style="font-weight: 600;">כמות שעות *</label>
+                            <input type="number" class="form-control" id="renewHoursAmount"
+                                   min="1" step="0.5" value="10" required
+                                   style="width: 100%; padding: 8px 12px;" />
+                        </div>
+                        <div class="form-group">
+                            <label for="renewHoursDescription" class="form-label" style="font-weight: 600;">תיאור (אופציונלי)</label>
+                            <input type="text" class="form-control" id="renewHoursDescription"
+                                   placeholder="חידוש שעות"
+                                   style="width: 100%; padding: 8px 12px;" />
+                        </div>
+                        <div class="form-group">
+                            <label for="renewHoursPurchaseDate" class="form-label" style="font-weight: 600;">תאריך רכישה (אופציונלי)</label>
+                            <input type="date" class="form-control" id="renewHoursPurchaseDate"
+                                   style="width: 100%; padding: 8px 12px;" />
+                            <small class="form-text" style="color: var(--text-secondary, #6b7280); margin-top: 4px; display: block;">
+                                אם לא מצוין, יירשם התאריך של היום
+                            </small>
+                        </div>
+                    </form>
+                `,
+                footer: `
+                    <button class="btn btn-secondary" data-action="cancel">
+                        <i class="fas fa-times"></i>
+                        <span>ביטול</span>
+                    </button>
+                    <button class="btn btn-primary" data-action="submit">
+                        <i class="fas fa-plus"></i>
+                        <span>הוסף שעות</span>
+                    </button>
+                `,
+                size: 'small',
+                onOpen: () => {
+                    const modal = window.ModalManager.getElement(modalId);
+                    if (!modal) {
+return;
+}
+
+                    const submitBtn = modal.querySelector('[data-action="submit"]');
+                    const cancelBtn = modal.querySelector('[data-action="cancel"]');
+                    const hoursInput = modal.querySelector('#renewHoursAmount');
+
+                    if (hoursInput) {
+hoursInput.focus();
+}
+
+                    if (cancelBtn) {
+                        cancelBtn.addEventListener('click', () => {
+                            window.ModalManager.close(modalId);
+                        });
+                    }
+
+                    if (submitBtn) {
+                        submitBtn.addEventListener('click', () => {
+                            this._submitRenewHours(modalId, service);
+                        });
+                    }
+
+                    const form = modal.querySelector('#renewHoursForm');
+                    if (form) {
+                        form.addEventListener('submit', (e) => {
+                            e.preventDefault();
+                            this._submitRenewHours(modalId, service);
+                        });
+                    }
                 }
+            });
+        }
+
+        async _submitRenewHours(modalId, service) {
+            const modal = window.ModalManager.getElement(modalId);
+            if (!modal) {
+return;
+}
+
+            const hoursInput = modal.querySelector('#renewHoursAmount');
+            const descInput = modal.querySelector('#renewHoursDescription');
+            const dateInput = modal.querySelector('#renewHoursPurchaseDate');
+
+            const hours = parseFloat(hoursInput?.value);
+            if (!hours || isNaN(hours) || hours <= 0) {
+                this.showNotification('יש להזין מספר שעות תקין', 'warning');
                 return;
             }
 
-            const hours = parseFloat(hoursToAdd);
+            const description = descInput?.value?.trim() || '';
+            const purchaseDate = dateInput?.value || undefined;
 
-            if (!confirm(`האם להוסיף ${hours} שעות לשירות "${service.serviceName}"?`)) {
-                return;
-            }
+            window.ModalManager.close(modalId);
 
             try {
                 this.showLoading('מוסיף שעות...');
 
-                // Call Cloud Function instead of direct Firestore write
-                const addPackageFn = window.firebaseFunctions.httpsCallable('addPackageToService');
-                const result = await addPackageFn({
+                const payload = {
                     clientId: this.currentClient.id,
                     serviceId: service.id,
-                    hours: hours,
-                    description: `חידוש שעות - ${new Date().toLocaleDateString('he-IL')}`
-                });
+                    hours: hours
+                };
+                if (description) {
+                    payload.description = description;
+                }
+                if (purchaseDate) {
+                    payload.purchaseDate = purchaseDate;
+                }
+
+                const addPackageFn = window.firebaseFunctions.httpsCallable('addPackageToService');
+                const result = await addPackageFn(payload);
 
                 if (!result.data.success) {
                     throw new Error(result.data.message || 'שגיאה בהוספת שעות');
                 }
 
-                // Update local state from CF result
                 const localService = this.currentClient.services.find(s => s.id === service.id);
                 if (localService) {
                     localService.totalHours = result.data.service.totalHours;
                     localService.hoursRemaining = result.data.service.hoursRemaining;
                     if (!localService.packages) {
-localService.packages = [];
-}
+                        localService.packages = [];
+                    }
                     localService.packages.push(result.data.package);
                 }
 

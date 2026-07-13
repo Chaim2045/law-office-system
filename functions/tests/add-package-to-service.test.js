@@ -472,3 +472,79 @@ describe('G. Return value', () => {
     });
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// H. purchaseDate validation (PR-DATE-1)
+// ═══════════════════════════════════════════════════════════════
+
+describe('H. purchaseDate validation', () => {
+  test('unparseable purchaseDate → invalid-argument', async () => {
+    await expect(
+      addPackageToService(
+        { clientId: 'c1', serviceId: 's1', hours: 5, purchaseDate: 'not-a-date' },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('future purchaseDate → invalid-argument', async () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const futureStr = tomorrow.toISOString().slice(0, 10);
+
+    await expect(
+      addPackageToService(
+        { clientId: 'c1', serviceId: 's1', hours: 5, purchaseDate: futureStr },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('valid purchaseDate is stored on the new package', async () => {
+    setupTxMocks(
+      makeClientDoc([makeHoursService('s1', { totalHours: 10 })]),
+      []
+    );
+
+    const result = await addPackageToService(
+      { clientId: 'c1', serviceId: 's1', hours: 5, purchaseDate: '2026-01-15' },
+      makeCtx()
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.package.purchaseDate).toMatch(/^2026-01-15/);
+  });
+
+  test('omitting purchaseDate defaults to now (backward compatible)', async () => {
+    setupTxMocks(
+      makeClientDoc([makeHoursService('s1', { totalHours: 10 })]),
+      []
+    );
+
+    const before = new Date().toISOString();
+    const result = await addPackageToService(
+      { clientId: 'c1', serviceId: 's1', hours: 5 },
+      makeCtx()
+    );
+    const after = new Date().toISOString();
+
+    expect(result.success).toBe(true);
+    expect(result.package.purchaseDate >= before).toBe(true);
+    expect(result.package.purchaseDate <= after).toBe(true);
+  });
+
+  test('purchaseDate >1yr old is accepted with warning (not rejected)', async () => {
+    setupTxMocks(
+      makeClientDoc([makeHoursService('s1', { totalHours: 10 })]),
+      []
+    );
+
+    const result = await addPackageToService(
+      { clientId: 'c1', serviceId: 's1', hours: 5, purchaseDate: '2024-01-01' },
+      makeCtx()
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.package.purchaseDate).toMatch(/^2024-01-01/);
+  });
+});
