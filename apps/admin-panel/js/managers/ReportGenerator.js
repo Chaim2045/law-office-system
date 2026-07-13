@@ -67,8 +67,8 @@
          * איסוף נתוני הדוח
          */
         async collectReportData(client, formData) {
-            const startDate = new Date(formData.startDate);
-            const endDate = new Date(formData.endDate);
+            const startDate = this._parseLocalDate(formData.startDate);
+            const endDate = this._parseLocalDate(formData.endDate, true);
 
             // Get timesheet entries
             let timesheetEntries = this.dataManager.getClientTimesheetEntries(
@@ -639,6 +639,25 @@ return true;
             return Number(entry.minutes) || 0;
         }
 
+        // Parses "YYYY-MM-DD" → local midnight (or end-of-day when endOfDay=true).
+        // new Date("YYYY-MM-DD") creates UTC midnight which is ~21:00-22:00 the PREVIOUS
+        // day in Israel (UTC+2/+3), silently excluding entries on the boundary day.
+        _parseLocalDate(dateStr, endOfDay = false) {
+            if (!dateStr) {
+return null;
+}
+            const parts = dateStr.split('-');
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10) - 1;
+            const d = parseInt(parts[2], 10);
+            if (isNaN(y) || isNaN(m) || isNaN(d)) {
+return null;
+}
+            return endOfDay
+                ? new Date(y, m, d, 23, 59, 59, 999)
+                : new Date(y, m, d, 0, 0, 0, 0);
+        }
+
         /**
          * איתור השירות לפי נתוני הטופס — לוגיקת התאמה משותפת (SSOT)
          * משמש הן ב-resolveServiceHours והן ב-renderPackagesBreakdown
@@ -791,8 +810,8 @@ return true;
                 };
                 const allEntries = this.dataManager.getClientTimesheetEntries(
                     client.fullName,
-                    formData.startDate ? new Date(formData.startDate) : undefined,
-                    formData.endDate ? new Date(formData.endDate) : undefined
+                    this._parseLocalDate(formData.startDate),
+                    this._parseLocalDate(formData.endDate, true)
                 );
                 const serviceEntries = allEntries.filter(entry =>
                     entry.serviceName === formData.service ||
@@ -1196,8 +1215,8 @@ return '0:00';
             }
 
             // Parse date range from formData
-            const startDate = formData.startDate ? new Date(formData.startDate) : null;
-            const endDate = formData.endDate ? new Date(formData.endDate) : null;
+            const startDate = this._parseLocalDate(formData.startDate);
+            const endDate = this._parseLocalDate(formData.endDate, true);
 
             // Check if it's a legal procedure
             if (service.type === 'legal_procedure') {
