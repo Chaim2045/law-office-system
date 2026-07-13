@@ -1540,3 +1540,164 @@ exports.deleteService = functions.https.onCall(async (data, context) => {
     );
   }
 });
+
+/**
+ * עדכון תאריך רכישה של חבילת שעות קיימת
+ * @param {Object} data
+ * @param {string} data.clientId - מזהה לקוח
+ * @param {string} data.serviceId - מזהה שירות
+ * @param {string} data.packageId - מזהה חבילה
+ * @param {string} data.purchaseDate - תאריך רכישה חדש (YYYY-MM-DD)
+ */
+exports.updatePackagePurchaseDate = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    if (!data.clientId || typeof data.clientId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה לקוח חובה'
+      );
+    }
+
+    if (!data.serviceId || typeof data.serviceId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה שירות חובה'
+      );
+    }
+
+    if (!data.packageId || typeof data.packageId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה חבילה חובה'
+      );
+    }
+
+    if (!data.purchaseDate || typeof data.purchaseDate !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'תאריך רכישה חובה'
+      );
+    }
+
+    // Validate purchaseDate — mirrors addPackageToService
+    const parsed = new Date(data.purchaseDate);
+
+    if (isNaN(parsed.getTime())) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'תאריך רכישה לא תקין. פורמט צריך להיות: YYYY-MM-DD'
+      );
+    }
+
+    if (parsed > new Date()) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'תאריך רכישה לא יכול להיות בעתיד'
+      );
+    }
+
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    if (parsed < oneYearAgo) {
+      console.warn(`⚠️ Purchase date is more than 1 year old: ${parsed.toISOString()}`);
+    }
+
+    const newPurchaseDate = parsed.toISOString();
+
+    const clientRef = db.collection('clients').doc(data.clientId);
+
+    const result = await db.runTransaction(async (transaction) => {
+      const clientDoc = await transaction.get(clientRef);
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `לקוח ${data.clientId} לא נמצא`
+        );
+      }
+
+      const clientData = clientDoc.data();
+      const services = clientData.services || [];
+
+      const serviceIndex = services.findIndex(s => s.id === data.serviceId);
+      if (serviceIndex === -1) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'שירות לא נמצא עבור לקוח זה'
+        );
+      }
+
+      const service = services[serviceIndex];
+      const packages = service.packages || [];
+
+      const packageIndex = packages.findIndex(p => p.id === data.packageId);
+      if (packageIndex === -1) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'חבילה לא נמצאה בשירות זה'
+        );
+      }
+
+      const oldPurchaseDate = packages[packageIndex].purchaseDate;
+
+      const updatedPackages = packages.map((pkg, idx) =>
+        idx === packageIndex
+          ? { ...pkg, purchaseDate: newPurchaseDate }
+          : pkg
+      );
+
+      const updatedService = { ...service, packages: updatedPackages };
+      const updatedServices = services.map((s, idx) =>
+        idx === serviceIndex ? updatedService : s
+      );
+
+      await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        { services: updatedServices },
+        {
+          caller: 'updatePackagePurchaseDate',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
+
+      return {
+        serviceName: service.name || service.serviceName,
+        packageId: data.packageId,
+        oldPurchaseDate,
+        newPurchaseDate
+      };
+    });
+
+    await logAction('UPDATE_PACKAGE_PURCHASE_DATE', user.uid, user.username, {
+      clientId: data.clientId,
+      serviceId: data.serviceId,
+      packageId: result.packageId,
+      oldPurchaseDate: result.oldPurchaseDate,
+      newPurchaseDate: result.newPurchaseDate
+    });
+
+    console.log(`✅ Package ${data.packageId} purchaseDate updated: ${result.oldPurchaseDate} → ${result.newPurchaseDate}`);
+
+    return {
+      success: true,
+      packageId: result.packageId,
+      purchaseDate: result.newPurchaseDate,
+      message: `תאריך רכישה עודכן בהצלחה`
+    };
+
+  } catch (error) {
+    console.error('Error in updatePackagePurchaseDate:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בעדכון תאריך רכישה: ${error.message}`
+    );
+  }
+});

@@ -548,3 +548,160 @@ describe('H. purchaseDate validation', () => {
     expect(result.package.purchaseDate).toMatch(/^2024-01-01/);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// I. updatePackagePurchaseDate (PR-DATE-2)
+// ═══════════════════════════════════════════════════════════════
+
+const { updatePackagePurchaseDate } = require('../services/index');
+
+describe('I. updatePackagePurchaseDate', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockCheckUserPermissions.mockResolvedValue(VALID_USER);
+  });
+
+  test('missing clientId → invalid-argument', async () => {
+    await expect(
+      updatePackagePurchaseDate(
+        { serviceId: 's1', packageId: 'pkg_1', purchaseDate: '2026-01-01' },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('missing packageId → invalid-argument', async () => {
+    await expect(
+      updatePackagePurchaseDate(
+        { clientId: 'c1', serviceId: 's1', purchaseDate: '2026-01-01' },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('missing purchaseDate → invalid-argument', async () => {
+    await expect(
+      updatePackagePurchaseDate(
+        { clientId: 'c1', serviceId: 's1', packageId: 'pkg_1' },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('unparseable purchaseDate → invalid-argument', async () => {
+    await expect(
+      updatePackagePurchaseDate(
+        { clientId: 'c1', serviceId: 's1', packageId: 'pkg_1', purchaseDate: 'not-a-date' },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('future purchaseDate → invalid-argument', async () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    await expect(
+      updatePackagePurchaseDate(
+        { clientId: 'c1', serviceId: 's1', packageId: 'pkg_1', purchaseDate: tomorrow.toISOString().slice(0, 10) },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('package not found → not-found', async () => {
+    setupTxMocks(
+      makeClientDoc([makeHoursService('s1', { totalHours: 10 })]),
+      []
+    );
+
+    await expect(
+      updatePackagePurchaseDate(
+        { clientId: 'c1', serviceId: 's1', packageId: 'pkg_nonexistent', purchaseDate: '2026-01-15' },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'not-found' });
+  });
+
+  test('valid update stores new purchaseDate and returns success', async () => {
+    const pkg = {
+      id: 'pkg_123',
+      type: 'initial',
+      hours: 10,
+      hoursUsed: 0,
+      hoursRemaining: 10,
+      purchaseDate: '2026-01-01T00:00:00.000Z',
+      status: 'active'
+    };
+    const svc = makeHoursService('s1', { totalHours: 10, packages: [pkg] });
+    setupTxMocks(makeClientDoc([svc]), []);
+
+    const result = await updatePackagePurchaseDate(
+      { clientId: 'c1', serviceId: 's1', packageId: 'pkg_123', purchaseDate: '2026-06-15' },
+      makeCtx()
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.packageId).toBe('pkg_123');
+    expect(result.purchaseDate).toMatch(/^2026-06-15/);
+  });
+
+  test('audit log records the change', async () => {
+    const pkg = {
+      id: 'pkg_456',
+      type: 'additional',
+      hours: 5,
+      hoursUsed: 2,
+      hoursRemaining: 3,
+      purchaseDate: '2026-03-01T00:00:00.000Z',
+      status: 'active'
+    };
+    const svc = makeHoursService('s1', { totalHours: 15, packages: [
+      { id: 'pkg_init', type: 'initial', hours: 10, hoursUsed: 0, hoursRemaining: 10, status: 'active' },
+      pkg
+    ] });
+    setupTxMocks(makeClientDoc([svc]), []);
+
+    await updatePackagePurchaseDate(
+      { clientId: 'c1', serviceId: 's1', packageId: 'pkg_456', purchaseDate: '2026-07-01' },
+      makeCtx()
+    );
+
+    expect(mockLogAction).toHaveBeenCalledWith(
+      'UPDATE_PACKAGE_PURCHASE_DATE',
+      'user1',
+      'testuser',
+      expect.objectContaining({
+        clientId: 'c1',
+        serviceId: 's1',
+        packageId: 'pkg_456',
+        oldPurchaseDate: '2026-03-01T00:00:00.000Z',
+        newPurchaseDate: expect.stringMatching(/^2026-07-01/)
+      })
+    );
+  });
+
+  test('purchaseDate >1yr old is accepted with warning', async () => {
+    const pkg = {
+      id: 'pkg_old',
+      type: 'initial',
+      hours: 10,
+      hoursUsed: 0,
+      hoursRemaining: 10,
+      purchaseDate: '2026-01-01T00:00:00.000Z',
+      status: 'active'
+    };
+    setupTxMocks(
+      makeClientDoc([makeHoursService('s1', { totalHours: 10, packages: [pkg] })]),
+      []
+    );
+
+    const result = await updatePackagePurchaseDate(
+      { clientId: 'c1', serviceId: 's1', packageId: 'pkg_old', purchaseDate: '2024-01-01' },
+      makeCtx()
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.purchaseDate).toMatch(/^2024-01-01/);
+  });
+});

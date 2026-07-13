@@ -589,6 +589,7 @@ return;
                             </div>
                         </div>
                     </div>
+                    ${this._renderPackagesBreakdown(service)}
                     ${overrideHTML}
                 `;
             } else if (service.type === window.SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE) {
@@ -769,6 +770,18 @@ return '';
                     e.stopPropagation();
                     const active = btn.dataset.active === 'true';
                     this.setServiceOverride(btn.dataset.serviceId, active, btn.dataset.name);
+                });
+            });
+
+            // Package purchase date edit buttons
+            this.servicesListContainer.querySelectorAll('.edit-pkg-date-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this._editPackagePurchaseDate(
+                        btn.dataset.serviceId,
+                        btn.dataset.packageId,
+                        btn.dataset.currentDate
+                    );
                 });
             });
         }
@@ -1385,6 +1398,173 @@ return; // user cancelled
                 }
                 return sum;
             }, 0);
+        }
+
+        _renderPackagesBreakdown(service) {
+            const packages = service.packages || [];
+            if (packages.length === 0) {
+                return '';
+            }
+
+            const rows = packages.map(pkg => {
+                const date = pkg.purchaseDate
+                    ? new Date(pkg.purchaseDate).toLocaleDateString('he-IL', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                    : '-';
+                const hours = (pkg.hours ?? 0).toFixed(1);
+                const used = (pkg.hoursUsed ?? 0).toFixed(1);
+                const remaining = (pkg.hoursRemaining ?? 0).toFixed(1);
+                const desc = pkg.description
+                    ? (window.escapeHtml ? window.escapeHtml(pkg.description) : pkg.description)
+                    : '';
+
+                return `
+                    <tr>
+                        <td style="padding:4px 8px;white-space:nowrap;">
+                            ${date}
+                            <button class="edit-pkg-date-btn"
+                                    data-service-id="${service.id}"
+                                    data-package-id="${pkg.id}"
+                                    data-current-date="${pkg.purchaseDate || ''}"
+                                    title="ערוך תאריך רכישה"
+                                    style="background:none;border:none;cursor:pointer;padding:0 4px;color:#6b7280;font-size:12px;">✏️</button>
+                        </td>
+                        <td style="padding:4px 8px;text-align:center;">${hours}</td>
+                        <td style="padding:4px 8px;text-align:center;">${used}</td>
+                        <td style="padding:4px 8px;text-align:center;">${remaining}</td>
+                        <td style="padding:4px 8px;font-size:12px;color:#6b7280;">${desc}</td>
+                    </tr>`;
+            }).join('');
+
+            return `
+                <div style="margin-top:12px;">
+                    <div style="font-weight:600;font-size:13px;margin-bottom:6px;color:#374151;">
+                        <i class="fas fa-box-open" style="margin-left:4px;"></i>
+                        חבילות (${packages.length})
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                            <thead>
+                                <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb;">
+                                    <th style="padding:4px 8px;text-align:right;font-weight:600;">תאריך רכישה</th>
+                                    <th style="padding:4px 8px;text-align:center;font-weight:600;">שעות</th>
+                                    <th style="padding:4px 8px;text-align:center;font-weight:600;">נוצלו</th>
+                                    <th style="padding:4px 8px;text-align:center;font-weight:600;">נותרו</th>
+                                    <th style="padding:4px 8px;text-align:right;font-weight:600;">תיאור</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }
+
+        async _editPackagePurchaseDate(serviceId, packageId, currentDate) {
+            let initialValue = '';
+            if (currentDate) {
+                try {
+                    initialValue = new Date(currentDate).toISOString().split('T')[0];
+                } catch (_) { /* leave empty */ }
+            }
+
+            const modalId = window.ModalManager.create({
+                title: 'עדכון תאריך רכישה',
+                content: `
+                    <form id="editPkgDateForm" style="display:flex;flex-direction:column;gap:16px;">
+                        <div class="form-group">
+                            <label for="editPkgDateInput" class="form-label" style="font-weight:600;">תאריך רכישה</label>
+                            <input type="date" class="form-control" id="editPkgDateInput"
+                                   value="${initialValue}" required
+                                   style="width:100%;padding:8px 12px;" />
+                        </div>
+                    </form>
+                `,
+                footer: `
+                    <button class="btn btn-secondary" data-action="cancel">
+                        <i class="fas fa-times"></i>
+                        <span>ביטול</span>
+                    </button>
+                    <button class="btn btn-primary" data-action="submit">
+                        <i class="fas fa-save"></i>
+                        <span>שמור</span>
+                    </button>
+                `,
+                size: 'small',
+                onOpen: () => {
+                    const modal = window.ModalManager.getElement(modalId);
+                    if (!modal) {
+return;
+}
+
+                    const dateInput = modal.querySelector('#editPkgDateInput');
+                    const submitBtn = modal.querySelector('[data-action="submit"]');
+                    const cancelBtn = modal.querySelector('[data-action="cancel"]');
+
+                    if (dateInput) {
+dateInput.focus();
+}
+
+                    if (cancelBtn) {
+                        cancelBtn.addEventListener('click', () => {
+                            window.ModalManager.close(modalId);
+                        });
+                    }
+
+                    const doSubmit = async () => {
+                        const val = dateInput?.value;
+                        if (!val) {
+                            this.showNotification('יש לבחור תאריך', 'warning');
+                            return;
+                        }
+
+                        window.ModalManager.close(modalId);
+
+                        try {
+                            this.showLoading('מעדכן תאריך רכישה...');
+
+                            const updateFn = window.firebaseFunctions.httpsCallable('updatePackagePurchaseDate');
+                            const result = await updateFn({
+                                clientId: this.currentClient.id,
+                                serviceId: serviceId,
+                                packageId: packageId,
+                                purchaseDate: val
+                            });
+
+                            if (!result.data.success) {
+                                throw new Error(result.data.message || 'שגיאה בעדכון תאריך');
+                            }
+
+                            const localService = this.currentClient.services.find(s => s.id === serviceId);
+                            if (localService) {
+                                const localPkg = (localService.packages || []).find(p => p.id === packageId);
+                                if (localPkg) {
+                                    localPkg.purchaseDate = result.data.purchaseDate;
+                                }
+                            }
+
+                            this.renderServices();
+                            this.hideLoading();
+                            this.showNotification('תאריך רכישה עודכן בהצלחה', 'success');
+
+                        } catch (error) {
+                            console.error('❌ Error updating package date:', error);
+                            this.hideLoading();
+                            this.showNotification('שגיאה בעדכון תאריך: ' + error.message, 'error');
+                        }
+                    };
+
+                    if (submitBtn) {
+                        submitBtn.addEventListener('click', doSubmit);
+                    }
+
+                    const form = modal.querySelector('#editPkgDateForm');
+                    if (form) {
+                        form.addEventListener('submit', (e) => {
+                            e.preventDefault();
+                            doSubmit();
+                        });
+                    }
+                }
+            });
         }
 
         async renewServiceHours(service) {
