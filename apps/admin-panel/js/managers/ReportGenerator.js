@@ -101,10 +101,10 @@ return true;
                     if (formData.stage && entry.stage === formData.stage) {
 return true;
 }
-                    if (entry.service === formData.service) {
+                    if ((entry.service || '').trim() === (formData.service || '').trim()) {
 return true;
 }
-                    if (entry.serviceName === formData.service) {
+                    if ((entry.serviceName || '').trim() === (formData.service || '').trim()) {
 return true;
 }
                     return false;
@@ -660,7 +660,6 @@ return true;
                     sServiceName === target ||
                     sDisplayName === target ||
                     (s.stage && target.includes(s.stage)) ||
-                    (sDisplayName && sDisplayName.includes(target)) ||
                     (formData.stage && Array.isArray(s.stages) && s.stages.some(st => st.id === formData.stage));
             }) || null;
         }
@@ -767,13 +766,7 @@ return true;
             const serviceRemainingHours = hours.remainingHours;
 
             // Purchase date (display-only; independent of the hours figures).
-            const dateService = client.services?.find(s =>
-                s.name === formData.service ||
-                s.serviceName === formData.service ||
-                s.displayName === formData.service ||
-                (s.stage && formData.service.includes(s.stage)) ||
-                (s.displayName && s.displayName.includes(formData.service)) ||
-                (formData.stage && Array.isArray(s.stages) && s.stages.some(st => st.id === formData.stage)));
+            const dateService = this.findServiceByFormData(client, formData);
             const purchaseDate = (dateService && dateService.purchasedAt)
                 ? this.formatDate(dateService.purchasedAt.toDate())
                 : (client.createdAt ? this.formatDate(client.createdAt.toDate()) : '-');
