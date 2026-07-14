@@ -109,8 +109,15 @@ describe('escapeHtml PR2 — load-order invariant (escape-html.js before EVERY r
   // mention a consumer in an HTML comment BEFORE its script tag (e.g. clients.html
   // references ClientReportModal.js in a comment above the load), which would make a
   // bare-filename indexOf false-match. Asserting the <script> tag avoids that.
-  const ssotAt = (html: string): number => html.indexOf('<script src="js/core/escape-html.js');
-  const tagAt = (html: string, rel: string): number => html.indexOf('<script src="' + rel);
+  // Tolerate an optional `defer` attribute (QW-3 perf change adds `defer` to every
+  // local/CDN <script src> tag) — match `<script src="` or `<script defer src="`.
+  const scriptTagAt = (html: string, rel: string): number => {
+    const re = new RegExp('<script(?: defer)? src="' + rel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const m = re.exec(html);
+    return m ? m.index : -1;
+  };
+  const ssotAt = (html: string): number => scriptTagAt(html, 'js/core/escape-html.js');
+  const tagAt = (html: string, rel: string): number => scriptTagAt(html, rel);
 
   // page → EVERY routed consumer <script> it loads (devils-advocate #5-i: assert all,
   // not one representative, so a future routed <script> inserted ABOVE escape-html.js

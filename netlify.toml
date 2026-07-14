@@ -97,17 +97,17 @@
 [[headers]]
   for = "/css/*"
   [headers.values]
-    Cache-Control = "public, no-cache, must-revalidate"
+    Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
   for = "/js/*"
   [headers.values]
-    Cache-Control = "public, no-cache, must-revalidate"
+    Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
   for = "/dist/*"
   [headers.values]
-    Cache-Control = "public, no-cache, must-revalidate"
+    Cache-Control = "public, max-age=31536000, immutable"
 
 # HTML files - never cache, always fetch fresh
 [[headers]]

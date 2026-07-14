@@ -55,11 +55,11 @@
     </script>
 
     <!-- ===== Firebase SDK ===== -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
 
     <!-- ===== Font Awesome Icons ===== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -557,44 +557,44 @@
     </div>
 
     <!-- ===== Core Scripts ===== -->
-    <script src="js/core/firebase.js?v=20251123v1"></script>
-    <script src="js/core/system-constants.js?v=20251123v1"></script>
-    <script src="js/core/config-loader.js?v=20251123v1"></script>
-    <script src="js/core/auth.js?v=20251123v1"></script>
-    <script src="js/core/constants.js?v=20251123v1"></script>
+    <script defer src="js/core/firebase.js?v=20251123v1"></script>
+    <script defer src="js/core/system-constants.js?v=20251123v1"></script>
+    <script defer src="js/core/config-loader.js?v=20251123v1"></script>
+    <script defer src="js/core/auth.js?v=20251123v1"></script>
+    <script defer src="js/core/constants.js?v=20251123v1"></script>
     <!-- Shared HTML-escape SSOT (window.escapeHtml) — load before any escaper consumer -->
-    <script src="js/core/escape-html.js?v=20260621-escapehtml-pr1"></script>
+    <script defer src="js/core/escape-html.js?v=20260621-escapehtml-pr1"></script>
 
     <!-- ===== Auth Guard (Unified Authentication) ===== -->
-    <script src="js/core/auth-guard.js?v=20250103"></script>
+    <script defer src="js/core/auth-guard.js?v=20250103"></script>
 
     <!-- ===== Navigation Component ===== -->
-    <script src="js/ui/Navigation.js?v=20251123v1"></script>
+    <script defer src="js/ui/Navigation.js?v=20251123v1"></script>
 
     <!-- ===== System Announcements Components ===== -->
-    <script src="js/models/SystemAnnouncement.js"></script>
-    <script src="js/services/AnnouncementService.js"></script>
-    <script src="js/ui/AnnouncementEditor.js"></script>
+    <script defer src="js/models/SystemAnnouncement.js"></script>
+    <script defer src="js/services/AnnouncementService.js"></script>
+    <script defer src="js/ui/AnnouncementEditor.js"></script>
 
     <!-- ===== Clients Management Scripts ===== -->
     <!-- PR-2.1.1: business-rules-adapter loads window.BUSINESS_RULES — must come before any consumer -->
-    <script src="js/shared/business-rules-adapter.js?v=20260526-pr-2-1-1"></script>
+    <script defer src="js/shared/business-rules-adapter.js?v=20260526-pr-2-1-1"></script>
     <!-- ClientTypeDisplay MUST load BEFORE ClientsDataManager (used by .loadClients) -->
-    <script src="js/core/client-type-display.js?v=20260621-escapehtml-pr1"></script>
-    <script src="js/managers/ClientsDataManager.js?v=20260516-isOnHold"></script>
+    <script defer src="js/core/client-type-display.js?v=20260621-escapehtml-pr1"></script>
+    <script defer src="js/managers/ClientsDataManager.js?v=20260516-isOnHold"></script>
     <!-- CsvSafe (OWASP CSV/formula-injection encoder) MUST load BEFORE ReportGenerator (used by its CSV exports) -->
-    <script src="js/core/csv-safe.js?v=20260617-pr-sec-3"></script>
-    <script src="js/managers/ReportGenerator.js?v=20260713-pr-report-2"></script>
-    <script src="js/ui/Pagination.js?v=20251215"></script>
-    <script src="js/ui/ClientReportModal.js?v=20260628-caseopen-reportdefault"></script>
-    <script src="js/ui/ClientManagementModal.js?v=20260628-caseopen-reportdefault"></script>
-    <script src="js/ui/ClientsTable.js?v=20260621-escapehtml-pr2"></script>
+    <script defer src="js/core/csv-safe.js?v=20260617-pr-sec-3"></script>
+    <script defer src="js/managers/ReportGenerator.js?v=20260713-pr-report-2"></script>
+    <script defer src="js/ui/Pagination.js?v=20251215"></script>
+    <script defer src="js/ui/ClientReportModal.js?v=20260628-caseopen-reportdefault"></script>
+    <script defer src="js/ui/ClientManagementModal.js?v=20260628-caseopen-reportdefault"></script>
+    <script defer src="js/ui/ClientsTable.js?v=20260621-escapehtml-pr2"></script>
 
     <!-- ===== Shared Components ===== -->
-    <script src="js/ui/Notifications.js?v=20251123v1"></script>
+    <script defer src="js/ui/Notifications.js?v=20251123v1"></script>
 
     <!-- ===== Service Overdraft Resolution Feature ===== -->
-    <script src="js/features/ServiceOverdraftResolution.js?v=20260625-h7a-debt-reframe"></script>
+    <script defer src="js/features/ServiceOverdraftResolution.js?v=20260625-h7a-debt-reframe"></script>
 
     <!-- ===== Task Approval System (for Side Panel) ===== -->
     <script type="module">
@@ -608,20 +608,20 @@
         console.log('✅ Task Approval Services loaded globally');
     </script>
     <!-- H.4 PR-a: canonical budget-meter helper (must load before the overrun side panel) -->
-    <script src="js/core/budget-status.js"></script>
-    <script src="js/ui/TaskApprovalSidePanel.js?v=20260621-escapehtml-pr2"></script>
+    <script defer src="js/core/budget-status.js"></script>
+    <script defer src="js/ui/TaskApprovalSidePanel.js?v=20260621-escapehtml-pr2"></script>
 
     <!-- ===== Legacy Dependencies (still needed by other modules) ===== -->
-    <script src="js/modules/logger.js?v=20251201-FIX2"></script>
-    <script src="js/modules/event-bus.js?v=20251201-FIX2"></script>
-    <script src="js/modules/client-case-selector.js?v=20260621-escapehtml-pr1"></script>
-    <script src="js/modules/service-card-renderer.js?v=20260621-escapehtml-pr3a"></script>
+    <script defer src="js/modules/logger.js?v=20251201-FIX2"></script>
+    <script defer src="js/modules/event-bus.js?v=20251201-FIX2"></script>
+    <script defer src="js/modules/client-case-selector.js?v=20260621-escapehtml-pr1"></script>
+    <script defer src="js/modules/service-card-renderer.js?v=20260621-escapehtml-pr3a"></script>
 
     <!-- ===== Floating Action Button ===== -->
-    <script src="js/ui/FloatingActionButton.js?v=2"></script>
+    <script defer src="js/ui/FloatingActionButton.js?v=2"></script>
 
     <!-- ===== Add Package to Stage Feature ===== -->
-    <script src="js/features/AddPackageToStage.js?v=1.0.0"></script>
+    <script defer src="js/features/AddPackageToStage.js?v=1.0.0"></script>
 
     <!-- ===== Initialization Script ===== -->
     <script>
