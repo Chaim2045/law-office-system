@@ -169,20 +169,20 @@
                 'use strict';
                 var form = document.getElementById('loginForm');
                 var btn = form.querySelector('button[type="submit"]');
-                var originalText = btn ? btn.textContent : '';
+                var originalHTML = btn ? btn.innerHTML : '';
                 form.addEventListener('submit', function earlyGuard(e) {
-                    if (!window.AuthSystem) {
+                    if (!window.AuthSystem || !window.FirebaseManager || !window.FirebaseManager.initialized) {
                         e.preventDefault();
                         if (btn) {
                             btn.disabled = true;
-                            btn.textContent = 'טוען מערכת...';
+                            btn.innerHTML = 'טוען מערכת...';
                         }
                     }
                 });
-                document.addEventListener('firebase:ready', function() {
+                window.addEventListener('firebase:ready', function() {
                     if (btn && btn.disabled) {
                         btn.disabled = false;
-                        btn.textContent = originalText;
+                        btn.innerHTML = originalHTML;
                     }
                 });
             })();
@@ -221,7 +221,7 @@
     </div>
 
     <!-- ===== Core Scripts ===== -->
-    <script defer src="js/core/firebase.js?v=e02c45c"></script>
+    <script defer src="js/core/firebase.js?v=qw3fix"></script>
     <script defer src="js/core/system-constants.js?v=e02c45c"></script>
     <script defer src="js/core/config-loader.js?v=e02c45c"></script>
     <!-- ✅ Load dependencies BEFORE auth.js -->
