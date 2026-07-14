@@ -279,8 +279,7 @@ body {
         border-left: 1px solid var(--gray-200);
         background: white;
         box-shadow: none;
-        overflow-y: auto;
-        overflow-x: hidden;
+        overflow: visible;
     }
 
     body {
@@ -377,6 +376,7 @@ body {
     /* ─── Groups on tablet: icon-only, click navigates ─── */
     .nav-group {
         display: block;
+        position: relative;
     }
 
     .nav-group-header {
