@@ -161,6 +161,18 @@ return '';
                     </a>`;
                 }).join('');
 
+                const flyoutItemsHTML = group.children.map(childId => {
+                    const item = _findItem(childId);
+                    if (!item) {
+return '';
+}
+                    const active = this._isActive(childId);
+                    return `<a href="${item.href}" class="nav-flyout-item ${active ? 'active' : ''}">
+                        ${_svgIcon(item.icon)}
+                        <span>${item.label}</span>
+                    </a>`;
+                }).join('');
+
                 return `<div class="nav-group ${isActive ? 'group-active' : ''}" data-group="${group.id}">
                     <button class="nav-group-header" id="nav-group-header-${group.id}"
                         role="button" aria-expanded="${isExpanded}" aria-controls="nav-group-${group.id}"
@@ -172,6 +184,10 @@ return '';
                     <div class="nav-group-children ${isExpanded ? 'expanded' : ''}" id="nav-group-${group.id}"
                         role="group" aria-labelledby="nav-group-header-${group.id}">
                         ${childrenHTML}
+                    </div>
+                    <div class="nav-flyout" aria-hidden="true">
+                        <div class="nav-flyout-header">${group.label}</div>
+                        ${flyoutItemsHTML}
                     </div>
                 </div>`;
             }).join('');
