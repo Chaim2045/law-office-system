@@ -53,8 +53,10 @@ describe('escapeHtml PR3a — service-card-renderer routed to the SSOT', () => {
 
   it('clients.html loads escape-html.js before service-card-renderer.js', () => {
     const html = read('clients.html');
-    const ssot = html.indexOf('<script src="js/core/escape-html.js');
-    const consumer = html.indexOf('<script src="js/modules/service-card-renderer.js');
+    // Tolerate an optional `defer` attribute (QW-3 perf change adds `defer` to every
+    // local/CDN <script src> tag) — match `<script src="` or `<script defer src="`.
+    const ssot = /<script(?: defer)? src="js\/core\/escape-html\.js/.exec(html)?.index ?? -1;
+    const consumer = /<script(?: defer)? src="js\/modules\/service-card-renderer\.js/.exec(html)?.index ?? -1;
     expect(ssot, 'clients.html does not load escape-html.js').toBeGreaterThan(-1);
     expect(consumer, 'clients.html does not load service-card-renderer.js').toBeGreaterThan(-1);
     expect(ssot, 'escape-html.js must load BEFORE service-card-renderer.js').toBeLessThan(consumer);
@@ -76,8 +78,10 @@ describe('escapeHtml PR3a/PR3c — WorkloadCard escapes via the SSOT', () => {
 
   it('workload.html loads escape-html.js before WorkloadCard.js (new dependency)', () => {
     const html = read('workload.html');
-    const ssot = html.indexOf('<script src="js/core/escape-html.js');
-    const consumer = html.indexOf('<script src="js/workload-analytics/WorkloadCard.js');
+    // Tolerate an optional `defer` attribute (QW-3 perf change adds `defer` to every
+    // local/CDN <script src> tag) — match `<script src="` or `<script defer src="`.
+    const ssot = /<script(?: defer)? src="js\/core\/escape-html\.js/.exec(html)?.index ?? -1;
+    const consumer = /<script(?: defer)? src="js\/workload-analytics\/WorkloadCard\.js/.exec(html)?.index ?? -1;
     expect(ssot, 'workload.html does not load escape-html.js').toBeGreaterThan(-1);
     expect(consumer, 'workload.html does not load WorkloadCard.js').toBeGreaterThan(-1);
     expect(ssot, 'escape-html.js must load BEFORE WorkloadCard.js').toBeLessThan(consumer);

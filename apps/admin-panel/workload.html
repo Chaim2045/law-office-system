@@ -39,10 +39,10 @@
     </script>
 
     <!-- ===== Firebase SDK ===== -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
 
     <!-- ===== Font Awesome Icons ===== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -77,33 +77,33 @@
     </div>
 
     <!-- ===== Core Scripts ===== -->
-    <script src="js/core/firebase.js?v=bf8073e"></script>
-    <script src="js/core/system-constants.js?v=bf8073e"></script>
-    <script src="js/core/config-loader.js?v=bf8073e"></script>
-    <script src="js/modules/logger.js?v=bf8073e"></script>
-    <script src="js/modules/presence-system.js?v=bf8073e"></script>
-    <script src="js/modules/idle-timeout-manager.js?v=bf8073e"></script>
-    <script src="js/core/auth.js?v=bf8073e"></script>
-    <script src="js/core/constants.js?v=bf8073e"></script>
+    <script defer src="js/core/firebase.js?v=bf8073e"></script>
+    <script defer src="js/core/system-constants.js?v=bf8073e"></script>
+    <script defer src="js/core/config-loader.js?v=bf8073e"></script>
+    <script defer src="js/modules/logger.js?v=bf8073e"></script>
+    <script defer src="js/modules/presence-system.js?v=bf8073e"></script>
+    <script defer src="js/modules/idle-timeout-manager.js?v=bf8073e"></script>
+    <script defer src="js/core/auth.js?v=bf8073e"></script>
+    <script defer src="js/core/constants.js?v=bf8073e"></script>
 
     <!-- ===== Auth Guard (Unified Authentication) ===== -->
-    <script src="js/core/auth-guard.js?v=20250103"></script>
+    <script defer src="js/core/auth-guard.js?v=20250103"></script>
 
     <!-- ===== Navigation Component ===== -->
-    <script src="js/ui/Navigation.js?v=bf8073e"></script>
+    <script defer src="js/ui/Navigation.js?v=bf8073e"></script>
 
     <!-- ===== Data Manager (needed for fetching employees) ===== -->
-    <script src="js/managers/DataManager.js?v=bf8073e"></script>
+    <script defer src="js/managers/DataManager.js?v=bf8073e"></script>
 
     <!-- ===== Workload Analytics Module ===== -->
     <!-- ✅ v4.1.0: Data Accuracy Fixes (dual field support) -->
     <!-- ✅ v5.1.0: Single source of truth for workday counting -->
     <!-- ✅ v5.2.0: Fail-fast requires WorkHoursCalculator -->
     <!-- PR-G.2: shared work-hours constants — must load BEFORE work-hours-calculator -->
-    <script src="js/shared/work-hours-constants.js?v=5.2.0"></script>
+    <script defer src="js/shared/work-hours-constants.js?v=5.2.0"></script>
     <!-- PR-G.3.1: holidays cache — subscribes to system_holidays/{year} on boot. -->
-    <script src="js/shared/holidays-cache.js?v=5.2.0"></script>
-    <script src="js/modules/work-hours-calculator.js?v=5.2.0"></script>
+    <script defer src="js/shared/holidays-cache.js?v=5.2.0"></script>
+    <script defer src="js/modules/work-hours-calculator.js?v=5.2.0"></script>
     <script>
         // Verify WorkHoursCalculator loaded successfully
         console.log('🔍 WorkHoursCalculator loaded?', typeof window.WorkHoursCalculator);
@@ -114,11 +114,11 @@
         }
     </script>
     <!-- Shared HTML-escape SSOT (escapeHtml dedup PR3a) — must load before WorkloadCard.js -->
-    <script src="js/core/escape-html.js?v=20260621-escapehtml-pr3a"></script>
-    <script src="js/workload-analytics/WorkloadConstants.js?v=4.0.0"></script>
-    <script src="js/workload-analytics/WorkloadCalculator.js?v=5.1.0"></script>
-    <script src="js/workload-analytics/WorkloadService.js?v=5.2.3"></script>
-    <script src="js/workload-analytics/WorkloadCard.js?v=20260621-escapehtml-pr3c"></script>
+    <script defer src="js/core/escape-html.js?v=20260621-escapehtml-pr3a"></script>
+    <script defer src="js/workload-analytics/WorkloadConstants.js?v=4.0.0"></script>
+    <script defer src="js/workload-analytics/WorkloadCalculator.js?v=5.1.0"></script>
+    <script defer src="js/workload-analytics/WorkloadService.js?v=5.2.3"></script>
+    <script defer src="js/workload-analytics/WorkloadCard.js?v=20260621-escapehtml-pr3c"></script>
 
     <!-- ===== Initialization Script ===== -->
     <script>
