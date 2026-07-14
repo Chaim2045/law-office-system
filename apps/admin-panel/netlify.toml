@@ -99,7 +99,7 @@
       frame-ancestors 'none';
     """
 
-# Cache control for static assets - NO CACHE for JS/CSS to ensure updates
+# Cache control for static assets - immutable with ?v= cache-busting on HTML refs
 [[headers]]
   for = "/css/*"
   [headers.values]
