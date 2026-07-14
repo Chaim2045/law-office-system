@@ -19,10 +19,8 @@
         'fa-triangle-exclamation': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
         'fa-history': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>',
         'fa-cog': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
-        'fa-chevron-down': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
         'fa-sign-out-alt': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>',
-        'fa-ellipsis': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
-        'fa-chevron-left': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>'
+        'fa-ellipsis': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>'
     };
 
     function _svgIcon(faClass) {
@@ -103,12 +101,10 @@
         constructor() {
             this.container = null;
             this.currentPage = null;
-            this.rawPage = null;
             this.approvalCountInterval = null;
         }
 
         init(currentPage = 'users') {
-            this.rawPage = currentPage;
             this.currentPage = SUB_PAGE_PARENTS[currentPage] || currentPage;
             this.container = document.getElementById('navigationContainer');
 
@@ -116,6 +112,8 @@
                 console.warn('Navigation container not found');
                 return;
             }
+
+            document.body.classList.add('has-nav');
 
             this.render();
             this.setupEventListeners();
@@ -154,9 +152,8 @@ return '';
             }).join('');
 
             return `<div class="nav-group ${isActive ? 'group-active' : ''}" data-group="${group.id}">
-                <a href="${group.defaultHref}" class="nav-group-header" id="nav-group-header-${group.id}"
-                    data-href="${group.defaultHref}">
-                    ${hasBadge ? '<span id="approvalCountBadge" class="approval-count-badge" style="display: none;"></span>' : ''}
+                <a href="${group.defaultHref}" class="nav-group-header">
+                    ${hasBadge ? '<span class="approval-count-badge" style="display: none;"></span>' : ''}
                     ${_svgIcon(group.icon)}
                     <span class="nav-label">${group.label}</span>
                 </a>
@@ -214,11 +211,13 @@ return '';
                 .includes(this.currentPage);
 
             const mobilePrimaryHTML = MOBILE_PRIMARY.map(item => {
-                const groupMatch = NAV_GROUPS.find(g => g.id === item.id);
+                const groupMatch = _allGroups().find(g => g.id === item.id);
                 const isActive = groupMatch
                     ? this._isGroupActive(groupMatch)
                     : this._isActive(item.id);
+                const hasMobileBadge = groupMatch && groupMatch.children.includes('approvals');
                 return `<a href="${item.href}" class="nav-item ${isActive ? 'active' : ''}" data-id="${item.id}">
+                    ${hasMobileBadge ? '<span class="approval-count-badge mobile-badge" style="display: none;"></span>' : ''}
                     ${_svgIcon(item.icon)}
                     <span class="nav-label">${item.label}</span>
                 </a>`;
@@ -302,19 +301,6 @@ return;
                 }
             });
 
-            const overflowMenu = document.getElementById('navOverflowMenu');
-            if (overflowMenu) {
-                overflowMenu.querySelectorAll('[data-action="approvals"]').forEach(btn => {
-                    btn.addEventListener('click', async () => {
-                        close();
-                        if (window.taskApprovalSidePanel) {
-                            await window.taskApprovalSidePanel.init();
-                            window.taskApprovalSidePanel.open();
-                        }
-                    });
-                });
-            }
-
             const overflowLogoutBtn = document.getElementById('navOverflowLogoutBtn');
             if (overflowLogoutBtn) {
                 overflowLogoutBtn.addEventListener('click', async () => {
@@ -325,24 +311,61 @@ return;
         }
 
         setupEventListeners() {
-            document.querySelectorAll('[data-action="approvals"]').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    if (window.taskApprovalSidePanel) {
-                        await window.taskApprovalSidePanel.init();
-                        window.taskApprovalSidePanel.open();
-                    } else {
-                        alert('פאנל חריגות התקציב לא נטען כראוי');
-                    }
-                });
+            this.container.addEventListener('click', async (e) => {
+                const btn = e.target.closest('[data-action="approvals"]');
+                if (!btn) {
+return;
+}
+                const inOverflow = btn.closest('.nav-overflow-menu');
+                if (inOverflow) {
+                    const menu = document.getElementById('navOverflowMenu');
+                    const backdrop = document.getElementById('navOverflowBackdrop');
+                    const moreBtn = document.getElementById('navMoreBtn');
+                    if (menu) {
+menu.classList.remove('visible');
+}
+                    if (backdrop) {
+backdrop.classList.remove('visible');
+}
+                    if (moreBtn) {
+moreBtn.setAttribute('aria-expanded', 'false');
+}
+                }
+                if (window.taskApprovalSidePanel) {
+                    await window.taskApprovalSidePanel.init();
+                    window.taskApprovalSidePanel.open();
+                } else {
+                    window.location.href = 'index.html';
+                }
             });
 
             const logoutBtn = document.getElementById('navLogoutBtn');
             if (logoutBtn) {
                 logoutBtn.addEventListener('click', () => this._doLogout());
             }
+
+            if (window.matchMedia && !window.matchMedia('(hover: hover)').matches) {
+                document.querySelectorAll('.nav-group-header').forEach(header => {
+                    header.addEventListener('click', (e) => {
+                        const group = header.closest('.nav-group');
+                        const isOpen = group.classList.contains('flyout-open');
+                        document.querySelectorAll('.nav-group.flyout-open').forEach(g => g.classList.remove('flyout-open'));
+                        if (!isOpen) {
+                            e.preventDefault();
+                            group.classList.add('flyout-open');
+                        }
+                    });
+                });
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.nav-group')) {
+                        document.querySelectorAll('.nav-group.flyout-open').forEach(g => g.classList.remove('flyout-open'));
+                    }
+                });
+            }
         }
 
         async _doLogout() {
+            this.stopApprovalCountListener();
             if (!window.firebaseAuth) {
 return;
 }
@@ -392,17 +415,14 @@ return;
         }
 
         updateApprovalCountBadge(count) {
-            const badge = document.getElementById('approvalCountBadge');
-            if (!badge) {
-return;
-}
-
-            if (count > 0) {
-                badge.textContent = count > 99 ? '99+' : count;
-                badge.style.display = 'flex';
-            } else {
-                badge.style.display = 'none';
-            }
+            document.querySelectorAll('.approval-count-badge').forEach(badge => {
+                if (count > 0) {
+                    badge.textContent = count > 99 ? '99+' : count;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            });
         }
 
         stopApprovalCountListener() {
