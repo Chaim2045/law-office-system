@@ -1,12 +1,11 @@
 /* ========================================================================
-   Navigation — Grouped Sidebar (PR-NAV-2, Approach A)
-   Mobile-first: bottom bar → icon sidebar → full grouped sidebar
-   RTL: sidebar on right edge
+   Navigation — Icon-only Sidebar
+   Mobile-first: bottom bar → icon-only sidebar 68px
+   RTL: sidebar on right edge, flyout on hover
    ======================================================================== */
 
 /* ─── Semantic tokens ─── */
 :root {
-    --sidebar-width: 220px;
     --sidebar-collapsed-width: 68px;
     --mobile-bottom-bar-height: 64px;
 }
@@ -118,20 +117,12 @@ body {
     display: none;
 }
 
-.sidebar-toggle {
-    display: none;
-}
-
 /* ─── Groups — hidden on mobile ─── */
 .nav-group {
     display: none;
 }
 
 .nav-group-header {
-    display: none;
-}
-
-.nav-group-children {
     display: none;
 }
 
@@ -261,8 +252,6 @@ body {
 /* ─── Focus ─── */
 .nav-item:focus-visible,
 .nav-group-header:focus-visible,
-.nav-sub-item:focus-visible,
-.sidebar-toggle:focus-visible,
 .nav-overflow-item:focus-visible,
 .nav-flyout-item:focus-visible {
     outline: 2px solid var(--blue);
@@ -270,7 +259,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   TABLET (768px – 1023px) — Icon-only sidebar on right, 68px
+   NON-MOBILE (≥768px) — Icon-only sidebar on right, 68px + flyout
    ═══════════════════════════════════════════════════════════════════════ */
 
 @media (width >= 768px) {
@@ -287,9 +276,9 @@ body {
         padding: var(--space-4) var(--space-2);
         gap: var(--space-1);
         border-top: none;
-        border-left: 1px solid var(--gray-100);
-        background: var(--gray-50);
-        box-shadow: var(--shadow-sidebar);
+        border-left: 1px solid var(--gray-200);
+        background: white;
+        box-shadow: none;
         overflow-y: auto;
         overflow-x: hidden;
     }
@@ -448,16 +437,7 @@ body {
         border-radius: 0 3px 3px 0;
     }
 
-    /* Chevron + children hidden on tablet */
-    .nav-group-chevron {
-        display: none;
-    }
-
-    .nav-group-children {
-        display: none !important;
-    }
-
-    /* ─── Flyout submenu (tablet / collapsed desktop) ─── */
+    /* ─── Flyout submenu ─── */
     .nav-flyout {
         position: absolute;
         top: 50%;
@@ -578,326 +558,6 @@ body {
         left: -2px;
         transform: none;
     }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   DESKTOP (≥1024px) — Full sidebar 220px, collapsible to 68px
-   ═══════════════════════════════════════════════════════════════════════ */
-
-@media (width >= 1024px) {
-    .admin-navigation {
-        width: var(--sidebar-width);
-        padding: var(--space-4) var(--space-3);
-        overflow: visible;
-        border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-    }
-
-    body {
-        padding-right: var(--sidebar-width);
-    }
-
-    /* Brand — show logo + text */
-    .nav-brand {
-        justify-content: center;
-        gap: var(--space-3);
-        padding: var(--space-3) var(--space-2) var(--space-4);
-    }
-
-    .brand-text {
-        display: block;
-        font-size: var(--text-md);
-        font-weight: var(--font-bold);
-        color: var(--gray-800);
-        white-space: nowrap;
-    }
-
-    /* Nav items — horizontal icon+text row */
-    .nav-item {
-        flex-direction: row;
-        justify-content: flex-start;
-        gap: var(--space-3);
-        padding: var(--space-3) var(--space-4);
-        border-radius: var(--radius-sm);
-        transition: color var(--transition-smooth), background var(--transition-smooth), transform var(--transition-fast);
-    }
-
-    .nav-item .nav-icon {
-        width: 20px;
-        height: 20px;
-        flex-shrink: 0;
-    }
-
-    .nav-label {
-        font-size: var(--text-md);
-        overflow: visible;
-    }
-
-    .nav-item:hover {
-        color: var(--blue);
-        background: rgb(59 130 246 / 4%);
-        transform: translateY(-1px);
-    }
-
-    .nav-item:active {
-        transform: scale(0.95);
-    }
-
-    /* Active item bg */
-    .nav-item.active {
-        background: rgb(59 130 246 / 8%);
-    }
-
-    .nav-item.active::before {
-        left: calc(-1 * var(--space-3));
-    }
-
-    /* ─── Group header — full width, horizontal ─── */
-    .nav-group-header {
-        flex-direction: row;
-        justify-content: flex-start;
-        gap: var(--space-3);
-        padding: var(--space-3) var(--space-4);
-        border-radius: var(--radius-sm);
-        transition: color var(--transition-smooth), background var(--transition-smooth), transform var(--transition-fast);
-    }
-
-    .nav-group-header .nav-icon:first-child {
-        width: 20px;
-        height: 20px;
-        flex-shrink: 0;
-    }
-
-    .nav-group-header .nav-label {
-        font-size: var(--text-md);
-        overflow: visible;
-        flex: 1;
-        text-align: right;
-    }
-
-    .nav-group-header:hover {
-        color: var(--blue);
-        background: rgb(59 130 246 / 4%);
-        transform: translateY(-1px);
-    }
-
-    .nav-group-header:active {
-        transform: scale(0.95);
-    }
-
-    /* Chevron visible on desktop */
-    .nav-group-chevron {
-        display: block;
-        width: var(--text-xs);
-        height: var(--text-xs);
-        color: var(--gray-400);
-        transition: transform var(--transition-smooth);
-        margin-right: auto;
-    }
-
-    .nav-group-header[aria-expanded="true"] .nav-group-chevron {
-        transform: rotate(180deg);
-    }
-
-    .nav-group.group-active .nav-group-header {
-        background: rgb(59 130 246 / 5%);
-    }
-
-    .nav-group.group-active .nav-group-header::before {
-        left: calc(-1 * var(--space-3));
-    }
-
-    /* ─── Group children — expand/collapse ─── */
-    .nav-group-children {
-        display: block !important;
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height var(--transition-smooth);
-    }
-
-    .nav-group-children.expanded {
-        max-height: 200px;
-    }
-
-    /* ─── Sub-items — indented children ─── */
-    .nav-sub-item {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: var(--space-3);
-        padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
-        padding-right: calc(var(--space-4) + 20px + var(--space-3));
-        background: none;
-        border: none;
-        border-radius: var(--radius-sm);
-        color: var(--gray-500);
-        font-size: var(--text-sm);
-        font-weight: var(--font-medium);
-        cursor: pointer;
-        transition: color var(--transition-smooth), background var(--transition-smooth), transform var(--transition-fast);
-        text-decoration: none;
-        white-space: nowrap;
-        position: relative;
-    }
-
-    .nav-sub-item .nav-icon {
-        width: 16px;
-        height: 16px;
-        flex-shrink: 0;
-        opacity: 0.7;
-    }
-
-    .nav-sub-item .nav-label {
-        font-size: var(--text-sm);
-    }
-
-    .nav-sub-item:hover {
-        color: var(--blue);
-        background: rgb(59 130 246 / 4%);
-        transform: translateY(-1px);
-    }
-
-    .nav-sub-item.active {
-        color: var(--blue);
-        font-weight: var(--font-semibold);
-        background: rgb(59 130 246 / 8%);
-    }
-
-    .nav-sub-item.active .nav-icon {
-        opacity: 1;
-    }
-
-    .nav-sub-item.active::before {
-        content: '';
-        position: absolute;
-        top: 25%;
-        bottom: 25%;
-        left: calc(-1 * var(--space-3));
-        width: 3px;
-        background: var(--blue);
-        border-radius: 0 3px 3px 0;
-    }
-
-    /* ─── Collapse toggle — show on sidebar hover ─── */
-    .sidebar-toggle {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: absolute;
-        top: 50%;
-        left: -14px;
-        transform: translateY(-50%);
-        width: 28px;
-        height: 28px;
-        background: white;
-        border: 1px solid var(--gray-200);
-        border-radius: 50%;
-        color: var(--gray-500);
-        cursor: pointer;
-        font-size: var(--text-sm);
-        box-shadow: var(--shadow-sm);
-        transition: opacity var(--transition-smooth), transform var(--transition-smooth), background var(--transition-smooth), color var(--transition-smooth), box-shadow var(--transition-smooth);
-        z-index: 1;
-        opacity: 0;
-    }
-
-    .admin-navigation:hover .sidebar-toggle,
-    .sidebar-toggle:focus-visible {
-        opacity: 1;
-    }
-
-    .sidebar-toggle:hover {
-        background: var(--gray-50);
-        color: var(--gray-700);
-        box-shadow: var(--shadow-lg);
-        transform: translateY(-50%) scale(1.1);
-    }
-
-    /* Flyout hidden when desktop expanded */
-    .nav-flyout {
-        display: none;
-    }
-
-    /* ─── Collapsed state (toggled by JS on body) ─── */
-    body.sidebar-collapsed .admin-navigation {
-        width: var(--sidebar-collapsed-width);
-        padding: var(--space-4) var(--space-2);
-    }
-
-    body.sidebar-collapsed {
-        padding-right: var(--sidebar-collapsed-width);
-    }
-
-    body.sidebar-collapsed .brand-text {
-        display: none;
-    }
-
-    body.sidebar-collapsed .nav-item {
-        flex-direction: column;
-        gap: 2px;
-        padding: var(--space-3) var(--space-2);
-    }
-
-    body.sidebar-collapsed .nav-label {
-        font-size: 9px;
-        text-align: center;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    body.sidebar-collapsed .nav-item.active {
-        background: transparent;
-    }
-
-    /* Collapsed groups: icon-only, no chevron, no children */
-    body.sidebar-collapsed .nav-group-header {
-        flex-direction: column;
-        gap: 2px;
-        padding: var(--space-3) var(--space-2);
-    }
-
-    body.sidebar-collapsed .nav-group-header .nav-label {
-        font-size: 9px;
-        text-align: center;
-    }
-
-    body.sidebar-collapsed .nav-group-chevron {
-        display: none;
-    }
-
-    body.sidebar-collapsed .nav-group-children {
-        display: none !important;
-        max-height: 0 !important;
-    }
-
-    body.sidebar-collapsed .nav-flyout {
-        display: block;
-    }
-
-    body.sidebar-collapsed .nav-group.group-active .nav-group-header {
-        background: transparent;
-    }
-
-    /* Flip the toggle arrow when collapsed */
-    body.sidebar-collapsed .sidebar-toggle .nav-icon {
-        transform: rotate(180deg);
-    }
-}
-
-/* ─── Transition gating — only animate during user-triggered toggles ─── */
-body.sidebar-animating .admin-navigation {
-    transition: width var(--transition-slow);
-}
-
-body.sidebar-animating {
-    transition: padding-right var(--transition-slow);
-}
-
-body.sidebar-animating .nav-item,
-body.sidebar-animating .nav-label,
-body.sidebar-animating .brand-text,
-body.sidebar-animating .nav-group-header,
-body.sidebar-animating .nav-sub-item {
-    transition: all var(--transition-slow);
 }
 
 /* ─── Print ─── */
