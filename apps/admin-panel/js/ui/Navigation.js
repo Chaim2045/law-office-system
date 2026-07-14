@@ -1,10 +1,8 @@
 /**
- * Navigation Component — Grouped Sidebar (PR-NAV-2, Approach A)
+ * Navigation Component — Icon-only Sidebar
  *
  * Mobile (<768px): bottom bar, 5 primary + "More" overflow
- * Tablet (768-1023px): icon-only sidebar 68px on right
- * Desktop (>=1024px): full sidebar 220px, collapsible to 68px
- * Groups expand/collapse on click (desktop only)
+ * Non-mobile (>=768px): icon-only sidebar 68px on right, flyout on hover
  */
 
 (function() {
@@ -93,7 +91,6 @@
             this.currentPage = null;
             this.rawPage = null;
             this.approvalCountInterval = null;
-            this._desktopMQ = null;
         }
 
         init(currentPage = 'users') {
@@ -108,8 +105,6 @@
 
             this.render();
             this.setupEventListeners();
-            this.setupGroupToggle();
-            this.setupCollapseToggle();
             this.setupMobileOverflow();
             this.startApprovalCountListener();
         }
@@ -122,44 +117,13 @@
             return group.children.includes(this.currentPage);
         }
 
-        _getExpandedGroups() {
-            try {
-                const stored = localStorage.getItem('admin-nav-expanded');
-                return stored ? JSON.parse(stored) : [];
-            } catch {
- return [];
-}
-        }
-
-        _saveExpandedGroups(ids) {
-            try {
-                localStorage.setItem('admin-nav-expanded', JSON.stringify(ids));
-            } catch { /* localStorage unavailable */ }
-        }
-
         render() {
             if (!this.container) {
 return;
 }
 
-            const expandedGroups = this._getExpandedGroups();
-            const activeGroup = _groupForPage(this.currentPage);
-
             const groupsHTML = NAV_GROUPS.map(group => {
                 const isActive = this._isGroupActive(group);
-                const isExpanded = isActive || expandedGroups.includes(group.id);
-
-                const childrenHTML = group.children.map(childId => {
-                    const item = _findItem(childId);
-                    if (!item) {
-return '';
-}
-                    const active = this._isActive(childId);
-                    return `<a href="${item.href}" class="nav-sub-item ${active ? 'active' : ''}" data-id="${item.id}" aria-current="${active ? 'page' : 'false'}">
-                        ${_svgIcon(item.icon)}
-                        <span class="nav-label">${item.label}</span>
-                    </a>`;
-                }).join('');
 
                 const flyoutItemsHTML = group.children.map(childId => {
                     const item = _findItem(childId);
@@ -174,17 +138,11 @@ return '';
                 }).join('');
 
                 return `<div class="nav-group ${isActive ? 'group-active' : ''}" data-group="${group.id}">
-                    <button class="nav-group-header" id="nav-group-header-${group.id}"
-                        role="button" aria-expanded="${isExpanded}" aria-controls="nav-group-${group.id}"
+                    <a href="${group.defaultHref}" class="nav-group-header" id="nav-group-header-${group.id}"
                         data-href="${group.defaultHref}">
                         ${_svgIcon(group.icon)}
                         <span class="nav-label">${group.label}</span>
-                        ${_svgIcon('fa-chevron-down').replace('class="nav-icon"', 'class="nav-icon nav-group-chevron"')}
-                    </button>
-                    <div class="nav-group-children ${isExpanded ? 'expanded' : ''}" id="nav-group-${group.id}"
-                        role="group" aria-labelledby="nav-group-header-${group.id}">
-                        ${childrenHTML}
-                    </div>
+                    </a>
                     <div class="nav-flyout" aria-hidden="true">
                         <div class="nav-flyout-header">${group.label}</div>
                         ${flyoutItemsHTML}
@@ -294,9 +252,6 @@ return '';
                         </button>
                     </div>
 
-                    <button class="sidebar-toggle" id="sidebarToggle" aria-label="כווץ/הרחב תפריט">
-                        ${_svgIcon('fa-chevron-left')}
-                    </button>
                 </nav>
 
                 <div class="nav-overflow-backdrop" id="navOverflowBackdrop"></div>
@@ -309,74 +264,6 @@ return '';
                     </button>
                 </div>
             `;
-        }
-
-        setupGroupToggle() {
-            const headers = this.container.querySelectorAll('.nav-group-header');
-            headers.forEach(header => {
-                header.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const isCollapsed = document.body.classList.contains('sidebar-collapsed');
-                    const isTablet = this._desktopMQ && !this._desktopMQ.matches;
-
-                    if (isCollapsed || isTablet) {
-                        return;
-                    }
-
-                    const groupEl = header.closest('.nav-group');
-                    const childrenEl = groupEl.querySelector('.nav-group-children');
-                    const expanded = header.getAttribute('aria-expanded') === 'true';
-
-                    header.setAttribute('aria-expanded', String(!expanded));
-                    childrenEl.classList.toggle('expanded', !expanded);
-
-                    const groupId = groupEl.dataset.group;
-                    const expandedGroups = this._getExpandedGroups();
-                    if (!expanded) {
-                        if (!expandedGroups.includes(groupId)) {
-expandedGroups.push(groupId);
-}
-                    } else {
-                        const idx = expandedGroups.indexOf(groupId);
-                        if (idx !== -1) {
-expandedGroups.splice(idx, 1);
-}
-                    }
-                    this._saveExpandedGroups(expandedGroups);
-                });
-
-                header.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        header.click();
-                    }
-                });
-            });
-        }
-
-        setupCollapseToggle() {
-            this._desktopMQ = window.matchMedia('(min-width: 1024px)');
-
-            if (this._desktopMQ.matches && localStorage.getItem('admin-sidebar-collapsed') === '1') {
-                document.body.classList.add('sidebar-collapsed');
-            }
-
-            const toggle = document.getElementById('sidebarToggle');
-            if (toggle) {
-                toggle.addEventListener('click', () => {
-                    if (!this._desktopMQ.matches) {
-return;
-}
-
-                    document.body.classList.add('sidebar-animating');
-                    document.body.classList.toggle('sidebar-collapsed');
-
-                    const collapsed = document.body.classList.contains('sidebar-collapsed');
-                    localStorage.setItem('admin-sidebar-collapsed', collapsed ? '1' : '0');
-
-                    setTimeout(() => document.body.classList.remove('sidebar-animating'), 300);
-                });
-            }
         }
 
         setupMobileOverflow() {
