@@ -56,7 +56,7 @@
             id: 'employees-group',
             label: 'עובדים',
             icon: 'fa-users',
-            children: ['users', 'workload', 'reconciliation'],
+            children: ['users', 'workload', 'reconciliation', 'approvals'],
             defaultHref: 'index.html'
         },
         {
@@ -65,6 +65,16 @@
             icon: 'fa-briefcase',
             children: ['clients', 'pending-clients'],
             defaultHref: 'clients.html'
+        }
+    ];
+
+    const UTILITY_GROUPS = [
+        {
+            id: 'settings-group',
+            label: 'הגדרות',
+            icon: 'fa-cog',
+            children: ['settings', 'audit-trail'],
+            defaultHref: 'settings.html'
         }
     ];
 
@@ -81,8 +91,12 @@
         return PRIMARY_NAV.find(item => item.id === id) || UTILITY_NAV.find(item => item.id === id);
     }
 
+    function _allGroups() {
+        return [...NAV_GROUPS, ...UTILITY_GROUPS];
+    }
+
     function _groupForPage(pageId) {
-        return NAV_GROUPS.find(g => g.children.includes(pageId));
+        return _allGroups().find(g => g.children.includes(pageId));
     }
 
     class Navigation {
@@ -117,38 +131,48 @@
             return group.children.includes(this.currentPage);
         }
 
+        _renderGroup(group) {
+            const isActive = this._isGroupActive(group);
+            const hasBadge = group.children.includes('approvals');
+
+            const flyoutItemsHTML = group.children.map(childId => {
+                const item = _findItem(childId);
+                if (!item) {
+return '';
+}
+                const active = this._isActive(childId);
+                if (item.type === 'button') {
+                    return `<button class="nav-flyout-item ${active ? 'active' : ''}" data-action="${item.id}">
+                        ${_svgIcon(item.icon)}
+                        <span>${item.label}</span>
+                    </button>`;
+                }
+                return `<a href="${item.href}" class="nav-flyout-item ${active ? 'active' : ''}">
+                    ${_svgIcon(item.icon)}
+                    <span>${item.label}</span>
+                </a>`;
+            }).join('');
+
+            return `<div class="nav-group ${isActive ? 'group-active' : ''}" data-group="${group.id}">
+                <a href="${group.defaultHref}" class="nav-group-header" id="nav-group-header-${group.id}"
+                    data-href="${group.defaultHref}">
+                    ${hasBadge ? '<span id="approvalCountBadge" class="approval-count-badge" style="display: none;"></span>' : ''}
+                    ${_svgIcon(group.icon)}
+                    <span class="nav-label">${group.label}</span>
+                </a>
+                <div class="nav-flyout" aria-hidden="true">
+                    <div class="nav-flyout-header">${group.label}</div>
+                    ${flyoutItemsHTML}
+                </div>
+            </div>`;
+        }
+
         render() {
             if (!this.container) {
 return;
 }
 
-            const groupsHTML = NAV_GROUPS.map(group => {
-                const isActive = this._isGroupActive(group);
-
-                const flyoutItemsHTML = group.children.map(childId => {
-                    const item = _findItem(childId);
-                    if (!item) {
-return '';
-}
-                    const active = this._isActive(childId);
-                    return `<a href="${item.href}" class="nav-flyout-item ${active ? 'active' : ''}">
-                        ${_svgIcon(item.icon)}
-                        <span>${item.label}</span>
-                    </a>`;
-                }).join('');
-
-                return `<div class="nav-group ${isActive ? 'group-active' : ''}" data-group="${group.id}">
-                    <a href="${group.defaultHref}" class="nav-group-header" id="nav-group-header-${group.id}"
-                        data-href="${group.defaultHref}">
-                        ${_svgIcon(group.icon)}
-                        <span class="nav-label">${group.label}</span>
-                    </a>
-                    <div class="nav-flyout" aria-hidden="true">
-                        <div class="nav-flyout-header">${group.label}</div>
-                        ${flyoutItemsHTML}
-                    </div>
-                </div>`;
-            }).join('');
+            const groupsHTML = NAV_GROUPS.map(g => this._renderGroup(g)).join('');
 
             const standaloneHTML = STANDALONE_IDS.map(id => {
                 const item = _findItem(id);
@@ -162,28 +186,21 @@ return '';
                 </a>`;
             }).join('');
 
-            const utilityHTML = UTILITY_NAV.map(item => {
-                const active = this._isActive(item.id);
-                if (item.type === 'button') {
-                    return `<button class="nav-item ${active ? 'active' : ''}" id="navApprovalsBtn" data-id="${item.id}">
-                        <span id="approvalCountBadge" class="approval-count-badge" style="display: none;"></span>
-                        ${_svgIcon(item.icon)}
-                        <span class="nav-label">${item.label}</span>
-                    </button>`;
-                }
-                return `<a href="${item.href}" class="nav-item ${active ? 'active' : ''}" data-id="${item.id}" aria-current="${active ? 'page' : 'false'}">
-                    ${_svgIcon(item.icon)}
-                    <span class="nav-label">${item.label}</span>
-                </a>`;
-            }).join('');
+            const utilityGroupsHTML = UTILITY_GROUPS.map(g => this._renderGroup(g)).join('');
 
-            const overflowGroupChildren = NAV_GROUPS.flatMap(group =>
+            const overflowGroupChildren = _allGroups().flatMap(group =>
                 group.children.filter(id => !MOBILE_PRIMARY.some(m => m.id === id))
                     .map(childId => {
                         const item = _findItem(childId);
                         if (!item) {
 return '';
 }
+                        if (item.type === 'button') {
+                            return `<button class="nav-overflow-item" data-action="${item.id}">
+                                ${_svgIcon(item.icon)}
+                                <span>${item.label}</span>
+                            </button>`;
+                        }
                         return `<a href="${item.href}" class="nav-overflow-item ${this._isActive(childId) ? 'active' : ''}">
                             ${_svgIcon(item.icon)}
                             <span>${item.label}</span>
@@ -191,22 +208,8 @@ return '';
                     })
             ).join('');
 
-            const overflowUtilityHTML = UTILITY_NAV.map(item => {
-                if (item.type === 'button') {
-                    return `<button class="nav-overflow-item" id="navOverflowApprovalsBtn">
-                        ${_svgIcon(item.icon)}
-                        <span>${item.label}</span>
-                    </button>`;
-                }
-                return `<a href="${item.href}" class="nav-overflow-item ${this._isActive(item.id) ? 'active' : ''}">
-                    ${_svgIcon(item.icon)}
-                    <span>${item.label}</span>
-                </a>`;
-            }).join('');
-
             const mobileActiveInOverflow = [
-                ...NAV_GROUPS.flatMap(g => g.children),
-                ...UTILITY_NAV.map(u => u.id)
+                ..._allGroups().flatMap(g => g.children)
             ].filter(id => !MOBILE_PRIMARY.some(m => m.id === id || m.id === _groupForPage(id)?.id))
                 .includes(this.currentPage);
 
@@ -236,7 +239,7 @@ return '';
                     <div class="nav-divider"></div>
 
                     <div class="nav-utility">
-                        ${utilityHTML}
+                        ${utilityGroupsHTML}
                     </div>
 
                     <button class="nav-item nav-logout" id="navLogoutBtn">
@@ -257,7 +260,6 @@ return '';
                 <div class="nav-overflow-backdrop" id="navOverflowBackdrop"></div>
                 <div class="nav-overflow-menu" id="navOverflowMenu" role="menu">
                     ${overflowGroupChildren}
-                    ${overflowUtilityHTML}
                     <button class="nav-overflow-item logout-item" id="navOverflowLogoutBtn">
                         ${_svgIcon('fa-sign-out-alt')}
                         <span>יציאה</span>
@@ -300,14 +302,16 @@ return;
                 }
             });
 
-            const overflowApprovalsBtn = document.getElementById('navOverflowApprovalsBtn');
-            if (overflowApprovalsBtn) {
-                overflowApprovalsBtn.addEventListener('click', async () => {
-                    close();
-                    if (window.taskApprovalSidePanel) {
-                        await window.taskApprovalSidePanel.init();
-                        window.taskApprovalSidePanel.open();
-                    }
+            const overflowMenu = document.getElementById('navOverflowMenu');
+            if (overflowMenu) {
+                overflowMenu.querySelectorAll('[data-action="approvals"]').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        close();
+                        if (window.taskApprovalSidePanel) {
+                            await window.taskApprovalSidePanel.init();
+                            window.taskApprovalSidePanel.open();
+                        }
+                    });
                 });
             }
 
@@ -321,9 +325,8 @@ return;
         }
 
         setupEventListeners() {
-            const approvalsBtn = document.getElementById('navApprovalsBtn');
-            if (approvalsBtn) {
-                approvalsBtn.addEventListener('click', async () => {
+            document.querySelectorAll('[data-action="approvals"]').forEach(btn => {
+                btn.addEventListener('click', async () => {
                     if (window.taskApprovalSidePanel) {
                         await window.taskApprovalSidePanel.init();
                         window.taskApprovalSidePanel.open();
@@ -331,7 +334,7 @@ return;
                         alert('פאנל חריגות התקציב לא נטען כראוי');
                     }
                 });
-            }
+            });
 
             const logoutBtn = document.getElementById('navLogoutBtn');
             if (logoutBtn) {
