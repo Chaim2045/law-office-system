@@ -56,7 +56,7 @@
             id: 'employees-group',
             label: 'עובדים',
             icon: 'fa-users',
-            children: ['users', 'workload', 'reconciliation'],
+            children: ['users', 'workload', 'reconciliation', 'approvals'],
             defaultHref: 'index.html'
         },
         {
@@ -65,6 +65,16 @@
             icon: 'fa-briefcase',
             children: ['clients', 'pending-clients'],
             defaultHref: 'clients.html'
+        }
+    ];
+
+    const UTILITY_GROUPS = [
+        {
+            id: 'settings-group',
+            label: 'הגדרות',
+            icon: 'fa-cog',
+            children: ['settings', 'audit-trail'],
+            defaultHref: 'settings.html'
         }
     ];
 
@@ -82,7 +92,11 @@
     }
 
     function _groupForPage(pageId) {
-        return NAV_GROUPS.find(g => g.children.includes(pageId));
+        return NAV_GROUPS.find(g => g.children.includes(pageId)) || UTILITY_GROUPS.find(g => g.children.includes(pageId));
+    }
+
+    function _allGroups() {
+        return [...NAV_GROUPS, ...UTILITY_GROUPS];
     }
 
     class Navigation {
@@ -122,8 +136,9 @@
 return;
 }
 
-            const groupsHTML = NAV_GROUPS.map(group => {
+            const renderGroup = (group) => {
                 const isActive = this._isGroupActive(group);
+                const hasApprovals = group.children.includes('approvals');
 
                 const flyoutItemsHTML = group.children.map(childId => {
                     const item = _findItem(childId);
@@ -131,6 +146,12 @@ return;
 return '';
 }
                     const active = this._isActive(childId);
+                    if (item.type === 'button') {
+                        return `<button class="nav-flyout-item ${active ? 'active' : ''}" data-action="${item.id}">
+                            ${_svgIcon(item.icon)}
+                            <span>${item.label}</span>
+                        </button>`;
+                    }
                     return `<a href="${item.href}" class="nav-flyout-item ${active ? 'active' : ''}">
                         ${_svgIcon(item.icon)}
                         <span>${item.label}</span>
@@ -140,6 +161,7 @@ return '';
                 return `<div class="nav-group ${isActive ? 'group-active' : ''}" data-group="${group.id}">
                     <a href="${group.defaultHref}" class="nav-group-header" id="nav-group-header-${group.id}"
                         data-href="${group.defaultHref}">
+                        ${hasApprovals ? '<span id="approvalCountBadge" class="approval-count-badge" style="display: none;"></span>' : ''}
                         ${_svgIcon(group.icon)}
                         <span class="nav-label">${group.label}</span>
                     </a>
@@ -148,7 +170,10 @@ return '';
                         ${flyoutItemsHTML}
                     </div>
                 </div>`;
-            }).join('');
+            };
+
+            const groupsHTML = NAV_GROUPS.map(renderGroup).join('');
+            const utilityGroupsHTML = UTILITY_GROUPS.map(renderGroup).join('');
 
             const standaloneHTML = STANDALONE_IDS.map(id => {
                 const item = _findItem(id);
@@ -162,28 +187,21 @@ return '';
                 </a>`;
             }).join('');
 
-            const utilityHTML = UTILITY_NAV.map(item => {
-                const active = this._isActive(item.id);
-                if (item.type === 'button') {
-                    return `<button class="nav-item ${active ? 'active' : ''}" id="navApprovalsBtn" data-id="${item.id}">
-                        <span id="approvalCountBadge" class="approval-count-badge" style="display: none;"></span>
-                        ${_svgIcon(item.icon)}
-                        <span class="nav-label">${item.label}</span>
-                    </button>`;
-                }
-                return `<a href="${item.href}" class="nav-item ${active ? 'active' : ''}" data-id="${item.id}" aria-current="${active ? 'page' : 'false'}">
-                    ${_svgIcon(item.icon)}
-                    <span class="nav-label">${item.label}</span>
-                </a>`;
-            }).join('');
+            const utilityHTML = utilityGroupsHTML;
 
-            const overflowGroupChildren = NAV_GROUPS.flatMap(group =>
+            const overflowGroupChildren = _allGroups().flatMap(group =>
                 group.children.filter(id => !MOBILE_PRIMARY.some(m => m.id === id))
                     .map(childId => {
                         const item = _findItem(childId);
                         if (!item) {
 return '';
 }
+                        if (item.type === 'button') {
+                            return `<button class="nav-overflow-item" id="navOverflowApprovalsBtn">
+                                ${_svgIcon(item.icon)}
+                                <span>${item.label}</span>
+                            </button>`;
+                        }
                         return `<a href="${item.href}" class="nav-overflow-item ${this._isActive(childId) ? 'active' : ''}">
                             ${_svgIcon(item.icon)}
                             <span>${item.label}</span>
@@ -191,22 +209,10 @@ return '';
                     })
             ).join('');
 
-            const overflowUtilityHTML = UTILITY_NAV.map(item => {
-                if (item.type === 'button') {
-                    return `<button class="nav-overflow-item" id="navOverflowApprovalsBtn">
-                        ${_svgIcon(item.icon)}
-                        <span>${item.label}</span>
-                    </button>`;
-                }
-                return `<a href="${item.href}" class="nav-overflow-item ${this._isActive(item.id) ? 'active' : ''}">
-                    ${_svgIcon(item.icon)}
-                    <span>${item.label}</span>
-                </a>`;
-            }).join('');
+            const overflowUtilityHTML = '';
 
             const mobileActiveInOverflow = [
-                ...NAV_GROUPS.flatMap(g => g.children),
-                ...UTILITY_NAV.map(u => u.id)
+                ..._allGroups().flatMap(g => g.children)
             ].filter(id => !MOBILE_PRIMARY.some(m => m.id === id || m.id === _groupForPage(id)?.id))
                 .includes(this.currentPage);
 
@@ -321,7 +327,7 @@ return;
         }
 
         setupEventListeners() {
-            const approvalsBtn = document.getElementById('navApprovalsBtn');
+            const approvalsBtn = document.querySelector('[data-action="approvals"]');
             if (approvalsBtn) {
                 approvalsBtn.addEventListener('click', async () => {
                     if (window.taskApprovalSidePanel) {
