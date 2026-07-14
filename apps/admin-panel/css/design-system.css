@@ -115,6 +115,9 @@
   /* Maximum elevation */
   --shadow-xl: 0 20px 60px rgb(0 0 0 / 15%);
 
+  /* Sidebar (RTL, casts left) */
+  --shadow-sidebar: -4px 0 20px rgb(0 0 0 / 8%);
+
   /* ========== Z-INDEX LAYERS ========== */
 
   /* Base Levels */
