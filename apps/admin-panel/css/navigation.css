@@ -362,7 +362,7 @@ body {
     }
 
     .nav-item:active {
-        transform: scale(0.97);
+        transform: scale(0.95);
     }
 
     .nav-item.active {
@@ -374,15 +374,15 @@ body {
         text-align: center;
     }
 
-    /* Active indicator — vertical bar on right edge (RTL leading) */
+    /* Active indicator — vertical bar on inner edge (toward content) */
     .nav-item.active::before {
         top: 25%;
         bottom: 25%;
-        right: -8px;
-        left: auto;
+        left: -8px;
+        right: auto;
         width: 3px;
         height: auto;
-        border-radius: 3px 0 0 3px;
+        border-radius: 0 3px 3px 0;
     }
 
     /* ─── Groups on tablet: icon-only, click navigates ─── */
@@ -427,7 +427,7 @@ body {
     }
 
     .nav-group-header:active {
-        transform: scale(0.97);
+        transform: scale(0.95);
     }
 
     .nav-group.group-active .nav-group-header {
@@ -440,12 +440,12 @@ body {
         position: absolute;
         top: 25%;
         bottom: 25%;
-        right: -8px;
-        left: auto;
+        left: -8px;
+        right: auto;
         width: 3px;
         height: auto;
         background: var(--blue);
-        border-radius: 3px 0 0 3px;
+        border-radius: 0 3px 3px 0;
     }
 
     /* Chevron + children hidden on tablet */
@@ -504,7 +504,7 @@ body {
         font-size: var(--text-sm);
         font-weight: var(--font-medium);
         cursor: pointer;
-        transition: background var(--transition-fast), color var(--transition-fast);
+        transition: background var(--transition-fast), color var(--transition-fast), padding-right var(--transition-fast);
         border: none;
         background: none;
         width: 100%;
@@ -523,6 +523,11 @@ body {
     .nav-flyout-item:hover {
         background: var(--gray-50);
         color: var(--blue);
+        padding-right: 20px;
+    }
+
+    .nav-flyout-item:active {
+        background: rgb(0 0 0 / 6%);
     }
 
     .nav-flyout-item.active {
@@ -634,7 +639,7 @@ body {
     }
 
     .nav-item:active {
-        transform: scale(0.97);
+        transform: scale(0.95);
     }
 
     /* Active item bg */
@@ -643,7 +648,7 @@ body {
     }
 
     .nav-item.active::before {
-        right: calc(-1 * var(--space-3));
+        left: calc(-1 * var(--space-3));
     }
 
     /* ─── Group header — full width, horizontal ─── */
@@ -676,7 +681,7 @@ body {
     }
 
     .nav-group-header:active {
-        transform: scale(0.97);
+        transform: scale(0.95);
     }
 
     /* Chevron visible on desktop */
@@ -698,7 +703,7 @@ body {
     }
 
     .nav-group.group-active .nav-group-header::before {
-        right: calc(-1 * var(--space-3));
+        left: calc(-1 * var(--space-3));
     }
 
     /* ─── Group children — expand/collapse ─── */
@@ -766,10 +771,10 @@ body {
         position: absolute;
         top: 25%;
         bottom: 25%;
-        right: calc(-1 * var(--space-3));
+        left: calc(-1 * var(--space-3));
         width: 3px;
         background: var(--blue);
-        border-radius: 3px 0 0 3px;
+        border-radius: 0 3px 3px 0;
     }
 
     /* ─── Collapse toggle — show on sidebar hover ─── */

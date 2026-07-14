@@ -320,7 +320,6 @@ return '';
                     const isTablet = this._desktopMQ && !this._desktopMQ.matches;
 
                     if (isCollapsed || isTablet) {
-                        window.location.href = header.dataset.href;
                         return;
                     }
 
