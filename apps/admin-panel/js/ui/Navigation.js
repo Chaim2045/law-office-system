@@ -1,10 +1,10 @@
 /**
- * Navigation Component — Adaptive Sidebar (PR-NAV-2)
- * קומפוננטת ניווט — סרגל צד אדפטיבי
+ * Navigation Component — Grouped Sidebar (PR-NAV-2, Approach A)
  *
  * Mobile (<768px): bottom bar, 5 primary + "More" overflow
  * Tablet (768-1023px): icon-only sidebar 68px on right
- * Desktop (≥1024px): full sidebar 200px, collapsible to 68px
+ * Desktop (>=1024px): full sidebar 220px, collapsible to 68px
+ * Groups expand/collapse on click (desktop only)
  */
 
 (function() {
@@ -26,36 +26,94 @@
         { id: 'announcements', label: 'הודעות מערכת', icon: 'fa-bullhorn', href: 'system-announcements.html' }
     ];
 
-    const MOBILE_PRIMARY_COUNT = 5;
-
     const UTILITY_NAV = [
         { id: 'approvals', label: 'חריגות תקציב', icon: 'fa-triangle-exclamation', type: 'button' },
         { id: 'audit-trail', label: 'לוג פעילות', icon: 'fa-history', href: 'audit-trail.html' },
         { id: 'settings', label: 'הגדרות', icon: 'fa-cog', href: 'settings.html' }
     ];
 
+    const NAV_GROUPS = [
+        {
+            id: 'employees-group',
+            label: 'עובדים',
+            icon: 'fa-users',
+            children: ['users', 'workload', 'reconciliation'],
+            defaultHref: 'index.html'
+        },
+        {
+            id: 'clients-group',
+            label: 'לקוחות',
+            icon: 'fa-briefcase',
+            children: ['clients', 'pending-clients'],
+            defaultHref: 'clients.html'
+        }
+    ];
+
+    const STANDALONE_IDS = ['profitability', 'announcements'];
+
+    const MOBILE_PRIMARY = [
+        { id: 'employees-group', label: 'עובדים', icon: 'fa-users', href: 'index.html' },
+        { id: 'clients-group', label: 'לקוחות', icon: 'fa-briefcase', href: 'clients.html' },
+        { id: 'profitability', label: 'רווחיות', icon: 'fa-money-bill-trend-up', href: 'profitability.html' },
+        { id: 'announcements', label: 'הודעות', icon: 'fa-bullhorn', href: 'system-announcements.html' }
+    ];
+
+    function _findItem(id) {
+        return PRIMARY_NAV.find(item => item.id === id) || UTILITY_NAV.find(item => item.id === id);
+    }
+
+    function _groupForPage(pageId) {
+        return NAV_GROUPS.find(g => g.children.includes(pageId));
+    }
+
     class Navigation {
         constructor() {
             this.container = null;
             this.currentPage = null;
+            this.rawPage = null;
             this.approvalCountInterval = null;
             this._desktopMQ = null;
         }
 
         init(currentPage = 'users') {
+            this.rawPage = currentPage;
             this.currentPage = SUB_PAGE_PARENTS[currentPage] || currentPage;
             this.container = document.getElementById('navigationContainer');
 
             if (!this.container) {
-                console.warn('⚠️ Navigation container not found');
+                console.warn('Navigation container not found');
                 return;
             }
 
             this.render();
             this.setupEventListeners();
+            this.setupGroupToggle();
             this.setupCollapseToggle();
             this.setupMobileOverflow();
             this.startApprovalCountListener();
+        }
+
+        _isActive(id) {
+            return id === this.currentPage;
+        }
+
+        _isGroupActive(group) {
+            return group.children.includes(this.currentPage);
+        }
+
+        _getExpandedGroups() {
+            try {
+                const stored = localStorage.getItem('admin-nav-expanded');
+                return stored ? JSON.parse(stored) : [];
+            } catch {
+ return [];
+}
+        }
+
+        _saveExpandedGroups(ids) {
+            try {
+                localStorage.setItem('admin-nav-expanded', JSON.stringify(ids));
+            } catch { /* localStorage unavailable */ }
         }
 
         render() {
@@ -63,59 +121,110 @@
 return;
 }
 
-            const primaryHTML = PRIMARY_NAV.map(item => `
-                <a href="${item.href}" class="nav-item ${item.id === this.currentPage ? 'active' : ''}" data-id="${item.id}" aria-current="${item.id === this.currentPage ? 'page' : 'false'}">
-                    <i class="fas ${item.icon}"></i>
-                    <span class="nav-label">${item.label}</span>
-                </a>
-            `).join('');
+            const expandedGroups = this._getExpandedGroups();
+            const activeGroup = _groupForPage(this.currentPage);
 
-            const utilityHTML = UTILITY_NAV.map(item => {
-                const isActive = item.id === this.currentPage ? 'active' : '';
-                if (item.type === 'button') {
-                    return `
-                        <button class="nav-item ${isActive}" id="navApprovalsBtn" data-id="${item.id}">
-                            <span id="approvalCountBadge" class="approval-count-badge" style="display: none;"></span>
-                            <i class="fas ${item.icon}"></i>
-                            <span class="nav-label">${item.label}</span>
-                        </button>`;
-                }
-                return `
-                    <a href="${item.href}" class="nav-item ${isActive}" data-id="${item.id}" aria-current="${item.id === this.currentPage ? 'page' : 'false'}">
+            const groupsHTML = NAV_GROUPS.map(group => {
+                const isActive = this._isGroupActive(group);
+                const isExpanded = isActive || expandedGroups.includes(group.id);
+
+                const childrenHTML = group.children.map(childId => {
+                    const item = _findItem(childId);
+                    if (!item) {
+return '';
+}
+                    const active = this._isActive(childId);
+                    return `<a href="${item.href}" class="nav-sub-item ${active ? 'active' : ''}" data-id="${item.id}" aria-current="${active ? 'page' : 'false'}">
                         <i class="fas ${item.icon}"></i>
                         <span class="nav-label">${item.label}</span>
                     </a>`;
+                }).join('');
+
+                return `<div class="nav-group ${isActive ? 'group-active' : ''}" data-group="${group.id}">
+                    <button class="nav-group-header" id="nav-group-header-${group.id}"
+                        role="button" aria-expanded="${isExpanded}" aria-controls="nav-group-${group.id}"
+                        data-href="${group.defaultHref}">
+                        <i class="fas ${group.icon}"></i>
+                        <span class="nav-label">${group.label}</span>
+                        <i class="fas fa-chevron-down nav-group-chevron"></i>
+                    </button>
+                    <div class="nav-group-children ${isExpanded ? 'expanded' : ''}" id="nav-group-${group.id}"
+                        role="group" aria-labelledby="nav-group-header-${group.id}">
+                        ${childrenHTML}
+                    </div>
+                </div>`;
             }).join('');
 
-            const overflowItems = PRIMARY_NAV.slice(MOBILE_PRIMARY_COUNT);
-            const overflowHTML = [
-                ...overflowItems.map(item => `
-                    <a href="${item.href}" class="nav-overflow-item ${item.id === this.currentPage ? 'active' : ''}">
+            const standaloneHTML = STANDALONE_IDS.map(id => {
+                const item = _findItem(id);
+                if (!item) {
+return '';
+}
+                const active = this._isActive(id);
+                return `<a href="${item.href}" class="nav-item ${active ? 'active' : ''}" data-id="${item.id}" aria-current="${active ? 'page' : 'false'}">
+                    <i class="fas ${item.icon}"></i>
+                    <span class="nav-label">${item.label}</span>
+                </a>`;
+            }).join('');
+
+            const utilityHTML = UTILITY_NAV.map(item => {
+                const active = this._isActive(item.id);
+                if (item.type === 'button') {
+                    return `<button class="nav-item ${active ? 'active' : ''}" id="navApprovalsBtn" data-id="${item.id}">
+                        <span id="approvalCountBadge" class="approval-count-badge" style="display: none;"></span>
                         <i class="fas ${item.icon}"></i>
-                        <span>${item.label}</span>
-                    </a>`),
-                ...UTILITY_NAV.map(item => {
-                    if (item.type === 'button') {
-                        return `
-                            <button class="nav-overflow-item" id="navOverflowApprovalsBtn">
-                                <i class="fas ${item.icon}"></i>
-                                <span>${item.label}</span>
-                            </button>`;
-                    }
-                    return `
-                        <a href="${item.href}" class="nav-overflow-item ${item.id === this.currentPage ? 'active' : ''}">
+                        <span class="nav-label">${item.label}</span>
+                    </button>`;
+                }
+                return `<a href="${item.href}" class="nav-item ${active ? 'active' : ''}" data-id="${item.id}" aria-current="${active ? 'page' : 'false'}">
+                    <i class="fas ${item.icon}"></i>
+                    <span class="nav-label">${item.label}</span>
+                </a>`;
+            }).join('');
+
+            const overflowGroupChildren = NAV_GROUPS.flatMap(group =>
+                group.children.filter(id => !MOBILE_PRIMARY.some(m => m.id === id))
+                    .map(childId => {
+                        const item = _findItem(childId);
+                        if (!item) {
+return '';
+}
+                        return `<a href="${item.href}" class="nav-overflow-item ${this._isActive(childId) ? 'active' : ''}">
                             <i class="fas ${item.icon}"></i>
                             <span>${item.label}</span>
                         </a>`;
-                }),
-                `<button class="nav-overflow-item logout-item" id="navOverflowLogoutBtn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>יציאה</span>
-                </button>`
-            ].join('');
+                    })
+            ).join('');
 
-            const isOverflowActive = [...overflowItems, ...UTILITY_NAV]
-                .some(item => item.id === this.currentPage);
+            const overflowUtilityHTML = UTILITY_NAV.map(item => {
+                if (item.type === 'button') {
+                    return `<button class="nav-overflow-item" id="navOverflowApprovalsBtn">
+                        <i class="fas ${item.icon}"></i>
+                        <span>${item.label}</span>
+                    </button>`;
+                }
+                return `<a href="${item.href}" class="nav-overflow-item ${this._isActive(item.id) ? 'active' : ''}">
+                    <i class="fas ${item.icon}"></i>
+                    <span>${item.label}</span>
+                </a>`;
+            }).join('');
+
+            const mobileActiveInOverflow = [
+                ...NAV_GROUPS.flatMap(g => g.children),
+                ...UTILITY_NAV.map(u => u.id)
+            ].filter(id => !MOBILE_PRIMARY.some(m => m.id === id || m.id === _groupForPage(id)?.id))
+                .includes(this.currentPage);
+
+            const mobilePrimaryHTML = MOBILE_PRIMARY.map(item => {
+                const groupMatch = NAV_GROUPS.find(g => g.id === item.id);
+                const isActive = groupMatch
+                    ? this._isGroupActive(groupMatch)
+                    : this._isActive(item.id);
+                return `<a href="${item.href}" class="nav-item ${isActive ? 'active' : ''}" data-id="${item.id}">
+                    <i class="fas ${item.icon}"></i>
+                    <span class="nav-label">${item.label}</span>
+                </a>`;
+            }).join('');
 
             this.container.innerHTML = `
                 <nav class="admin-navigation" role="navigation" aria-label="תפריט ניווט ראשי">
@@ -125,7 +234,8 @@ return;
                     </div>
 
                     <div class="nav-primary">
-                        ${primaryHTML}
+                        ${groupsHTML}
+                        ${standaloneHTML}
                     </div>
 
                     <div class="nav-divider"></div>
@@ -139,10 +249,13 @@ return;
                         <span class="nav-label">יציאה</span>
                     </button>
 
-                    <button class="nav-item nav-more-btn ${isOverflowActive ? 'active' : ''}" id="navMoreBtn" aria-expanded="false" aria-controls="navOverflowMenu">
-                        <i class="fas fa-ellipsis"></i>
-                        <span class="nav-label">עוד</span>
-                    </button>
+                    <div class="nav-mobile-bar">
+                        ${mobilePrimaryHTML}
+                        <button class="nav-item nav-more-btn ${mobileActiveInOverflow ? 'active' : ''}" id="navMoreBtn" aria-expanded="false" aria-controls="navOverflowMenu">
+                            <i class="fas fa-ellipsis"></i>
+                            <span class="nav-label">עוד</span>
+                        </button>
+                    </div>
 
                     <button class="sidebar-toggle" id="sidebarToggle" aria-label="כווץ/הרחב תפריט">
                         <i class="fas fa-chevron-left"></i>
@@ -151,9 +264,58 @@ return;
 
                 <div class="nav-overflow-backdrop" id="navOverflowBackdrop"></div>
                 <div class="nav-overflow-menu" id="navOverflowMenu" role="menu">
-                    ${overflowHTML}
+                    ${overflowGroupChildren}
+                    ${overflowUtilityHTML}
+                    <button class="nav-overflow-item logout-item" id="navOverflowLogoutBtn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>יציאה</span>
+                    </button>
                 </div>
             `;
+        }
+
+        setupGroupToggle() {
+            const headers = this.container.querySelectorAll('.nav-group-header');
+            headers.forEach(header => {
+                header.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const isCollapsed = document.body.classList.contains('sidebar-collapsed');
+                    const isTablet = this._desktopMQ && !this._desktopMQ.matches;
+
+                    if (isCollapsed || isTablet) {
+                        window.location.href = header.dataset.href;
+                        return;
+                    }
+
+                    const groupEl = header.closest('.nav-group');
+                    const childrenEl = groupEl.querySelector('.nav-group-children');
+                    const expanded = header.getAttribute('aria-expanded') === 'true';
+
+                    header.setAttribute('aria-expanded', String(!expanded));
+                    childrenEl.classList.toggle('expanded', !expanded);
+
+                    const groupId = groupEl.dataset.group;
+                    const expandedGroups = this._getExpandedGroups();
+                    if (!expanded) {
+                        if (!expandedGroups.includes(groupId)) {
+expandedGroups.push(groupId);
+}
+                    } else {
+                        const idx = expandedGroups.indexOf(groupId);
+                        if (idx !== -1) {
+expandedGroups.splice(idx, 1);
+}
+                    }
+                    this._saveExpandedGroups(expandedGroups);
+                });
+
+                header.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        header.click();
+                    }
+                });
+            });
         }
 
         setupCollapseToggle() {
@@ -262,13 +424,13 @@ return;
                 await window.firebaseAuth.signOut();
                 window.location.href = 'index.html';
             } catch (error) {
-                console.error('❌ Error signing out:', error);
+                console.error('Error signing out:', error);
             }
         }
 
         startApprovalCountListener() {
             if (!window.firebaseDB) {
-                console.warn('⚠️ Firebase DB not available for budget overrun count');
+                console.warn('Firebase DB not available for budget overrun count');
                 return;
             }
 
@@ -294,7 +456,7 @@ return;
 
                     this.updateApprovalCountBadge(overBudgetCount);
                 } catch (error) {
-                    console.error('❌ Error getting budget overrun count:', error?.code || 'unknown');
+                    console.error('Error getting budget overrun count:', error?.code || 'unknown');
                     this.updateApprovalCountBadge(0);
                 }
             };
