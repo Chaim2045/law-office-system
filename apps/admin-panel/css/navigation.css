@@ -23,7 +23,7 @@
     background: white;
     border-top: 1px solid var(--gray-200);
     box-shadow: 0 -2px 12px rgb(0 0 0 / 8%);
-    z-index: var(--z-overlay-form);
+    z-index: var(--z-sidebar);
     display: flex;
     align-items: center;
     justify-content: space-around;
@@ -31,7 +31,7 @@
     direction: rtl;
 }
 
-body {
+body.has-nav {
     padding-bottom: var(--mobile-bottom-bar-height);
 }
 
@@ -122,10 +122,6 @@ body {
     display: none;
 }
 
-.nav-group-header {
-    display: none;
-}
-
 /* ─── Mobile bottom bar ─── */
 .nav-mobile-bar {
     display: flex;
@@ -151,7 +147,7 @@ body {
     position: fixed;
     inset: 0;
     background: rgb(0 0 0 / 40%);
-    z-index: calc(var(--z-overlay-form) - 1);
+    z-index: var(--z-overlay-form);
 }
 
 .nav-overflow-backdrop.visible {
@@ -168,7 +164,7 @@ body {
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-xl);
     padding: var(--space-3);
-    z-index: var(--z-overlay-form);
+    z-index: calc(var(--z-overlay-form) + 1);
     direction: rtl;
     flex-direction: column;
     gap: var(--space-1);
@@ -282,7 +278,7 @@ body {
         overflow: visible;
     }
 
-    body {
+    body.has-nav {
         padding-bottom: 0;
         padding-right: var(--sidebar-collapsed-width);
     }
@@ -452,7 +448,7 @@ body {
         opacity: 0;
         visibility: hidden;
         transition: opacity var(--transition-smooth), visibility var(--transition-smooth), transform var(--transition-smooth);
-        z-index: calc(var(--z-overlay-form) + 1);
+        z-index: calc(var(--z-sidebar) + 1);
         pointer-events: none;
         direction: rtl;
     }
@@ -529,6 +525,20 @@ body {
         }
     }
 
+    .nav-group:focus-within .nav-flyout {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(-50%) translateX(0);
+        pointer-events: auto;
+    }
+
+    .nav-group.flyout-open .nav-flyout {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(-50%) translateX(0);
+        pointer-events: auto;
+    }
+
     /* Show logout at bottom */
     .nav-logout {
         display: flex;
@@ -568,7 +578,7 @@ body {
         display: none !important;
     }
 
-    body {
+    body.has-nav {
         padding-right: 0 !important;
         padding-bottom: 0 !important;
     }
