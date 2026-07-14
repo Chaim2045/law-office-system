@@ -10,6 +10,27 @@
 (function() {
     'use strict';
 
+    const SVG_ICONS = {
+        'fa-users': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+        'fa-briefcase': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
+        'fa-user-clock': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><circle cx="19" cy="11" r="3"/><path d="M19 9v2l1 1"/></svg>',
+        'fa-chart-line': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>',
+        'fa-money-bill-trend-up': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="m5 17 4-8 4 4 6-10"/><path d="M15 3h4v4"/></svg>',
+        'fa-scale-balanced': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v19"/><path d="M5 8h14"/><path d="m3 13 2-5 2 5a3 3 0 0 1-4 0Z"/><path d="m17 13 2-5 2 5a3 3 0 0 1-4 0Z"/><circle cx="12" cy="3" r="1"/></svg>',
+        'fa-bullhorn': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>',
+        'fa-triangle-exclamation': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+        'fa-history': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>',
+        'fa-cog': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+        'fa-chevron-down': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+        'fa-sign-out-alt': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>',
+        'fa-ellipsis': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
+        'fa-chevron-left': '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>'
+    };
+
+    function _svgIcon(faClass) {
+        return SVG_ICONS[faClass] || '';
+    }
+
     const SUB_PAGE_PARENTS = {
         'employee-costs': 'users',
         'tasks': 'users',
@@ -135,7 +156,7 @@ return '';
 }
                     const active = this._isActive(childId);
                     return `<a href="${item.href}" class="nav-sub-item ${active ? 'active' : ''}" data-id="${item.id}" aria-current="${active ? 'page' : 'false'}">
-                        <i class="fas ${item.icon}"></i>
+                        ${_svgIcon(item.icon)}
                         <span class="nav-label">${item.label}</span>
                     </a>`;
                 }).join('');
@@ -144,9 +165,9 @@ return '';
                     <button class="nav-group-header" id="nav-group-header-${group.id}"
                         role="button" aria-expanded="${isExpanded}" aria-controls="nav-group-${group.id}"
                         data-href="${group.defaultHref}">
-                        <i class="fas ${group.icon}"></i>
+                        ${_svgIcon(group.icon)}
                         <span class="nav-label">${group.label}</span>
-                        <i class="fas fa-chevron-down nav-group-chevron"></i>
+                        ${_svgIcon('fa-chevron-down').replace('class="nav-icon"', 'class="nav-icon nav-group-chevron"')}
                     </button>
                     <div class="nav-group-children ${isExpanded ? 'expanded' : ''}" id="nav-group-${group.id}"
                         role="group" aria-labelledby="nav-group-header-${group.id}">
@@ -162,7 +183,7 @@ return '';
 }
                 const active = this._isActive(id);
                 return `<a href="${item.href}" class="nav-item ${active ? 'active' : ''}" data-id="${item.id}" aria-current="${active ? 'page' : 'false'}">
-                    <i class="fas ${item.icon}"></i>
+                    ${_svgIcon(item.icon)}
                     <span class="nav-label">${item.label}</span>
                 </a>`;
             }).join('');
@@ -172,12 +193,12 @@ return '';
                 if (item.type === 'button') {
                     return `<button class="nav-item ${active ? 'active' : ''}" id="navApprovalsBtn" data-id="${item.id}">
                         <span id="approvalCountBadge" class="approval-count-badge" style="display: none;"></span>
-                        <i class="fas ${item.icon}"></i>
+                        ${_svgIcon(item.icon)}
                         <span class="nav-label">${item.label}</span>
                     </button>`;
                 }
                 return `<a href="${item.href}" class="nav-item ${active ? 'active' : ''}" data-id="${item.id}" aria-current="${active ? 'page' : 'false'}">
-                    <i class="fas ${item.icon}"></i>
+                    ${_svgIcon(item.icon)}
                     <span class="nav-label">${item.label}</span>
                 </a>`;
             }).join('');
@@ -190,7 +211,7 @@ return '';
 return '';
 }
                         return `<a href="${item.href}" class="nav-overflow-item ${this._isActive(childId) ? 'active' : ''}">
-                            <i class="fas ${item.icon}"></i>
+                            ${_svgIcon(item.icon)}
                             <span>${item.label}</span>
                         </a>`;
                     })
@@ -199,12 +220,12 @@ return '';
             const overflowUtilityHTML = UTILITY_NAV.map(item => {
                 if (item.type === 'button') {
                     return `<button class="nav-overflow-item" id="navOverflowApprovalsBtn">
-                        <i class="fas ${item.icon}"></i>
+                        ${_svgIcon(item.icon)}
                         <span>${item.label}</span>
                     </button>`;
                 }
                 return `<a href="${item.href}" class="nav-overflow-item ${this._isActive(item.id) ? 'active' : ''}">
-                    <i class="fas ${item.icon}"></i>
+                    ${_svgIcon(item.icon)}
                     <span>${item.label}</span>
                 </a>`;
             }).join('');
@@ -221,7 +242,7 @@ return '';
                     ? this._isGroupActive(groupMatch)
                     : this._isActive(item.id);
                 return `<a href="${item.href}" class="nav-item ${isActive ? 'active' : ''}" data-id="${item.id}">
-                    <i class="fas ${item.icon}"></i>
+                    ${_svgIcon(item.icon)}
                     <span class="nav-label">${item.label}</span>
                 </a>`;
             }).join('');
@@ -245,20 +266,20 @@ return '';
                     </div>
 
                     <button class="nav-item nav-logout" id="navLogoutBtn">
-                        <i class="fas fa-sign-out-alt"></i>
+                        ${_svgIcon('fa-sign-out-alt')}
                         <span class="nav-label">יציאה</span>
                     </button>
 
                     <div class="nav-mobile-bar">
                         ${mobilePrimaryHTML}
                         <button class="nav-item nav-more-btn ${mobileActiveInOverflow ? 'active' : ''}" id="navMoreBtn" aria-expanded="false" aria-controls="navOverflowMenu">
-                            <i class="fas fa-ellipsis"></i>
+                            ${_svgIcon('fa-ellipsis')}
                             <span class="nav-label">עוד</span>
                         </button>
                     </div>
 
                     <button class="sidebar-toggle" id="sidebarToggle" aria-label="כווץ/הרחב תפריט">
-                        <i class="fas fa-chevron-left"></i>
+                        ${_svgIcon('fa-chevron-left')}
                     </button>
                 </nav>
 
@@ -267,7 +288,7 @@ return '';
                     ${overflowGroupChildren}
                     ${overflowUtilityHTML}
                     <button class="nav-overflow-item logout-item" id="navOverflowLogoutBtn">
-                        <i class="fas fa-sign-out-alt"></i>
+                        ${_svgIcon('fa-sign-out-alt')}
                         <span>יציאה</span>
                     </button>
                 </div>
