@@ -13,6 +13,8 @@ import { describe, it, expect } from 'vitest';
 import {
   formatAmount,
   formatDate,
+  signatureFailureMessage,
+  releaseErrorMessage,
   MISSING
 } from '../../../apps/admin-panel/js/core/pending-clients-format.js';
 
@@ -68,5 +70,71 @@ describe('formatDate — DD/MM/YYYY, TZ-independent', () => {
 
   it('a non-date string → "—"', () => {
     expect(formatDate('not-a-date')).toBe(MISSING);
+  });
+});
+
+describe('signatureFailureMessage — H.6.c-3, NEVER the model reasoning (booleans only)', () => {
+  it('both missing → a combined Hebrew message', () => {
+    expect(signatureFailureMessage({ clientSignaturePresent: false, lawyerSignaturePresent: false }))
+      .toBe('בדיקת החתימה לא זיהתה חתימת לקוח וחתימת עורך דין במסמך.');
+  });
+
+  it('only client missing', () => {
+    expect(signatureFailureMessage({ clientSignaturePresent: false, lawyerSignaturePresent: true }))
+      .toBe('בדיקת החתימה לא זיהתה חתימת לקוח במסמך.');
+  });
+
+  it('only lawyer missing', () => {
+    expect(signatureFailureMessage({ clientSignaturePresent: true, lawyerSignaturePresent: false }))
+      .toBe('בדיקת החתימה לא זיהתה חתימת עורך דין במסמך.');
+  });
+
+  it('both present but confidence below threshold', () => {
+    expect(signatureFailureMessage({ clientSignaturePresent: true, lawyerSignaturePresent: true }))
+      .toBe('בדיקת החתימה לא עברה את סף הביטחון הנדרש.');
+  });
+
+  it('accepts no `reasoning` field at all — the function signature has no such parameter', () => {
+    // The verdict shape only ever carries the two booleans + confidence; passing
+    // an extra reasoning field (as a defensive caller might) must not surface it.
+    const msg = signatureFailureMessage({
+      clientSignaturePresent: false,
+      lawyerSignaturePresent: true,
+      // @ts-expect-error — extra field the CF never sends on a failed verdict
+      reasoning: 'PII-SENTINEL-SHOULD-NEVER-APPEAR'
+    });
+    expect(msg).not.toContain('PII-SENTINEL-SHOULD-NEVER-APPEAR');
+  });
+});
+
+describe('releaseErrorMessage — Hebrew, by HttpsError code, never a raw FirebaseError', () => {
+  it('permission-denied', () => {
+    expect(releaseErrorMessage({ code: 'permission-denied' }))
+      .toBe('אין לך הרשאה לאשר לקוח לאחר בדיקת חתימה. רק מנהל מערכת רשאי.');
+  });
+
+  it('not-found', () => {
+    expect(releaseErrorMessage({ code: 'not-found' }))
+      .toBe('הלקוח או רשומת ההמתנה לחתימה לא נמצאו.');
+  });
+
+  it('failed-precondition with a Hebrew server message passes it through', () => {
+    expect(releaseErrorMessage({ code: 'failed-precondition', message: 'סכום העסקה שונה.' }))
+      .toBe('סכום העסקה שונה.');
+  });
+
+  it('failed-precondition with no Hebrew message falls back to a generic Hebrew line', () => {
+    expect(releaseErrorMessage({ code: 'failed-precondition', message: 'FirebaseError: 9 FAILED_PRECONDITION' }))
+      .toBe('לא ניתן לשחרר את הלקוח כעת. יש לבדוק את פרטי הלקוח.');
+  });
+
+  it('unavailable', () => {
+    expect(releaseErrorMessage({ code: 'unavailable' }))
+      .toBe('השרת אינו זמין כעת. בדוק את החיבור לאינטרנט ונסה שוב.');
+  });
+
+  it('unknown code with no message → generic Hebrew fallback (never English/stack)', () => {
+    const msg = releaseErrorMessage({ code: 'internal', message: 'Error: boom at foo.js:12:3' });
+    expect(msg).toBe('אירעה שגיאה בעת אישור הלקוח. אנא נסה שוב או פנה לתמיכה.');
   });
 });

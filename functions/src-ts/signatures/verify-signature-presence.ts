@@ -38,6 +38,18 @@
  * the H.5 checkpoint it ships as PLUMBING (no live consumer until H.6); a DPA /
  * privacy-law basis is an H.6 prerequisite BEFORE it is wired to real PROD data.
  * Tests mock the SDK boundary — no real document egresses in DEV/CI.
+ *
+ * ─── H.6.c-3 extraction (`verifySignatureCore`) ──────────────────────────────
+ * The resolve-agreement → audit-first → download → call-Claude → parse-verdict
+ * sequence (originally inline in the handler) is extracted into
+ * {@link verifySignatureCore} so a SECOND caller (the H.6.c-3
+ * `releaseClientFromPendingSignature` cutover CF) can invoke the exact same
+ * verification logic WITHOUT fabricating a `CallableRequest` — it already has a
+ * real `callerUid` from its own admin gate. The core returns the FULL verdict
+ * (including `reasoning`); callers decide whether to persist/return it (H.6.c-3
+ * NEVER returns `reasoning` — it may contain PII quoted off the document). This
+ * handler (`verifySignaturePresenceHandler`) is now a thin wrapper: auth gate +
+ * input validation + delegate to the core.
  */
 import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
@@ -161,39 +173,30 @@ function resolveMediaType(meta: FeeAgreementMeta): string | null {
 }
 
 /**
- * Internal handler — exported separately for direct unit testing (the SDK +
- * Storage + Firestore boundaries are mocked; no real document egresses).
+ * Core signature-presence verification — resolve the stored agreement, audit
+ * FIRST, download the document, call Claude, parse + return the FULL verdict
+ * (including `reasoning`). Exported so a second caller (H.6.c-3
+ * `releaseClientFromPendingSignature`) can invoke the SAME verification logic
+ * with a real `callerUid` it already has — no `CallableRequest` fabrication.
+ *
+ * The caller is responsible for its OWN auth gate (this function does not
+ * re-check `role==='admin'` — both current callers are admin-gated upstream)
+ * and for deciding whether `reasoning` may be persisted/returned downstream
+ * (it can quote PII off the document — NEVER write it to Firestore/logs).
+ *
+ * @param callerUid the acting admin's UID (already auth-gated by the caller).
+ * @param clientId the entity id (charset-bounded by the caller's own schema).
+ * @param agreementId the fee-agreement id (charset-bounded by the caller).
+ * @param collection `'clients'` (default) or `'cases'`.
+ * @throws HttpsError with a Hebrew message on any resolution/egress failure.
  */
-export async function verifySignaturePresenceHandler(
-  request: CallableRequest<unknown>
+export async function verifySignatureCore(
+  callerUid: string,
+  clientId: string,
+  agreementId: string,
+  collection: 'clients' | 'cases' = 'clients'
 ): Promise<VerifySignatureResponse> {
-  // ─── (1) Auth gate (role-only admin) ──────────────────────────────────────
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'נדרשת התחברות למערכת.');
-  }
-  const claims = (request.auth.token ?? {}) as { role?: string };
-  if (claims.role !== 'admin') {
-    throw new HttpsError('permission-denied', 'רק מנהל מערכת רשאי לבדוק חתימות.');
-  }
-  const callerUid = request.auth.uid;
-
-  // ─── (2) Input validation (Zod, strict) ───────────────────────────────────
-  const parsed = verifySignatureInputSchema.safeParse(request.data);
-  if (!parsed.success) {
-    const fieldPath = parsed.error.issues[0]?.path?.join('.') ?? 'clientId';
-    logger.warn('signature.verify.invalid_input', {
-      actor: { uid: callerUid },
-      issueField: fieldPath
-    });
-    throw new HttpsError(
-      'invalid-argument',
-      `נתונים לא תקינים: שדה "${fieldPath}". אנא נסה שוב.`
-    );
-  }
-  const { clientId, agreementId } = parsed.data;
-  const collection = parsed.data.collection ?? 'clients';
-
-  // ─── (3) Resolve the entity doc + the agreement metadata (a READ, no egress) ─
+  // ─── (1) Resolve the entity doc + the agreement metadata (a READ, no egress) ─
   let entitySnap;
   try {
     entitySnap = await admin.firestore().collection(collection).doc(clientId).get();
@@ -239,7 +242,7 @@ export async function verifySignaturePresenceHandler(
     throw new HttpsError('failed-precondition', 'נתיב קובץ ההסכם אינו תקין.');
   }
 
-  // ─── (4) AUDIT-FIRST, EGRESS-SECOND (fail-secure) ─────────────────────────
+  // ─── (2) AUDIT-FIRST, EGRESS-SECOND (fail-secure) ─────────────────────────
   // The access is recorded BEFORE the document is downloaded or sent to the
   // external API. If this write fails, NO document leaves the system. Payload is
   // non-PII: business ids only (never the PDF, signatures, name, or reasoning).
@@ -254,7 +257,7 @@ export async function verifySignaturePresenceHandler(
     );
   }
 
-  // ─── (5) Download the document from Storage (Admin SDK, trusted path) ──────
+  // ─── (3) Download the document from Storage (Admin SDK, trusted path) ──────
   let documentBase64: string;
   try {
     const [buf] = await admin.storage().bucket().file(storagePath).download();
@@ -279,7 +282,7 @@ export async function verifySignaturePresenceHandler(
     throw new HttpsError('unavailable', 'לא ניתן להוריד את קובץ ההסכם כעת. אנא נסה שוב.');
   }
 
-  // ─── (6) Build the document/image content block + call Claude ──────────────
+  // ─── (4) Build the document/image content block + call Claude ──────────────
   const isPdf = mediaType === 'application/pdf';
   const documentBlock = isPdf
     ? { type: 'document', source: { type: 'base64', media_type: mediaType, data: documentBase64 } }
@@ -311,7 +314,7 @@ export async function verifySignaturePresenceHandler(
     );
   }
 
-  // ─── (7) Parse + validate the structured verdict ───────────────────────────
+  // ─── (5) Parse + validate the structured verdict ───────────────────────────
   // Prefer the SDK's parsed_output if present; else parse the schema-constrained
   // JSON from the text block (output_config.format guarantees the response text
   // matches OUTPUT_JSON_SCHEMA). Either way the verdict is re-validated by Zod
@@ -340,7 +343,7 @@ export async function verifySignaturePresenceHandler(
     verdict.lawyerSignaturePresent &&
     confidence >= SIGNATURE_CONFIDENCE_THRESHOLD;
 
-  // ─── (8) Non-PII usage + outcome log (NEVER the reasoning / PDF / key) ──────
+  // ─── (6) Non-PII usage + outcome log (NEVER the reasoning / PDF / key) ──────
   logger.info('signature.verify.completed', {
     actor: { uid: callerUid },
     clientId,
@@ -360,6 +363,45 @@ export async function verifySignaturePresenceHandler(
     reasoning: verdict.reasoning,
     passed
   };
+}
+
+/**
+ * Internal handler — exported separately for direct unit testing (the SDK +
+ * Storage + Firestore boundaries are mocked; no real document egresses). Now a
+ * thin wrapper: auth gate + input validation, then delegates to
+ * {@link verifySignatureCore}.
+ */
+export async function verifySignaturePresenceHandler(
+  request: CallableRequest<unknown>
+): Promise<VerifySignatureResponse> {
+  // ─── (1) Auth gate (role-only admin) ──────────────────────────────────────
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'נדרשת התחברות למערכת.');
+  }
+  const claims = (request.auth.token ?? {}) as { role?: string };
+  if (claims.role !== 'admin') {
+    throw new HttpsError('permission-denied', 'רק מנהל מערכת רשאי לבדוק חתימות.');
+  }
+  const callerUid = request.auth.uid;
+
+  // ─── (2) Input validation (Zod, strict) ───────────────────────────────────
+  const parsed = verifySignatureInputSchema.safeParse(request.data);
+  if (!parsed.success) {
+    const fieldPath = parsed.error.issues[0]?.path?.join('.') ?? 'clientId';
+    logger.warn('signature.verify.invalid_input', {
+      actor: { uid: callerUid },
+      issueField: fieldPath
+    });
+    throw new HttpsError(
+      'invalid-argument',
+      `נתונים לא תקינים: שדה "${fieldPath}". אנא נסה שוב.`
+    );
+  }
+  const { clientId, agreementId } = parsed.data;
+  const collection = parsed.data.collection ?? 'clients';
+
+  // ─── (3) Delegate to the core (resolve → audit-first → download → model) ───
+  return verifySignatureCore(callerUid, clientId, agreementId, collection);
 }
 
 // ─── v2 Cloud Function wrapper ──────────────────────────────────────────────

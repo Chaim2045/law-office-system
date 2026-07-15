@@ -59,9 +59,72 @@
     return dd + '/' + mm + '/' + d.getUTCFullYear();
   }
 
+  /**
+   * H.6.c-3: builds a Hebrew explanation of a FAILED/borderline signature verdict
+   * from the two presence booleans ONLY — NEVER the model's free-text `reasoning`
+   * (the CF never returns it on a failed verdict, and this function never accepts
+   * it as a parameter, so there is nothing to leak here by construction).
+   */
+  function signatureFailureMessage(verdict) {
+    const v = verdict || {};
+    const clientOk = v.clientSignaturePresent === true;
+    const lawyerOk = v.lawyerSignaturePresent === true;
+    if (!clientOk && !lawyerOk) {
+      return 'בדיקת החתימה לא זיהתה חתימת לקוח וחתימת עורך דין במסמך.';
+    }
+    if (!clientOk) {
+      return 'בדיקת החתימה לא זיהתה חתימת לקוח במסמך.';
+    }
+    if (!lawyerOk) {
+      return 'בדיקת החתימה לא זיהתה חתימת עורך דין במסמך.';
+    }
+    return 'בדיקת החתימה לא עברה את סף הביטחון הנדרש.';
+  }
+
+  /**
+   * H.6.c-3: Hebrew message-by-HttpsError-code for releaseClientFromPendingSignature
+   * failures (mirrors the ProfitabilityPage / EmployeeCostsPage pattern). NEVER a
+   * raw FirebaseError / English / stack trace.
+   */
+  function releaseErrorMessage(error) {
+    const code = error && error.code ? String(error.code) : '';
+    switch (code) {
+      case 'unauthenticated':
+      case 'functions/unauthenticated':
+        return 'נדרשת התחברות מחדש למערכת. אנא התחבר ונסה שוב.';
+      case 'permission-denied':
+      case 'functions/permission-denied':
+        return 'אין לך הרשאה לאשר לקוח לאחר בדיקת חתימה. רק מנהל מערכת רשאי.';
+      case 'not-found':
+      case 'functions/not-found':
+        return 'הלקוח או רשומת ההמתנה לחתימה לא נמצאו.';
+      case 'failed-precondition':
+      case 'functions/failed-precondition': {
+        const msg = error && error.message;
+        return typeof msg === 'string' && /[֐-׿]/.test(msg)
+          ? msg
+          : 'לא ניתן לשחרר את הלקוח כעת. יש לבדוק את פרטי הלקוח.';
+      }
+      case 'unavailable':
+      case 'functions/unavailable':
+      case 'deadline-exceeded':
+      case 'functions/deadline-exceeded':
+        return 'השרת אינו זמין כעת. בדוק את החיבור לאינטרנט ונסה שוב.';
+      default: {
+        const m = error && error.message;
+        if (typeof m === 'string' && /[֐-׿]/.test(m)) {
+          return m;
+        }
+        return 'אירעה שגיאה בעת אישור הלקוח. אנא נסה שוב או פנה לתמיכה.';
+      }
+    }
+  }
+
   const api = {
     formatAmount: formatAmount,
     formatDate: formatDate,
+    signatureFailureMessage: signatureFailureMessage,
+    releaseErrorMessage: releaseErrorMessage,
     MISSING: MISSING
   };
 

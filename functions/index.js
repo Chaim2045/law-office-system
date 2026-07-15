@@ -191,6 +191,19 @@ exports.verifySignaturePresence = verifySignaturePresenceModule.verifySignatureP
 const createClientFromSalesRecordModule = require('./lib/cutover/create-client-from-sales-record');
 exports.createClientFromSalesRecord = createClientFromSalesRecordModule.createClientFromSalesRecord;
 
+// Cutover — signature-gated release from pending (TS — Phase 2 H.6.c-3). Admin-gated
+// v2 onCall: resolves salesRecordId -> {caseNumber, serviceId} via the c-1
+// pending_signature_intents marker, verifies the LAST-uploaded feeAgreement via the
+// SHARED H.5 core (verifySignatureCore — no CallableRequest fabrication), and on a
+// passed verdict LIVE-reads the sale, checks the fee hasn't drifted (₪1 tolerance),
+// then ATOMICALLY flips the client to 'active' + writes the permanent
+// sales_record_links fee-snapshot doc (the write c-1 deferred to this CF). NEVER
+// returns the H.5 `reasoning` (PII risk). Audit-FIRST in-txn; TOCTOU-safe (a
+// concurrent re-release is an idempotent {released:false, reason:'CLIENT_ALREADY_
+// RELEASED'} no-op, not an error).
+const releaseClientFromPendingSignatureModule = require('./lib/cutover/release-client-from-pending-signature');
+exports.releaseClientFromPendingSignature = releaseClientFromPendingSignatureModule.releaseClientFromPendingSignature;
+
 // Budget Tasks Functions (imported from ./budget-tasks)
 const budgetTasks = require('./budget-tasks');
 exports.createBudgetTask = budgetTasks.createBudgetTask;
