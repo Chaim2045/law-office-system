@@ -273,8 +273,8 @@ body.has-nav {
         gap: var(--space-1);
         border-top: none;
         border-left: 1px solid var(--gray-200);
-        background: white;
-        box-shadow: none;
+        background: var(--gray-50);
+        box-shadow: var(--shadow-sidebar);
         overflow: visible;
     }
 
@@ -295,7 +295,7 @@ body.has-nav {
         justify-content: center;
         padding: var(--space-3) 0 var(--space-5);
         margin-bottom: var(--space-3);
-        border-bottom: 1px solid var(--gray-100);
+        border-bottom: 1px solid var(--gray-200);
     }
 
     .brand-logo {
