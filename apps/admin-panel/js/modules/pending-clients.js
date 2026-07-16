@@ -4,11 +4,10 @@
  * Lists unlinked tofes-mecher sales records (listUnlinkedSalesRecords). The admin
  * fail-closed gate lives in pending-clients.html.
  *
- * H.6.c-1: the unlinked-records approve+create action stays DISABLED. createClientFromSalesRecord
- * now creates a PENDING (pending_signature) client via the two-phase signature-gated flow — not
- * an active client — so the old one-click "approve → active client" UX would misrepresent the
- * result on THAT table. The action button there is rendered disabled with a Hebrew "under
- * construction" notice.
+ * H.6.c-4: the unlinked-records approve+create action is ENABLED. createClientFromSalesRecord
+ * creates a PENDING (pending_signature) client via the two-phase signature-gated flow. The button
+ * confirms (name + amount) → calls the CF → the new pending client appears in the section below.
+ * The admin then uploads a fee agreement on the client page and verifies the signature from here.
  *
  * H.6.c-3: a SECOND section — "לקוחות ממתינים לחתימה" — lists clients already in
  * `status:'pending_signature'` (queried directly from `clients`, since listUnlinkedSalesRecords
@@ -33,8 +32,7 @@
 
   let listUnlinkedSalesRecords = null;
   let releaseClientFromPendingSignature = null;
-  // H.6.c-1: createClientFromSalesRecord is intentionally NOT wired here — the create
-  // action is disabled while the signature-gated flow (H.6.c) is under construction.
+  let createClientFromSalesRecord = null;
   let currentData = null;
   let handlerAttached = false;
   // salesRecordId -> record (raw tofes snapshot). Avoids round-tripping
@@ -45,6 +43,8 @@
   let pendingClientsByCase = {};
   // caseNumber -> true while a release call for that case is in flight (loading state).
   const releasingByCase = {};
+  // salesRecordId -> true while a create call for that sale is in flight (loading state).
+  const creatingBySale = {};
 
   function getSection() {
     return document.getElementById(SECTION_ID);
@@ -70,6 +70,7 @@
     const functions = firebase.app().functions('us-central1');
     listUnlinkedSalesRecords = functions.httpsCallable('listUnlinkedSalesRecords');
     releaseClientFromPendingSignature = functions.httpsCallable('releaseClientFromPendingSignature');
+    createClientFromSalesRecord = functions.httpsCallable('createClientFromSalesRecord');
 
     // Attach the delegated click handler ONCE on the persistent section element.
     const section = getSection();
@@ -259,17 +260,13 @@
         + '  <td class="pc-amount">' + window.escapeHtml(formatAmount(record.amountWithVat)) + '</td>'
         + '  <td>' + escapedType + '</td>'
         + '  <td class="pc-date">' + window.escapeHtml(formatDate(record.timestampIso)) + '</td>'
-        // H.6.c-1: the approve-and-create action is DISABLED while the signature-gated
-        // flow is under construction (H.6.c). createClientFromSalesRecord now creates a
-        // PENDING (not active) client via the two-phase pending_signature flow, so the old
-        // one-click "approve → active client" UX would misrepresent the result. The button
-        // is rendered disabled + a click surfaces a Hebrew "under construction" notice.
-        // Listing/table rendering is intact; only the create action is blocked.
         + '  <td>'
-        + '    <button class="pc-btn-approve" type="button" disabled'
+        + '    <button class="pc-btn-approve pc-btn-create" type="button"'
+        + (!!creatingBySale[record.salesRecordId] ? ' disabled' : '')
         + '      data-sales-id="' + escapedSalesId + '"'
-        + '      aria-label="יצירת לקוח דרך שער החתימה — בבנייה">'
-        + '      <i class="fas fa-hard-hat" aria-hidden="true"></i> בבנייה (H.6.c)'
+        + '      aria-label="אשר וצור לקוח ממתין עבור ' + escapedName + '">'
+        + '      <i class="fas ' + (creatingBySale[record.salesRecordId] ? 'fa-spinner fa-spin' : 'fa-user-plus') + '" aria-hidden="true"></i> '
+        + (creatingBySale[record.salesRecordId] ? 'יוצר לקוח...' : 'אשר וצור לקוח')
         + '    </button>'
         + '  </td>'
         + '</tr>';
@@ -306,30 +303,76 @@
       + renderPendingSignatureSectionHtml(pendingClients);
   }
 
-  // H.6.c-1: the unlinked-records create action stays DISABLED — createClientFromSalesRecord
-  // creates a PENDING (pending_signature) client via the two-phase flow, so a one-click
-  // "approve → active client" UX on THAT table would misrepresent the result. A click on the
-  // (disabled) button surfaces a Hebrew "under construction" notice.
-  //
-  // H.6.c-3: the verify+release button ('.pc-btn-verify') in the pending-signature section
-  // IS wired — it calls releaseClientFromPendingSignature after a confirm dialog.
   function handleApproveClick(e) {
     const verifyBtn = e.target.closest('.pc-btn-verify');
     if (verifyBtn) {
       handleVerifyClick(verifyBtn);
       return;
     }
-    const btn = e.target.closest('.pc-btn-approve');
-    if (!btn) {
+    const createBtn = e.target.closest('.pc-btn-create');
+    if (createBtn) {
+      handleCreateClick(createBtn);
       return;
     }
+  }
+
+  async function handleCreateClick(btn) {
+    const salesId = btn.getAttribute('data-sales-id');
+    const record = recordsById[salesId];
+    if (!record || !salesId) {
+      return;
+    }
+    if (creatingBySale[salesId]) {
+      return;
+    }
+
+    const displayName = record.clientName || '—';
+    const displayAmount = formatAmount(record.amountBeforeVat);
+    let confirmed = true;
     if (window.ModalHelpers) {
-      window.ModalHelpers.alert({
-        title: 'בבנייה',
-        message: 'יצירת לקוח דרך שער החתימה — בבנייה (H.6.c). '
-          + 'הפעולה תופעל בהמשך לאחר השלמת בדיקת החתימה.',
-        icon: 'fa-hard-hat'
+      confirmed = await window.ModalHelpers.confirm({
+        title: 'יצירת לקוח ממתין לחתימה',
+        message: 'האם ליצור לקוח ממתין לחתימה עבור <strong>'
+          + window.escapeHtml(displayName)
+          + '</strong> (סכום לפני מע"מ: '
+          + window.escapeHtml(displayAmount) + ')?',
+        confirmText: 'אשר וצור',
+        cancelText: 'ביטול',
+        icon: 'user-plus'
       });
+    }
+    if (!confirmed) {
+      return;
+    }
+
+    creatingBySale[salesId] = true;
+    if (currentData) {
+      renderTable(currentData, pendingClientsById());
+    }
+
+    try {
+      const result = await createClientFromSalesRecord({ salesRecordId: salesId });
+      const data = (result && result.data) || {};
+      if (data.created === true) {
+        toast('success', 'הלקוח נוצר בהצלחה במצב ממתין לחתימה (תיק ' + window.escapeHtml(data.caseNumber || '') + ').');
+      } else if (data.created === false) {
+        toast('info', 'לקוח כבר נוצר בעבר עבור מכר זה (תיק ' + window.escapeHtml(data.caseNumber || '') + ').');
+      }
+    } catch (err) {
+      console.error('[PendingClients] createClientFromSalesRecord failed:', err && err.code);
+      const errCode = err && err.code;
+      let errMsg = 'שגיאה ביצירת הלקוח. אנא נסה שוב.';
+      if (errCode === 'permission-denied') {
+        errMsg = 'אין הרשאה ליצירת לקוח. פנה למנהל המערכת.';
+      } else if (errCode === 'not-found') {
+        errMsg = 'רשומת המכר לא נמצאה. ייתכן שנמחקה.';
+      } else if (errCode === 'already-exists') {
+        errMsg = 'לקוח כבר קיים עבור מכר זה.';
+      }
+      toast('error', errMsg);
+    } finally {
+      delete creatingBySale[salesId];
+      loadData();
     }
   }
 

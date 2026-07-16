@@ -47,12 +47,14 @@ jest.mock('firebase-functions/params', () => ({
 }));
 
 // ─── Mock firebase-admin (firestore + transaction) ────────────────────────────
-type WriteOp = { op: 'set' | 'create' | 'update'; path: string; data: Record<string, unknown> };
+type WriteOp = { op: 'set' | 'create' | 'update' | 'delete'; path: string; data: Record<string, unknown> };
 type DocResp = { exists: boolean; data?: () => Record<string, unknown> };
+type QueryResp = { empty: boolean; docs: Array<{ data: () => Record<string, unknown> }> };
 
 let writeOps: WriteOp[];
 let docResponses: Map<string, DocResp>;
 let docResponseQueues: Map<string, DocResp[]>;
+let queryResponses: Map<string, QueryResp>;
 let runTransactionImpl: ((fn: (txn: unknown) => Promise<unknown>) => Promise<unknown>) | null;
 
 function getDocResponse(p: string): DocResp {
@@ -78,13 +80,21 @@ const mockTransaction = {
   }),
   create: jest.fn((ref: { __path: string }, data: Record<string, unknown>) => {
     writeOps.push({ op: 'create', path: ref.__path, data });
+  }),
+  delete: jest.fn((ref: { __path: string }) => {
+    writeOps.push({ op: 'delete', path: ref.__path, data: {} });
   })
 };
 
 function makeDb() {
   return {
     collection: (col: string) => ({
-      doc: (id: string) => refFor(`${col}/${id}`)
+      doc: (id: string) => refFor(`${col}/${id}`),
+      where: (_field: string, _op: string, _val: unknown) => ({
+        limit: (_n: number) => ({
+          get: async () => queryResponses.get(col) ?? { empty: true, docs: [] }
+        })
+      })
     }),
     runTransaction: (fn: (txn: unknown) => Promise<unknown>) =>
       (runTransactionImpl ?? (async (f) => f(mockTransaction)))(fn)
@@ -180,16 +190,24 @@ function foundSale(extra: Record<string, unknown> = {}) {
   };
 }
 
+const ADMIN_DISPLAY_NAME = 'חיים כהן';
+
 beforeEach(() => {
   jest.clearAllMocks();
   loggerCalls.length = 0;
   writeOps = [];
   docResponses = new Map();
   docResponseQueues = new Map();
+  queryResponses = new Map();
   runTransactionImpl = null;
 
   docResponses.set(`pending_signature_intents/${VALID_ID}`, intentDoc());
   docResponses.set(`clients/${CASE_NUMBER}`, pendingClientDoc());
+
+  queryResponses.set('employees', {
+    empty: false,
+    docs: [{ data: () => ({ username: ADMIN_DISPLAY_NAME, uid: ADMIN_UID }) }]
+  });
 
   mockVerifyCore.mockResolvedValue(passedVerdict());
   mockReadSalesRecord.mockResolvedValue(foundSale());
@@ -446,7 +464,7 @@ describe('releaseClientFromPendingSignature — happy path (release)', () => {
     expect(linkOps[0].op).toBe('create');
   });
 
-  it('audit-FIRST: logCriticalActionInTxn runs BEFORE transaction.update/create', async () => {
+  it('audit-FIRST: logCriticalActionInTxn runs BEFORE transaction.update/delete/create', async () => {
     const order: string[] = [];
     mockLogCriticalInTxn.mockImplementation(() => {
       order.push('audit');
@@ -456,12 +474,16 @@ describe('releaseClientFromPendingSignature — happy path (release)', () => {
       order.push('update');
       writeOps.push({ op: 'update', path: ref.__path, data });
     });
+    mockTransaction.delete.mockImplementation((ref: { __path: string }) => {
+      order.push('delete');
+      writeOps.push({ op: 'delete', path: ref.__path, data: {} });
+    });
     mockTransaction.create.mockImplementation((ref: { __path: string }, data: Record<string, unknown>) => {
       order.push('create');
       writeOps.push({ op: 'create', path: ref.__path, data });
     });
     await releaseClientFromPendingSignatureHandler(makeReq());
-    expect(order).toEqual(['audit', 'update', 'create']);
+    expect(order).toEqual(['audit', 'update', 'delete', 'create']);
   });
 
   it('the audit payload is non-PII (business ids + booleans + confidence, NEVER reasoning/amount)', async () => {
@@ -554,5 +576,85 @@ describe('releaseClientFromPendingSignature — reasoning never on the wire (run
     expect(blob).not.toContain(REASONING_SENTINEL);
     expect(blob).not.toContain(FAKE_ANTHROPIC_KEY);
     expect(blob).not.toContain('sa-key');
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// c-4: lastModifiedBy resolves admin display name
+// ════════════════════════════════════════════════════════════════════════════
+describe('releaseClientFromPendingSignature — lastModifiedBy actor name (c-4)', () => {
+  it('writes the employee username (not raw UID) as lastModifiedBy', async () => {
+    await releaseClientFromPendingSignatureHandler(makeReq());
+    const update = writtenClientUpdate();
+    expect(update.lastModifiedBy).toBe(ADMIN_DISPLAY_NAME);
+  });
+
+  it('falls back to token.name when no employee doc exists', async () => {
+    queryResponses.set('employees', { empty: true, docs: [] });
+    const tokenName = 'Token Name';
+    const res = await releaseClientFromPendingSignatureHandler(
+      makeReq(undefined, { role: 'admin', name: tokenName })
+    );
+    expect(res.released).toBe(true);
+    const update = writtenClientUpdate();
+    expect(update.lastModifiedBy).toBe(tokenName);
+  });
+
+  it('falls back to UID when neither employee doc nor token.name exists', async () => {
+    queryResponses.set('employees', { empty: true, docs: [] });
+    const res = await releaseClientFromPendingSignatureHandler(makeReq());
+    expect(res.released).toBe(true);
+    const update = writtenClientUpdate();
+    expect(update.lastModifiedBy).toBe(ADMIN_UID);
+  });
+
+  it('falls back to UID when employee lookup throws', async () => {
+    queryResponses.set('employees', { empty: true, docs: [] });
+    // Override the collection().where().limit().get() to throw
+    const origMakeDb = jest.requireMock('firebase-admin').firestore;
+    const origDb = origMakeDb();
+    const origCollection = origDb.collection.bind(origDb);
+    jest.spyOn(origDb, 'collection').mockImplementation((col: string) => {
+      if (col === 'employees') {
+        return {
+          where: () => ({ limit: () => ({ get: () => Promise.reject(new Error('network')) }) }),
+          doc: (id: string) => refFor(`${col}/${id}`)
+        };
+      }
+      return origCollection(col);
+    });
+    const res = await releaseClientFromPendingSignatureHandler(makeReq());
+    expect(res.released).toBe(true);
+    const update = writtenClientUpdate();
+    expect(update.lastModifiedBy).toBe(ADMIN_UID);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// c-4: intent cleanup inside the release transaction
+// ════════════════════════════════════════════════════════════════════════════
+describe('releaseClientFromPendingSignature — intent cleanup (c-4)', () => {
+  it('deletes the pending_signature_intents doc inside the transaction on release', async () => {
+    await releaseClientFromPendingSignatureHandler(makeReq());
+    const deleteOps = writeOps.filter((w) => w.op === 'delete');
+    expect(deleteOps).toHaveLength(1);
+    expect(deleteOps[0].path).toBe(`pending_signature_intents/${VALID_ID}`);
+  });
+
+  it('does NOT delete the intent when the verdict fails (no release)', async () => {
+    mockVerifyCore.mockResolvedValueOnce(passedVerdict({ passed: false }));
+    await releaseClientFromPendingSignatureHandler(makeReq());
+    const deleteOps = writeOps.filter((w) => w.op === 'delete');
+    expect(deleteOps).toHaveLength(0);
+  });
+
+  it('does NOT delete the intent on a TOCTOU concurrent release (idempotent no-op)', async () => {
+    docResponseQueues.set(`clients/${CASE_NUMBER}`, [
+      pendingClientDoc(),
+      { exists: true, data: () => ({ status: 'active' }) }
+    ]);
+    await releaseClientFromPendingSignatureHandler(makeReq());
+    const deleteOps = writeOps.filter((w) => w.op === 'delete');
+    expect(deleteOps).toHaveLength(0);
   });
 });
