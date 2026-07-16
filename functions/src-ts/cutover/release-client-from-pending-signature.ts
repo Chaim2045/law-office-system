@@ -222,6 +222,31 @@ export async function releaseClientFromPendingSignatureHandler(
     throw new HttpsError('failed-precondition', 'טרם הועלה הסכם שכר טרחה חתום עבור לקוח זה.');
   }
 
+  // ─── (4b) Resolve admin display name — same pattern as createClientFromSalesRecord.
+  let actorName = adminUid;
+  try {
+    const empSnap = await db
+      .collection('employees')
+      .where('uid', '==', adminUid)
+      .limit(1)
+      .get();
+    if (!empSnap.empty) {
+      const uname = (empSnap.docs[0].data() ?? {}).username;
+      if (typeof uname === 'string' && uname.trim().length > 0) {
+        actorName = uname;
+      }
+    } else if (
+      typeof (request.auth!.token as { name?: string }).name === 'string' &&
+      ((request.auth!.token as { name?: string }).name ?? '').trim().length > 0
+    ) {
+      actorName = (request.auth!.token as { name?: string }).name!;
+    }
+  } catch {
+    logger.warn('cutover.release_client.actor_lookup_failed', {
+      actor: { uid: adminUid }
+    });
+  }
+
   // ─── (5) Determine which agreement to verify — the LAST-uploaded entry ────
   const lastAgreement = feeAgreements[feeAgreements.length - 1];
   const agreementId = typeof lastAgreement?.id === 'string' ? lastAgreement.id : '';
@@ -384,11 +409,16 @@ export async function releaseClientFromPendingSignatureHandler(
         status: 'active',
         services: updatedServices,
         activeServices,
-        lastModifiedBy: adminUid,
+        lastModifiedBy: actorName,
         lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
-      // 10f. Permanent fee-snapshot link — `.create()` (race-safe backstop).
+      // 10f. Clean up the now-consumed idempotency intent (the permanent
+      // sales_record_links doc replaces it as the authoritative link).
+      const intentCleanupRef = db.collection(PENDING_SIGNATURE_INTENTS_COLLECTION).doc(salesRecordId);
+      transaction.delete(intentCleanupRef);
+
+      // 10g. Permanent fee-snapshot link — `.create()` (race-safe backstop).
       transaction.create(linksRef, {
         caseNumber,
         salesRecordId,
