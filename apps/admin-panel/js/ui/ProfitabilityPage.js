@@ -552,7 +552,7 @@
         return '<div class="pf-detail">' +
           '<div class="pf-detail-empty" role="status"><i class="fas fa-clock" aria-hidden="true"></i>' +
           '<p>הרווחיות לתיק זה טרם חושבה. לחץ "חשב מחדש" כדי לחשב כעת, או המתן לחישוב היומי (06:30).</p></div>' +
-          self._detailPlanBlock(plan, F) +
+          this._detailPlanBlock(plan, F) +
           '<div class="pf-detail-actions"><button type="button" class="pf-btn pf-btn--primary" data-action="pf-recompute" aria-label="חשב מחדש"><i class="fas fa-rotate" aria-hidden="true"></i> חשב מחדש</button></div>' +
           '</div>';
       }
@@ -564,14 +564,14 @@
 
       return '<div class="pf-detail">' +
         '<dl class="pf-detail-grid">' +
-        self._dt('שעות בפועל', '<span dir="ltr">' + self._escapeHtml(F.formatHours(data.actualHours)) + '</span>') +
-        self._dt('עלות בפועל', '<span dir="ltr" class="' + (cost.available ? '' : 'pf-muted') + '">' + self._escapeHtml(cost.text) + '</span>') +
-        self._dt('כיסוי עלות', '<span class="pf-badge pf-level-' + cov.level + '">' + self._escapeHtml(cov.label) + '</span>') +
-        self._dt('רישומים מתומחרים', '<span dir="ltr">' + self._escapeHtml(costedCount + ' / ' + totalCount) + '</span>') +
-        self._dt('רווח', '<span class="pf-muted">בהמשך (H.6)</span>') +
-        self._dt('חושב לאחרונה', self._escapeHtml(self._isoToRelative(data.computedAtIso))) +
+        this._dt('שעות בפועל', '<span dir="ltr">' + this._escapeHtml(F.formatHours(data.actualHours)) + '</span>') +
+        this._dt('עלות בפועל', '<span dir="ltr" class="' + (cost.available ? '' : 'pf-muted') + '">' + this._escapeHtml(cost.text) + '</span>') +
+        this._dt('כיסוי עלות', '<span class="pf-badge pf-level-' + cov.level + '">' + this._escapeHtml(cov.label) + '</span>') +
+        this._dt('רישומים מתומחרים', '<span dir="ltr">' + this._escapeHtml(costedCount + ' / ' + totalCount) + '</span>') +
+        this._dt('רווח', '<span class="pf-muted">בהמשך (H.6)</span>') +
+        this._dt('חושב לאחרונה', this._escapeHtml(this._isoToRelative(data.computedAtIso))) +
         '</dl>' +
-        self._detailPlanBlock(plan, F) +
+        this._detailPlanBlock(plan, F) +
         '<div class="pf-detail-actions"><button type="button" class="pf-btn pf-btn--primary" data-action="pf-recompute" aria-label="חשב מחדש"><i class="fas fa-rotate" aria-hidden="true"></i> חשב מחדש</button></div>' +
         '</div>';
     },
