@@ -274,7 +274,7 @@
           });
         })
         .catch(function(error) {
-          if (error && error.code === 'not-found') {
+          if (error && (error.code === 'not-found' || error.code === 'functions/not-found')) {
             // NORMAL empty state — employee_costs is ~0 docs today, so a first
             // pick legitimately returns not-found. NOT an error toast.
             self._renderModalForm(modalId, email, name, { hasCurrent: false });
