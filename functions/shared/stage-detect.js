@@ -36,6 +36,22 @@
  * PII: case/service/stage identifiers only. Never a client name, employee email,
  * task description, or hours amount. This repo is PUBLIC and CI logs are
  * world-readable.
+ *
+ * WIRED CALL SITES (inventory — pinned by a test; update both together)
+ * --------------------------------------------------------------------
+ * Exactly three server-side paths CREATE timesheet entries. All three are wired:
+ *   1. addTimeToTask_v2.js            (via addTimeToTaskWithTransaction)
+ *   2. timesheet/index.js             createQuickLogEntry
+ *   3. timesheet/index.js             createTimesheetEntry_v2
+ *
+ * KNOWN EXCLUSION — triggers/timesheet-trigger.js. It also resolves a stage and
+ * applies a deduction, but it re-derives from an entry that ALREADY EXISTS
+ * (the legacy path taken when `deductedInTransaction` is false) rather than
+ * creating one, and it carries no hardcoded stage_a fallback — it returns early
+ * when the stage is unknown. Hours CAN still reach a completed stage through it
+ * without producing a [STAGE-DETECT] line, so the resulting census is a floor,
+ * not a total. Wiring it is a tracked follow-up; do not read the numbers as
+ * exhaustive until it is done.
  */
 
 'use strict';

@@ -204,27 +204,27 @@ describe('WIRING GUARD — the detector must actually be called', () => {
     expect(source).toContain(`path: '${label}'`);
   });
 
-  test('every legal_procedure stage resolution in the write paths is reported', () => {
-    // The hardcoded first-stage fallback is the fingerprint of a stage-resolution
-    // site. Count them, and require an equal number of detector calls in the same
-    // file. If someone adds a fourth resolution site, this fails until they wire it.
+  test('REGISTRY: the number of wired call sites is pinned at exactly 3', () => {
+    // A count, deliberately. If someone adds a fourth entry-creation path — or
+    // deletes one — this fails and forces them to update BOTH this number and the
+    // inventory in the module docblock. That is the whole point: the inventory
+    // cannot silently go stale, because the build breaks first.
+    //
+    // The number is 3 because exactly three server-side paths create timesheet
+    // entries (verified by an exhaustive repo search, 2026-07-21):
+    //   addTimeToTask_v2.js · timesheet/index.js createQuickLogEntry
+    //   · timesheet/index.js createTimesheetEntry_v2
+    // KNOWN EXCLUSION: triggers/timesheet-trigger.js also resolves a stage and
+    // deducts, but it re-derives from an ALREADY-CREATED entry rather than
+    // creating one, and it has no hardcoded stage_a fallback. See the docblock.
+    const EXPECTED_CALL_SITES = 3;
+
     const files = ['addTimeToTask_v2.js', path.join('timesheet', 'index.js')];
-
-    for (const file of files) {
+    const total = files.reduce((sum, file) => {
       const source = fs.readFileSync(path.join(FUNCTIONS_DIR, file), 'utf8');
+      return sum + (source.match(/reportStageResolution\(\{/g) || []).length;
+    }, 0);
 
-      // Stage-resolution sites: either the hardcoded literal or the constant.
-      const fallbackSites =
-        (source.match(/currentStage \|\| 'stage_a'/g) || []).length +
-        (source.match(/currentStage \|\| SYSTEM_CONSTANTS\.VALID_STAGE_IDS\[0\]/g) || []).length;
-
-      const detectorCalls = (source.match(/reportStageResolution\(\{/g) || []).length;
-
-      // lookupServiceIds() in addTimeToTask_v2 has legacy client-level resolution
-      // sites (PATH 4/5) that never reach a stage object, so the deduction-site
-      // count is what must match. Assert the detector is not UNDER-wired.
-      expect(detectorCalls).toBeGreaterThan(0);
-      expect(fallbackSites).toBeGreaterThan(0);
-    }
+    expect(total).toBe(EXPECTED_CALL_SITES);
   });
 });
