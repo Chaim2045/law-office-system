@@ -11,6 +11,23 @@ const { sanitizeString } = require('../shared/validators');
 
 const { round2, isFixedService } = require('../shared/aggregates');
 const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
+// PR-B-2 (2026-07-21): audit-FIRST-in-txn for the budget_tasks re-point that
+// happens inside moveToNextStage. Compiled TS output — see functions/src-ts/
+// audit-critical.ts + functions/lib/audit-critical.js (committed per
+// PR-META-6 convention; already required this way by reconciliation/index.js,
+// scheduled/reconcile-package-drift.js, scripts/repair-package-aggregates.js).
+const { logCriticalActionInTxn } = require('../lib/audit-critical');
+
+// PR-B-2: the literal open-task status used at task creation
+// (functions/budget-tasks/index.js:193 `status: 'פעיל'`). No shared enum
+// constant exists for budget_tasks statuses (createBudgetTask/cancelTask/
+// completeTask all use the raw Hebrew literals directly — see
+// budget-tasks/index.js:193,545,767). Introducing one would mean editing the
+// canonical shared/system-constants.js PLUS both frontend adapters (see
+// tests/sync-constants.test.js) to keep them in sync — a cross-app change
+// out of scope for this backend-only PR. Mirrors the existing repo
+// convention of using the literal directly.
+const OPEN_TASK_STATUS = 'פעיל';
 
 const db = admin.firestore();
 
@@ -944,6 +961,47 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       const nextStage = service.stages[activeIndex + 1];
       const now = new Date().toISOString();
 
+      // 3f2. PR-B-2 (2026-07-21, R3): find OPEN budget_tasks still pointing at
+      // the stage being closed, so they can be re-pointed to the newly-active
+      // stage in this same transaction — the ROOT-CAUSE fix for hours logged
+      // against a task landing on an already-completed stage's package
+      // (measured in PROD 2026-07-21: 75 entries / 101.60h across 6 clients).
+      //
+      // Re-point, NEVER close: completing a task is irreversible (no reopen
+      // callable exists) and completeTask refuses when actualMinutes===0
+      // (budget-tasks/index.js:521-534) — auto-closing would destroy
+      // in-flight work AND fail outright on untouched tasks.
+      //
+      // FIRESTORE TRANSACTION ORDERING (hard constraint): this read MUST
+      // happen here — after the client-doc read above, BEFORE
+      // writeClientWithCanonicalAggregates is called below. That helper
+      // performs its OWN internal transaction.get(clientRef) followed by
+      // transaction.update (shared/client-writer.js "2. Transactional read" +
+      // "9. Write") — so the ordering across this whole callback is: read
+      // client (3a) → read budget_tasks (here) → [call the helper: internal
+      // re-read of client, then client write] → THEN the repoint task writes
+      // (placed after the helper call, see below — NOT before it, or a task
+      // write would land between the outer reads and the helper's internal
+      // read, violating "all reads before all writes"). All reads precede
+      // all writes; Firestore requires this or the transaction throws at
+      // runtime.
+      //
+      // Query scoped to `clientId` ONLY (a single equality filter — no
+      // composite index risk) and filtered in-memory for the precise match:
+      // same parentServiceId (the service being advanced), same serviceId
+      // (the stage being closed), and open status. This deliberately excludes
+      // completed/cancelled tasks, tasks on a different service, and tasks
+      // already pointing at a later stage.
+      const clientBudgetTasksSnap = await transaction.get(
+        db.collection('budget_tasks').where('clientId', '==', data.clientId)
+      );
+      const tasksToRepoint = clientBudgetTasksSnap.docs.filter((taskDoc) => {
+        const t = taskDoc.data();
+        return t.parentServiceId === service.id &&
+          t.serviceId === currentStage.id &&
+          t.status === OPEN_TASK_STATUS;
+      });
+
       // 3g. Immutable update — stages
       const updatedStages = service.stages.map((stage, idx) => {
         if (idx === activeIndex) return { ...stage, status: 'completed', completedAt: now };
@@ -976,13 +1034,71 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
         }
       );
 
+      // 3h2. PR-B-2: write the re-point for every matched OPEN task, with an
+      // audit entry committed ATOMICALLY in this same transaction (audit-FIRST
+      // discipline, functions/CLAUDE.md "Audit-FIRST"; logCriticalActionInTxn
+      // from functions/src-ts/audit-critical.ts). Update ONLY the stage
+      // pointer (serviceId) — NEVER actualMinutes/estimatedMinutes/status/
+      // timeEntries/any budget or completion field. `serviceName` on the task
+      // stores the PARENT SERVICE's display name (verified: apps/user-app/js/
+      // modules/client-case-selector.js:1246-1249 — `parentService.name`, set
+      // once at creation and never the stage name), which does not change
+      // when the stage advances — so it is intentionally left untouched here.
+      //
+      // MUST run AFTER writeClientWithCanonicalAggregates, not before: that
+      // helper does its OWN internal transaction.get(clientRef) (a READ)
+      // before its transaction.update(clientRef, ...) (a WRITE) — see
+      // shared/client-writer.js "2. Transactional read" / "9. Write". If the
+      // task-repoint writes below ran BEFORE calling the helper, the sequence
+      // would be read→read→WRITE(task)→READ(helper's internal re-read)→
+      // WRITE(client) — a write sandwiched before a later read, which
+      // Firestore's real transaction API rejects at runtime ("all reads must
+      // execute before all writes"). Running the repoint writes here instead
+      // keeps every read (outer client, budget_tasks query, helper's internal
+      // re-read) before every write (helper's client write, then these task
+      // writes) — verified by a dedicated ordering test
+      // (tests/move-to-next-stage-repoint.test.js, "H. Reads precede writes")
+      // that failed exactly this way before this ordering fix.
+      //
+      // Zero matched tasks (the common case today — measured PROD blast
+      // radius is 2-4 open tasks on a closed stage) → this loop performs ZERO
+      // writes, so the transaction is byte-identical to pre-PR-B-2 behavior.
+      //
+      // Failure semantics: no try/catch here by design. Any error re-pointing
+      // a task (or writing its audit entry) throws inside this same
+      // transaction callback and aborts the WHOLE stage advance — a stage
+      // that advances while its in-flight tasks are left behind on the
+      // closed stage is exactly the defect this PR fixes, and a partial
+      // success would be invisible (no compensating signal exists downstream
+      // to catch it). This is free — no extra code needed — because the
+      // repoint writes already live inside the single db.runTransaction that
+      // wraps the entire stage-advance.
+      for (const taskDoc of tasksToRepoint) {
+        transaction.update(taskDoc.ref, {
+          serviceId: nextStage.id,
+          lastModifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastModifiedBy: user.username
+        });
+
+        logCriticalActionInTxn(transaction, 'REPOINT_BUDGET_TASK_STAGE', user.uid, {
+          clientId: data.clientId,
+          taskId: taskDoc.id,
+          parentServiceId: service.id,
+          fromStageId: currentStage.id,
+          toStageId: nextStage.id
+        });
+      }
+
       // 3i. return data from transaction
       return {
         currentStage: { id: currentStage.id, name: currentStage.name || currentStage.id },
         nextStage: { id: nextStage.id, name: nextStage.name || nextStage.id },
         updatedStages: updatedStages,
         isLastStage: isLastStage,
-        serviceName: service.name || service.serviceName
+        serviceName: service.name || service.serviceName,
+        // PR-B-2: observability (G3) — how many open budget_tasks were
+        // re-pointed to the new stage as part of this stage advance.
+        repointedTaskCount: tasksToRepoint.length
       };
     });
 
@@ -995,11 +1111,12 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       fromStageName: result.currentStage.name,
       toStageId: result.nextStage.id,
       toStageName: result.nextStage.name,
-      serviceName: result.serviceName
+      serviceName: result.serviceName,
+      repointedTaskCount: result.repointedTaskCount
     });
 
     // 5. Return
-    console.log(`✅ Stage moved: ${result.currentStage.id} → ${result.nextStage.id} for client ${data.clientId}`);
+    console.log(`✅ Stage moved: ${result.currentStage.id} → ${result.nextStage.id} for client ${data.clientId} (repointed ${result.repointedTaskCount} open task(s))`);
 
     return {
       success: true,
@@ -1008,6 +1125,7 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       toStage: result.nextStage,
       updatedStages: result.updatedStages,
       isLastStage: result.isLastStage,
+      repointedTaskCount: result.repointedTaskCount,
       message: `עברת לשלב "${result.nextStage.name}"`
     };
 
