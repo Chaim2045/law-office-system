@@ -182,6 +182,8 @@ const {
 const { SYSTEM_CONSTANTS } = require('./shared/constants');
 const { ERROR_CODES, buildAppError } = require('./shared/errors');
 const { writeClientWithCanonicalAggregates } = require('./shared/client-writer');
+// PR-NOW-1: detect-only stage observability. Logs, never blocks. See shared/stage-detect.js.
+const { reportStageResolution, RESOLUTION_SOURCE } = require('./shared/stage-detect');
 // H.2 cost foundation — resolve + atomically stamp a CF-only cost doc per entry.
 const {
   resolveEmployeeCost,
@@ -577,6 +579,19 @@ async function addTimeToTaskWithTransaction(db, data, user) {
             } else if (serviceType === ST.LEGAL_PROCEDURE) {
               const resolvedStageId = serviceIds.stageId || (resolvedServiceId.startsWith('stage_') ? resolvedServiceId : (targetService.currentStage || SYSTEM_CONSTANTS.VALID_STAGE_IDS[0]));
               const stage = (targetService.stages || []).find(s => s.id === resolvedStageId);
+
+              // PR-NOW-1 (detect-only): report a silent stage_a fallback / a deduction
+              // landing on an already-completed stage. Logs only — deduction unchanged.
+              reportStageResolution({
+                stage,
+                resolvedStageId,
+                resolutionSource: (serviceIds.stageId || resolvedServiceId.startsWith('stage_'))
+                  ? RESOLUTION_SOURCE.EXPLICIT
+                  : (targetService.currentStage ? RESOLUTION_SOURCE.SERVICE_CURRENT_STAGE : RESOLUTION_SOURCE.HARDCODED_FALLBACK),
+                path: 'addTimeToTask',
+                caseNumber: taskData.clientId,
+                serviceId: targetService.id,
+              });
 
               if (stage) {
                 if (stage.pricingType === PT.FIXED) {

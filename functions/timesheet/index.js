@@ -10,6 +10,8 @@ const { sanitizeString, getDescriptionLimit } = require('../shared/validators');
 const { SYSTEM_CONSTANTS } = require('../shared/constants');
 const { ERROR_CODES, buildAppError } = require('../shared/errors');
 const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
+// PR-NOW-1: detect-only stage observability. Logs, never blocks. See shared/stage-detect.js.
+const { reportStageResolution, RESOLUTION_SOURCE } = require('../shared/stage-detect');
 // H.2 cost foundation — resolve the employee cost-per-hour + stamp a CF-only
 // timesheet_entry_costs/{entryId} doc atomically with each entry (Option A).
 const {
@@ -359,6 +361,19 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
               // Resolve stageId
               const targetStageId = resolvedServiceId.startsWith('stage_') ? resolvedServiceId : (targetService.currentStage || 'stage_a');
               const stage = (targetService.stages || []).find(s => s.id === targetStageId);
+
+              // PR-NOW-1 (detect-only): logs only — deduction unchanged.
+              reportStageResolution({
+                stage,
+                resolvedStageId: targetStageId,
+                resolutionSource: resolvedServiceId.startsWith('stage_')
+                  ? RESOLUTION_SOURCE.EXPLICIT
+                  : (targetService.currentStage ? RESOLUTION_SOURCE.SERVICE_CURRENT_STAGE : RESOLUTION_SOURCE.HARDCODED_FALLBACK),
+                path: 'createQuickLogEntry',
+                caseNumber: clientData.caseNumber,
+                serviceId: targetService.id,
+              });
+
               if (stage) {
                 updatedStageId = stage.id;
 
@@ -929,6 +944,18 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
                 ? data.serviceId
                 : (targetService.currentStage || 'stage_a');
               const stage = (targetService.stages || []).find(s => s.id === targetStageId);
+
+              // PR-NOW-1 (detect-only): logs only — deduction unchanged.
+              reportStageResolution({
+                stage,
+                resolvedStageId: targetStageId,
+                resolutionSource: (data.serviceId && data.serviceId.startsWith('stage_'))
+                  ? RESOLUTION_SOURCE.EXPLICIT
+                  : (targetService.currentStage ? RESOLUTION_SOURCE.SERVICE_CURRENT_STAGE : RESOLUTION_SOURCE.HARDCODED_FALLBACK),
+                path: 'createTimesheetEntry_v2',
+                caseNumber: clientData.caseNumber,
+                serviceId: targetService.id,
+              });
 
               if (stage) {
                 updatedStageId = stage.id;
