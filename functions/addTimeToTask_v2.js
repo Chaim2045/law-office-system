@@ -182,6 +182,8 @@ const {
 const { SYSTEM_CONSTANTS } = require('./shared/constants');
 const { ERROR_CODES, buildAppError } = require('./shared/errors');
 const { writeClientWithCanonicalAggregates } = require('./shared/client-writer');
+// PR-NOW-1: detect-only stage observability. Logs, never blocks. See shared/stage-detect.js.
+const { reportStageResolution, RESOLUTION_SOURCE } = require('./shared/stage-detect');
 // H.2 cost foundation — resolve + atomically stamp a CF-only cost doc per entry.
 const {
   resolveEmployeeCost,
@@ -277,7 +279,11 @@ function computeFixedDeduction(services, lookupServiceId, minutesDelta) {
 // is still used by lookupServiceIds below.
 
 function lookupServiceIds(clientData, taskData) {
-  const result = { stageId: null, packageId: null };
+  // PR-NOW-1: `stageSource` records WHICH of the three precedence levels produced
+  // `stageId`. Observability only — no caller branches on it. Without it the
+  // silent hardcoded-fallback case is indistinguishable from an explicit id,
+  // because this function collapses all three into one value.
+  const result = { stageId: null, packageId: null, stageSource: null };
 
   // PATH 1: legal_procedure חדש (services)
   if (taskData.serviceType === ST.LEGAL_PROCEDURE && taskData.parentServiceId) {
@@ -285,6 +291,9 @@ function lookupServiceIds(clientData, taskData) {
     if (service && service.type === ST.LEGAL_PROCEDURE) {
       const isHourly = !service.pricingType || service.pricingType === PT.HOURLY;
       const currentStageId = taskData.serviceId || service.currentStage || SYSTEM_CONSTANTS.VALID_STAGE_IDS[0];
+      result.stageSource = taskData.serviceId
+        ? RESOLUTION_SOURCE.EXPLICIT
+        : (service.currentStage ? RESOLUTION_SOURCE.SERVICE_CURRENT_STAGE : RESOLUTION_SOURCE.HARDCODED_FALLBACK);
       const stage = (service.stages || []).find(s => s.id === currentStageId);
       if (stage) {
         result.stageId = stage.id;
@@ -318,6 +327,9 @@ function lookupServiceIds(clientData, taskData) {
   // PATH 4: legacy hourly
   if (clientData.procedureType === ST.LEGAL_PROCEDURE && clientData.pricingType === PT.HOURLY) {
     const currentStageId = taskData.serviceId || clientData.currentStage || SYSTEM_CONSTANTS.VALID_STAGE_IDS[0];
+    result.stageSource = taskData.serviceId
+      ? RESOLUTION_SOURCE.EXPLICIT
+      : (clientData.currentStage ? RESOLUTION_SOURCE.SERVICE_CURRENT_STAGE : RESOLUTION_SOURCE.HARDCODED_FALLBACK);
     const stage = (clientData.stages || []).find(s => s.id === currentStageId);
     if (stage) {
       result.stageId = stage.id;
@@ -330,6 +342,9 @@ function lookupServiceIds(clientData, taskData) {
   // PATH 5: legacy fixed
   if (clientData.procedureType === ST.LEGAL_PROCEDURE && clientData.pricingType === PT.FIXED) {
     const targetStageId = taskData.serviceId || clientData.currentStage || SYSTEM_CONSTANTS.VALID_STAGE_IDS[0];
+    result.stageSource = taskData.serviceId
+      ? RESOLUTION_SOURCE.EXPLICIT
+      : (clientData.currentStage ? RESOLUTION_SOURCE.SERVICE_CURRENT_STAGE : RESOLUTION_SOURCE.HARDCODED_FALLBACK);
     const stage = (clientData.stages || []).find(s => s.id === targetStageId);
     if (stage) result.stageId = stage.id;
     return result;
@@ -577,6 +592,23 @@ async function addTimeToTaskWithTransaction(db, data, user) {
             } else if (serviceType === ST.LEGAL_PROCEDURE) {
               const resolvedStageId = serviceIds.stageId || (resolvedServiceId.startsWith('stage_') ? resolvedServiceId : (targetService.currentStage || SYSTEM_CONSTANTS.VALID_STAGE_IDS[0]));
               const stage = (targetService.stages || []).find(s => s.id === resolvedStageId);
+
+              // PR-NOW-1 (detect-only): report a silent stage_a fallback / a deduction
+              // landing on an already-completed stage. Logs only — deduction unchanged.
+              reportStageResolution({
+                stage,
+                resolvedStageId,
+                // Prefer the source recorded inside lookupServiceIds — it is the only
+                // place that can tell an explicit id from the hardcoded fallback.
+                resolutionSource: serviceIds.stageId
+                  ? (serviceIds.stageSource || RESOLUTION_SOURCE.EXPLICIT)
+                  : (resolvedServiceId.startsWith('stage_')
+                    ? RESOLUTION_SOURCE.EXPLICIT
+                    : (targetService.currentStage ? RESOLUTION_SOURCE.SERVICE_CURRENT_STAGE : RESOLUTION_SOURCE.HARDCODED_FALLBACK)),
+                path: 'addTimeToTask',
+                caseNumber: taskData.clientId,
+                serviceId: targetService.id,
+              });
 
               if (stage) {
                 if (stage.pricingType === PT.FIXED) {
