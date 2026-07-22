@@ -394,7 +394,10 @@
                     return;
                 }
 
-                if (docs.length === limit) {
+                // A non-positive limit is never a real query cap (both call sites pass a
+                // hardcoded 20000) - treat it as "not applicable" rather than let
+                // docs.length===0===limit produce a false-positive truncation warning.
+                if (typeof limit === 'number' && limit > 0 && docs.length === limit) {
                     console.error(
                         `🔴 TRUNCATION: collection="${collectionName}" hit its query limit ` +
                         `(${limit} docs returned). Data shown in the admin panel is INCOMPLETE - ` +
@@ -407,11 +410,18 @@
                     // and an admin reading a report built from truncated data has no other
                     // way to know the numbers are wrong. Reuses the app's existing
                     // notification mechanism (window.notify) rather than inventing a new one.
-                    if (typeof window !== 'undefined' && window.notify && typeof window.notify.error === 'function') {
-                        window.notify.error(
-                            'חלק מהנתונים ההיסטוריים לא נטענו עקב מגבלת כמות - הדוחות עשויים להיות חלקיים. פנה לתמיכה הטכנית.',
-                            'נתונים חלקיים'
-                        );
+                    // Uses show() with duration:0 (never auto-hide) instead of the error()
+                    // shorthand (hardcoded 6s) - this fires during loadAllData()'s initial
+                    // load, while the admin is still watching a loading table, and every
+                    // screen opened afterwards in that session would otherwise show
+                    // truncated numbers with no visible trace once the toast disappears.
+                    if (typeof window !== 'undefined' && window.notify && typeof window.notify.show === 'function') {
+                        window.notify.show({
+                            type: 'error',
+                            title: 'נתונים חלקיים',
+                            message: 'חלק מהנתונים ההיסטוריים לא נטענו עקב מגבלת כמות - הדוחות עשויים להיות חלקיים. פנה לתמיכה הטכנית.',
+                            duration: 0
+                        });
                     }
                 }
             } catch (guardError) {

@@ -62,10 +62,6 @@ describe('ClientsDataManager.warnIfTruncated — the loudness guard (G4)', () =>
     delete (window as any).notify;
   });
 
-  it('exists as a callable guard on the singleton', () => {
-    expect(typeof manager.warnIfTruncated).toBe('function');
-  });
-
   it('does NOT emit a truncation error when fewer docs than the limit are returned', () => {
     manager.warnIfTruncated('timesheet_entries', fakeSnapshot(4962), 20000);
 
@@ -111,8 +107,19 @@ describe('ClientsDataManager.warnIfTruncated — the loudness guard (G4)', () =>
     expect(errorSpy).not.toHaveBeenCalled();
   });
 
-  it('never throws even if the guard is called with a limit of 0 or a negative count mismatch', () => {
-    expect(() => manager.warnIfTruncated('timesheet_entries', fakeSnapshot(0), 0)).not.toThrow();
+  it('treats a non-positive limit as not-applicable and does NOT fire a false-positive when docs.length also happens to be 0', () => {
+    // fakeSnapshot(0) + limit:0 satisfies the naive docs.length===limit check, but a
+    // limit of 0 is never a real query cap (both call sites hardcode 20000) - it can only
+    // mean "not applicable". The guard explicitly requires limit > 0, so this must NOT
+    // be treated as truncation. (Previously this test only asserted .not.toThrow() and
+    // silently accepted the false positive without ever naming it - see PR body.)
+    manager.warnIfTruncated('timesheet_entries', fakeSnapshot(0), 0);
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it('never throws when called with a negative limit', () => {
+    expect(() => manager.warnIfTruncated('timesheet_entries', fakeSnapshot(5), -1)).not.toThrow();
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 
   it('contains no PII (client names, employee emails, entry descriptions) in the emitted message', () => {
@@ -126,12 +133,20 @@ describe('ClientsDataManager.warnIfTruncated — the loudness guard (G4)', () =>
     expect(message).toMatch(/^🔴 TRUNCATION: collection="(timesheet_entries|budget_tasks)" hit its query limit/);
   });
 
-  it('best-effort surfaces to window.notify.error when the app toast system is loaded, without throwing if it is not', () => {
-    const notifyError = vi.fn();
-    (window as any).notify = { error: notifyError };
+  it('best-effort surfaces to window.notify.show with a non-auto-hiding duration (0) when the app toast system is loaded, without throwing if it is not', () => {
+    const notifyShow = vi.fn();
+    (window as any).notify = { show: notifyShow };
 
     manager.warnIfTruncated('timesheet_entries', fakeSnapshot(20000), 20000);
-    expect(notifyError).toHaveBeenCalledTimes(1);
+    expect(notifyShow).toHaveBeenCalledTimes(1);
+
+    const [config] = notifyShow.mock.calls[0];
+    // MUST NOT auto-hide: this fires during the initial load, while the admin is still
+    // watching a loading table. A regression back to a 6-second toast (e.g. calling the
+    // notify.error() shorthand instead of show()) must fail this assertion.
+    expect(config.duration).toBe(0);
+    expect(config.type).toBe('error');
+    expect(config.message).toMatch(/חלק מהנתונים ההיסטוריים/);
 
     delete (window as any).notify;
     expect(() => manager.warnIfTruncated('timesheet_entries', fakeSnapshot(20000), 20000)).not.toThrow();
@@ -153,17 +168,26 @@ describe('ClientsDataManager loaders — both loaders are independently guarded'
 
   // A minimal fake Firestore chain: collection().orderBy().limit().get() and
   // collection().limit().get() both resolve to the given snapshot.
+  //
+  // `limit` is a spy (not a no-op) that RECORDS its argument. This closes a coupling
+  // gap: without it, someone could regress a loader back to `.limit(5000)` while leaving
+  // `warnIfTruncated(..., 20000)` untouched, and every test in this file would still pass
+  // (docs.length=5000 would just never equal the untouched limit=20000 - the guard would
+  // silently stop firing forever, and PROD would truncate at 5000 again). See PR body.
   function fakeDb(snapshot: ReturnType<typeof fakeSnapshot>) {
+    const limitSpy = vi.fn(() => chain);
     const chain: any = {
       orderBy: () => chain,
-      limit: () => chain,
+      limit: limitSpy,
       get: async () => snapshot
     };
-    return { collection: () => chain };
+    return { collection: () => chain, limitSpy };
   }
 
-  it('loadTimesheetEntries triggers the truncation error when the query hits its limit', async () => {
-    manager.db = fakeDb(fakeSnapshot(20000));
+  it('loadTimesheetEntries triggers the truncation error when the query hits its limit, AND calls .limit() with the SAME value passed to warnIfTruncated (coupling)', async () => {
+    const warnSpy = vi.spyOn(manager, 'warnIfTruncated');
+    const { collection, limitSpy } = fakeDb(fakeSnapshot(20000));
+    manager.db = { collection };
 
     await manager.loadTimesheetEntries();
 
@@ -172,10 +196,24 @@ describe('ClientsDataManager loaders — both loaders are independently guarded'
     );
     expect(truncationCalls.length).toBe(1);
     expect(truncationCalls[0][0]).toContain('timesheet_entries');
+
+    // The coupling assertion: whatever the loader passed to .limit() must be the exact
+    // same value it passed as warnIfTruncated's 3rd arg. If a future edit changes one
+    // without the other, this fails (see the self-check note in the PR body).
+    expect(limitSpy).toHaveBeenCalledTimes(1);
+    const limitArgUsed = limitSpy.mock.calls[0][0];
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    const warnLimitArgUsed = warnSpy.mock.calls[0][2];
+    expect(limitArgUsed).toBe(warnLimitArgUsed);
+    expect(limitArgUsed).toBe(20000);
+
+    warnSpy.mockRestore();
   });
 
-  it('loadBudgetTasks ALSO triggers the truncation error when its query hits its limit (guards both loaders)', async () => {
-    manager.db = fakeDb(fakeSnapshot(20000));
+  it('loadBudgetTasks ALSO triggers the truncation error when its query hits its limit (guards both loaders), AND calls .limit() with the SAME value passed to warnIfTruncated (coupling)', async () => {
+    const warnSpy = vi.spyOn(manager, 'warnIfTruncated');
+    const { collection, limitSpy } = fakeDb(fakeSnapshot(20000));
+    manager.db = { collection };
 
     await manager.loadBudgetTasks();
 
@@ -184,10 +222,20 @@ describe('ClientsDataManager loaders — both loaders are independently guarded'
     );
     expect(truncationCalls.length).toBe(1);
     expect(truncationCalls[0][0]).toContain('budget_tasks');
+
+    expect(limitSpy).toHaveBeenCalledTimes(1);
+    const limitArgUsed = limitSpy.mock.calls[0][0];
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    const warnLimitArgUsed = warnSpy.mock.calls[0][2];
+    expect(limitArgUsed).toBe(warnLimitArgUsed);
+    expect(limitArgUsed).toBe(20000);
+
+    warnSpy.mockRestore();
   });
 
   it('neither loader emits a truncation error when under the limit', async () => {
-    manager.db = fakeDb(fakeSnapshot(704));
+    const { collection } = fakeDb(fakeSnapshot(704));
+    manager.db = { collection };
 
     await manager.loadTimesheetEntries();
     await manager.loadBudgetTasks();
