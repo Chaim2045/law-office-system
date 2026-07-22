@@ -27,6 +27,18 @@
  *      future refactor that reorders reads/writes fails here, not in PROD)
  *   I. Audit-in-txn is called once per re-pointed task, and not at all when
  *      no task matches
+ *
+ * ── PR-B-2 R2 (2026-07-22, adversarial-review fixes) ──────────────────────
+ *   J. FIX 1 — a task stranded on an EARLIER completed stage (not just the
+ *      one closing right now) IS re-pointed on a later advance
+ *   K. FIX 1 — a task on a `pending` (future) stage is NOT touched
+ *   L. FIX 2 — `lastModifiedBy` is OMITTED when user.username is falsy, and
+ *      PRESENT (exact key set) when it is set
+ *   M. FIX 3 — exceeding MAX_REPOINT_TASKS throws `failed-precondition` with
+ *      a Hebrew message, and performs ZERO writes
+ *   N. FIX 4 — a failing task update produces an error naming the taskId,
+ *      and does not swallow / continue past the failure
+ *   O. FIX 5 — the skipped-for-missing-parentServiceId counter
  */
 
 // ─── Mock transaction + Firestore db ───────────────────────────────────────
@@ -475,5 +487,193 @@ describe('I. Audit-in-txn (logCriticalActionInTxn) called exactly once per re-po
     await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
 
     expect(mockLogCriticalActionInTxn).not.toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// J. FIX 1 — task stranded on an EARLIER completed stage IS re-pointed
+// ═══════════════════════════════════════════════════════════════
+
+describe('J. FIX 1 — a task stranded on an EARLIER completed stage IS re-pointed', () => {
+  test('service advancing stage_b -> stage_c re-points a task still on stage_a', async () => {
+    // stage_a already completed (a prior advance closed it and — pre-FIX-1 —
+    // failed to catch this task), stage_b is the ACTIVE stage now closing,
+    // stage_c is the incoming active stage.
+    const strandedTask = makeTaskDoc('task-stranded', { serviceId: 'stage_a' });
+    const service = makeLegalProcedure('s1', {
+      stages: [
+        { id: 'stage_a', name: 'שלב א', status: 'completed', totalHours: 5 },
+        { id: 'stage_b', name: 'שלב ב', status: 'active', totalHours: 5 },
+        { id: 'stage_c', name: 'שלב ג', status: 'pending', totalHours: 5 }
+      ]
+    });
+    setupTxMocks(makeClientDoc([service]), [strandedTask]);
+
+    const result = await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
+
+    const taskUpdateCall = mockTransaction.update.mock.calls.find(
+      ([ref]) => ref === strandedTask.ref
+    );
+    expect(taskUpdateCall).toBeDefined();
+    expect(taskUpdateCall[1]).toMatchObject({ serviceId: 'stage_c' });
+    expect(result.repointedTaskCount).toBe(1);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// K. FIX 1 — task on a PENDING (future) stage is NOT touched
+// ═══════════════════════════════════════════════════════════════
+
+describe('K. FIX 1 — a task on a PENDING (future) stage is NOT touched', () => {
+  test('a task on stage_c (still pending after stage_a -> stage_b advance) is excluded', async () => {
+    const futureStageTask = makeTaskDoc('task-future', { serviceId: 'stage_c' });
+    setupTxMocks(makeClientDoc([makeLegalProcedure('s1')]), [futureStageTask]);
+
+    const result = await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
+
+    expect(mockTransaction.update).toHaveBeenCalledTimes(1); // client only
+    const taskUpdateCall = mockTransaction.update.mock.calls.find(
+      ([ref]) => ref === futureStageTask.ref
+    );
+    expect(taskUpdateCall).toBeUndefined();
+    expect(result.repointedTaskCount).toBe(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// L. FIX 2 — lastModifiedBy guarded against a falsy user.username
+// ═══════════════════════════════════════════════════════════════
+
+describe('L. FIX 2 — lastModifiedBy is guarded against a falsy user.username', () => {
+  test('username falsy -> lastModifiedBy key is OMITTED from the payload', async () => {
+    mockCheckUserPermissions.mockResolvedValue({ ...VALID_USER, username: '' });
+    const openTask = makeTaskDoc('task-no-username');
+    setupTxMocks(makeClientDoc([makeLegalProcedure('s1')]), [openTask]);
+
+    await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
+
+    const taskUpdateCall = mockTransaction.update.mock.calls.find(
+      ([ref]) => ref === openTask.ref
+    );
+    expect(taskUpdateCall).toBeDefined();
+    const payload = taskUpdateCall[1];
+    expect(Object.keys(payload).sort()).toEqual(['lastModifiedAt', 'serviceId'].sort());
+    expect(payload).not.toHaveProperty('lastModifiedBy');
+  });
+
+  test('username set -> lastModifiedBy key is PRESENT with the exact 3-key shape', async () => {
+    mockCheckUserPermissions.mockResolvedValue({ ...VALID_USER, username: 'testuser' });
+    const openTask = makeTaskDoc('task-with-username');
+    setupTxMocks(makeClientDoc([makeLegalProcedure('s1')]), [openTask]);
+
+    await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
+
+    const taskUpdateCall = mockTransaction.update.mock.calls.find(
+      ([ref]) => ref === openTask.ref
+    );
+    expect(taskUpdateCall).toBeDefined();
+    const payload = taskUpdateCall[1];
+    expect(Object.keys(payload).sort()).toEqual(
+      ['lastModifiedAt', 'lastModifiedBy', 'serviceId'].sort()
+    );
+    expect(payload.lastModifiedBy).toBe('testuser');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// M. FIX 3 — write ceiling
+// ═══════════════════════════════════════════════════════════════
+
+describe('M. FIX 3 — exceeding the safe re-point ceiling throws failed-precondition', () => {
+  test('201 matching open tasks -> HttpsError failed-precondition, Hebrew message, zero writes', async () => {
+    const tooManyTasks = Array.from({ length: 201 }, (_, i) => makeTaskDoc(`task-${i}`));
+    setupTxMocks(makeClientDoc([makeLegalProcedure('s1')]), tooManyTasks);
+
+    await expect(
+      moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx())
+    ).rejects.toMatchObject({
+      code: 'failed-precondition',
+      message: expect.stringMatching(/[א-ת]/) // contains Hebrew characters
+    });
+
+    // No task write and no client write happened — the throw occurs before
+    // writeClientWithCanonicalAggregates is even called.
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+    expect(mockLogCriticalActionInTxn).not.toHaveBeenCalled();
+  });
+
+  test('exactly 200 matching open tasks -> does NOT throw (boundary is inclusive)', async () => {
+    const exactlyAtCeiling = Array.from({ length: 200 }, (_, i) => makeTaskDoc(`task-${i}`));
+    setupTxMocks(makeClientDoc([makeLegalProcedure('s1')]), exactlyAtCeiling);
+
+    const result = await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
+
+    expect(result.repointedTaskCount).toBe(200);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// N. FIX 4 — enriched, re-thrown error on a per-task failure
+// ═══════════════════════════════════════════════════════════════
+
+describe('N. FIX 4 — a failing task update produces an error naming the taskId', () => {
+  test('transaction.update throwing for one task aborts with a taskId-naming error, no swallow', async () => {
+    const failingTask = makeTaskDoc('task-boom');
+    setupTxMocks(makeClientDoc([makeLegalProcedure('s1')]), [failingTask]);
+
+    mockTransaction.update.mockImplementation((ref) => {
+      if (ref === failingTask.ref) {
+        throw new Error('NOT_FOUND: no entity to update');
+      }
+    });
+
+    await expect(
+      moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx())
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('task-boom')
+    });
+
+    // The audit call for THIS task must not have happened either (audit
+    // follows the update inside the same try, and the throw aborts before
+    // it) — the failure is not partially applied.
+    expect(mockLogCriticalActionInTxn).not.toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// O. FIX 5 — skipped-for-missing-parentServiceId counter
+// ═══════════════════════════════════════════════════════════════
+
+describe('O. FIX 5 — skippedForMissingParentServiceIdCount observability counter', () => {
+  test('an open task on a completed stage with a NULL parentServiceId is counted, not re-pointed', async () => {
+    const orphanTask = makeTaskDoc('task-orphan', { parentServiceId: null });
+    setupTxMocks(makeClientDoc([makeLegalProcedure('s1')]), [orphanTask]);
+
+    const result = await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
+
+    expect(result.repointedTaskCount).toBe(0);
+    expect(result.skippedForMissingParentServiceIdCount).toBe(1);
+    const taskUpdateCall = mockTransaction.update.mock.calls.find(
+      ([ref]) => ref === orphanTask.ref
+    );
+    expect(taskUpdateCall).toBeUndefined();
+  });
+
+  test('zero matching tasks -> counter is 0', async () => {
+    setupTxMocks(makeClientDoc([makeLegalProcedure('s1')]), []);
+
+    const result = await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
+
+    expect(result.skippedForMissingParentServiceIdCount).toBe(0);
+  });
+
+  test('an open task on a completed stage with a mismatched (non-null) parentServiceId is NOT counted', async () => {
+    const otherServiceTask = makeTaskDoc('task-other', { parentServiceId: 's-OTHER' });
+    setupTxMocks(makeClientDoc([makeLegalProcedure('s1')]), [otherServiceTask]);
+
+    const result = await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
+
+    expect(result.repointedTaskCount).toBe(0);
+    expect(result.skippedForMissingParentServiceIdCount).toBe(0);
   });
 });
