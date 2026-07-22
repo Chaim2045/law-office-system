@@ -15,10 +15,29 @@
  *      live) — no synthetic entry is needed, and this suite asserts its
  *      absence, plus that the fields the live bot depends on are present.
  *   H. PR-IG-A1-FIX6 — healthCheckStatus guard on a missing/undefined status
- *   I. PR-IG-A1-FIX5 — clientsScanErroredIds passthrough (capped, no names)
+ *   I. PR-IG-A1-FIX5 — clientsScanErroredIds passthrough (pins the current
+ *      shape of an unmodified forward; does NOT itself prove the producer
+ *      can never leak a non-string entry — see the test's own comment)
  */
 
-const mockOutboxAdd = jest.fn().mockResolvedValue({ id: 'outbox_auto_id' });
+// Rejects if the payload carries a raw `undefined` field value, mirroring
+// real Firestore's behavior without `ignoreUndefinedProperties` (an
+// `.add()` call with an undefined field value throws). A plain
+// `mockResolvedValue` would accept ANY payload — including one where a
+// guard (e.g. the `typeof healthStatus === 'string' ? healthStatus : null`
+// coercion) was silently removed — so it could never catch that
+// regression. This check makes the guard tests below genuine: if a future
+// change reintroduces an unguarded `undefined` field, the mock rejects and
+// the test fails, instead of passing vacuously.
+const mockOutboxAdd = jest.fn((payload) => {
+  const undefinedKey = Object.keys(payload).find((key) => payload[key] === undefined);
+  if (undefinedKey) {
+    return Promise.reject(new Error(
+      `mock: payload.${undefinedKey} is undefined — real Firestore .add() would reject (no ignoreUndefinedProperties)`
+    ));
+  }
+  return Promise.resolve({ id: 'outbox_auto_id' });
+});
 const mockOutboxRef = { add: mockOutboxAdd };
 
 const mockDb = {
@@ -437,8 +456,14 @@ describe('H. FIX6 — healthCheckStatus guard', () => {
     expect(mockOutboxAdd).toHaveBeenCalledTimes(1);
     const payload = mockOutboxAdd.mock.calls[0][0];
     expect(payload.healthCheckStatus).toBeNull();
-    // The call must not have thrown/rejected — proven by reaching this line
-    // and by attempts/status still being written correctly.
+    // This guard is now genuinely exercised, not merely reached: mockOutboxAdd
+    // (see the top of this file) rejects on any raw `undefined` field value,
+    // mirroring real Firestore's behavior without `ignoreUndefinedProperties`.
+    // If the `typeof healthStatus === 'string' ? healthStatus : null` coercion
+    // in the trigger were ever removed, `healthCheckStatus` would arrive here
+    // as `undefined` (status was omitted from the fixture above), the mock
+    // would reject, and this assertion would fail with a thrown error instead
+    // of silently passing.
     expect(payload.status).toBe('pending');
   });
 });
@@ -448,7 +473,17 @@ describe('H. FIX6 — healthCheckStatus guard', () => {
 // ═══════════════════════════════════════════════════════════════
 
 describe('I. FIX5 — clientsScanErroredIds passthrough', () => {
-  test('capped id list is forwarded to the outbox doc, ids only, no names', async () => {
+  test('id list is forwarded to the outbox doc unmodified (trigger does no per-item validation)', async () => {
+    // HONEST SCOPE: the trigger does `Array.isArray(data.clientsScanErroredIds)
+    // ? data.clientsScanErroredIds : []` — a pure array-level passthrough with
+    // NO per-item type check. This test therefore only pins "whatever array
+    // the source doc holds arrives at the outbox unchanged"; it is NOT a PII
+    // guard and does not prove the producer can never push a non-string entry
+    // (e.g. an object carrying a name). If that guarantee is ever wanted, it
+    // has to be enforced in the trigger's production code (filter/validate
+    // each entry) and pinned by a fixture containing a non-string id — a
+    // clean-string fixture like this one would pass either way and cannot
+    // catch that regression.
     const ids = ['2025001', '2025002', '2025003'];
     await registeredHandler(makeEvent({
       data: {
@@ -465,9 +500,6 @@ describe('I. FIX5 — clientsScanErroredIds passthrough', () => {
 
     const payload = mockOutboxAdd.mock.calls[0][0];
     expect(payload.clientsScanErroredIds).toEqual(ids);
-    // Ids only — every entry is a plain client-id string, never an object
-    // carrying a name/email.
-    payload.clientsScanErroredIds.forEach((id) => expect(typeof id).toBe('string'));
   });
 
   test('missing clientsScanErroredIds → defaults to an empty array (does not reject)', async () => {

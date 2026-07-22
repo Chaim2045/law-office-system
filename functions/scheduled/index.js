@@ -10,6 +10,10 @@ const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 // PR-C.1 (2026-05-18): nightly companion to PR-D's on-demand audit.
 const { calcClientAggregates, round2, NON_AGGREGATING_STATUSES } = require('../shared/aggregates');
 const { _recomputeTotalHours } = require('../shared/client-writer');
+// SHOULD S2 (adversarial-review follow-up, 2026-07-22): status vocabulary
+// centralized so the outbox trigger + any future consumer (PR-IG-B) import
+// rather than re-declare the PASS/FAIL/PARTIAL/ERROR literals.
+const { HEALTH_CHECK_STATUS } = require('../shared/health-check-status');
 
 const db = admin.firestore();
 
@@ -868,11 +872,11 @@ const dailyInvariantCheck = onSchedule({
     const durationMs = Date.now() - startTime;
     let status;
     if (clientsScanErrored > 0) {
-      status = 'PARTIAL';
+      status = HEALTH_CHECK_STATUS.PARTIAL;
     } else if (discrepanciesCount > 0) {
-      status = 'FAIL';
+      status = HEALTH_CHECK_STATUS.FAIL;
     } else {
-      status = 'PASS';
+      status = HEALTH_CHECK_STATUS.PASS;
     }
 
     const census = {
@@ -896,9 +900,9 @@ const dailyInvariantCheck = onSchedule({
     // including the ones counted here; only the per-service hours-comparison
     // + Check 7 package invariants were skipped for them.
     let message;
-    if (status === 'PASS') {
+    if (status === HEALTH_CHECK_STATUS.PASS) {
       message = 'כל הנתונים תקינים';
-    } else if (status === 'PARTIAL') {
+    } else if (status === HEALTH_CHECK_STATUS.PARTIAL) {
       message = discrepanciesCount > 0
         ? `הבדיקה הושלמה חלקית — ל-${clientsScanErrored} לקוחות לא הושלמה בדיקת שעות/חבילות (שאר הבדיקות בוצעו עבורם), ונמצאו ${discrepanciesCount} פערים בלקוחות שכן הושלמה עבורם הבדיקה`
         : `הבדיקה הושלמה חלקית — ל-${clientsScanErrored} לקוחות לא הושלמה בדיקת שעות/חבילות (שאר הבדיקות בוצעו עבורם)`;
@@ -919,9 +923,9 @@ const dailyInvariantCheck = onSchedule({
       message
     });
 
-    if (status === 'PASS') {
+    if (status === HEALTH_CHECK_STATUS.PASS) {
       console.log('✅ Invariant check PASSED — no discrepancies');
-    } else if (status === 'PARTIAL') {
+    } else if (status === HEALTH_CHECK_STATUS.PARTIAL) {
       console.log(`⚠️ Invariant check PARTIAL — ${clientsScanErrored} client scan-phase errors, ${discrepanciesCount} discrepancies`);
     } else {
       console.log(`❌ Invariant check FAILED — ${discrepanciesCount} discrepancies found`);
@@ -934,7 +938,7 @@ const dailyInvariantCheck = onSchedule({
       await db.collection('system_health_checks').add({
         type: 'invariant_check',
         schemaVersion: RESULT_SCHEMA_VERSION,
-        status: 'ERROR',
+        status: HEALTH_CHECK_STATUS.ERROR,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
         discrepanciesCount: discrepancies.length,
         discrepancies: discrepancies.slice(0, MAX_EMBEDDED_DISCREPANCIES),
@@ -1050,6 +1054,8 @@ module.exports = {
     MAX_EMBEDDED_DISCREPANCIES,
     // PR-IG-A1-FIX2 / FIX5 (2026-07-22, adversarial-review response)
     MAX_POSSIBLE_CHECKS,
-    MAX_ERRORED_CLIENT_IDS
+    MAX_ERRORED_CLIENT_IDS,
+    // SHOULD S2 (2026-07-22, adversarial-review response)
+    HEALTH_CHECK_STATUS
   }
 };

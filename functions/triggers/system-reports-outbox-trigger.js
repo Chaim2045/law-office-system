@@ -61,6 +61,10 @@
 
 const admin = require('firebase-admin');
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+// SHOULD S2 (adversarial-review follow-up, 2026-07-22): shared with the
+// producer (`functions/scheduled/index.js`) so both sides — and any future
+// consumer (PR-IG-B) — import the vocabulary rather than re-declare it.
+const { HEALTH_CHECK_STATUS } = require('../shared/health-check-status');
 
 const db = admin.firestore();
 
@@ -85,14 +89,14 @@ const onSystemHealthCheckCreated = onDocumentCreated({
     ? data.discrepanciesCount
     : Array.isArray(data.discrepancies) ? data.discrepancies.length : 0;
 
-  if (healthStatus === 'PASS') {
+  if (healthStatus === HEALTH_CHECK_STATUS.PASS) {
     console.log(`[system-reports-outbox] ${docId} status=PASS — no outbox write`);
     return null;
   }
 
   const discrepancies = Array.isArray(data.discrepancies) ? data.discrepancies : [];
   // ERROR (a crashed run) is the more urgent case for whoever reads severity.
-  const severity = healthStatus === 'ERROR' ? 'critical' : 'warning';
+  const severity = healthStatus === HEALTH_CHECK_STATUS.ERROR ? 'critical' : 'warning';
 
   try {
     const outboxRef = await db.collection('system_reports_outbox').add({
