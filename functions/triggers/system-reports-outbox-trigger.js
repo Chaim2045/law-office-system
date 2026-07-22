@@ -1,10 +1,32 @@
 /**
  * System Reports Outbox Trigger — PR-C.2-fns (2026-05-18)
  *
- * Fires on every `system_health_checks` document creation. If the health
- * check reports a FAIL (discrepancies > 0), writes a `system_reports_outbox`
- * doc that the hachnasovitz WhatsApp bot consumes (PR-C.2-bot) and forwards
- * to the "דיווחי מערכת" group.
+ * Fires on every `system_health_checks` document creation. Writes a
+ * `system_reports_outbox` doc that the hachnasovitz WhatsApp bot consumes
+ * (PR-C.2-bot) and forwards to the "דיווחי מערכת" group.
+ *
+ * PR-IG-A1 (2026-07-22) — BEHAVIORAL CHANGE: widened from "FAIL with
+ * discrepancies > 0" to "any status !== 'PASS'" (FAIL / PARTIAL / ERROR all
+ * emit now). Before this change, a FAIL with zero discrepancies (an internal
+ * consistency signal) and every ERROR (a crashed run) were silently dropped —
+ * the two defects that made a crashed or partial nightly scan indistinguishable
+ * from a healthy one. See `functions/scheduled/index.js` `dailyInvariantCheck`
+ * for the producing side of this contract.
+ *
+ * PR-IG-A1-FIX1 (2026-07-22) injected a synthetic `scan_incomplete` entry into
+ * this doc's `discrepancies[]` array on any non-FAIL status, as a workaround
+ * for the bot's formatter not reading the new census fields. REMOVED
+ * (2026-07-22, follow-up): the bot-side fix has shipped and is LIVE in
+ * production (`hachnasovitz` repo, `system-reports/formatter.js`) — it now
+ * reads `healthCheckStatus`/`healthCheckMessage`/`clientsScanChecked`/
+ * `clientsScanErrored`/`clientsTotal` directly and renders proper Hebrew for
+ * PARTIAL/ERROR, and defensively filters out any stray `scan_incomplete`
+ * entry. The workaround was also independently found harmful on its own terms
+ * (round-2 review): it produced a nonzero gap count where zero gaps existed,
+ * printed an English type key + a JSON.stringify blob into a Hebrew RTL
+ * message, and pushed a raw English exception string into the group. The
+ * outbox document's `discrepancies` array below is now exactly what the
+ * health-check document held — no injection, no mutation.
  *
  * Why outbox (not HTTP webhook):
  *   The bot already connects to law-office-system Firestore (via service
@@ -39,6 +61,10 @@
 
 const admin = require('firebase-admin');
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+// SHOULD S2 (adversarial-review follow-up, 2026-07-22): shared with the
+// producer (`functions/scheduled/index.js`) so both sides — and any future
+// consumer (PR-IG-B) — import the vocabulary rather than re-declare it.
+const { HEALTH_CHECK_STATUS } = require('../shared/health-check-status');
 
 const db = admin.firestore();
 
@@ -55,27 +81,55 @@ const onSystemHealthCheckCreated = onDocumentCreated({
 
   const data = snap.data() || {};
 
-  // Only emit on FAIL with non-empty discrepancies.
-  const status = data.status;
+  // PR-IG-A1: emit on any status !== 'PASS' — FAIL (with or without
+  // discrepancies), PARTIAL, and ERROR all reach the outbox now. Only a clean
+  // PASS is silent.
+  const healthStatus = data.status;
   const discrepanciesCount = typeof data.discrepanciesCount === 'number'
     ? data.discrepanciesCount
     : Array.isArray(data.discrepancies) ? data.discrepancies.length : 0;
 
-  if (status !== 'FAIL' || discrepanciesCount === 0) {
-    console.log(`[system-reports-outbox] ${docId} status=${status} count=${discrepanciesCount} — no outbox write`);
+  if (healthStatus === HEALTH_CHECK_STATUS.PASS) {
+    console.log(`[system-reports-outbox] ${docId} status=PASS — no outbox write`);
     return null;
   }
 
   const discrepancies = Array.isArray(data.discrepancies) ? data.discrepancies : [];
+  // ERROR (a crashed run) is the more urgent case for whoever reads severity.
+  const severity = healthStatus === HEALTH_CHECK_STATUS.ERROR ? 'critical' : 'warning';
 
   try {
     const outboxRef = await db.collection('system_reports_outbox').add({
       type: 'system_health_check',
-      severity: 'warning',
+      severity,
       source: 'dailyInvariantCheck',
       healthCheckDocId: docId,
+      // PR-IG-A1: additive context so the bot can distinguish "the data is
+      // dirty" from "the scan itself was incomplete/crashed". IMPORTANT: this
+      // is the health-check's own status (PASS/FAIL/PARTIAL/ERROR) — do NOT
+      // confuse with the outbox delivery-lifecycle `status` field below
+      // ('pending'/'sent'/'failed'), which the bot queries on and which stays
+      // byte-identical to preserve the existing consumption contract.
+      //
+      // PR-IG-A1-FIX6 (2026-07-22, adversarial-review response): guarded like
+      // its four immediate siblings below. `admin.initializeApp()` sets no
+      // `ignoreUndefinedProperties`, so an undefined healthStatus would make
+      // this whole `.add()` reject and the alert would be lost entirely —
+      // latent today (only one writer exists) but exactly the class the
+      // widened non-PASS predicate opens up.
+      healthCheckStatus: typeof healthStatus === 'string' ? healthStatus : null,
       discrepanciesCount,
+      // Exactly what the health-check document held — no injection, no
+      // mutation (see the FIX1-removal note in the file header). The source
+      // `system_health_checks` doc (`data`) is never mutated either way.
       discrepancies,
+      clientsScanErrored: typeof data.clientsScanErrored === 'number' ? data.clientsScanErrored : null,
+      clientsScanChecked: typeof data.clientsScanChecked === 'number' ? data.clientsScanChecked : null,
+      clientsTotal: typeof data.clientsTotal === 'number' ? data.clientsTotal : null,
+      // PR-IG-A1-FIX5: passthrough of the capped errored-client-id list — ids
+      // only, no names.
+      clientsScanErroredIds: Array.isArray(data.clientsScanErroredIds) ? data.clientsScanErroredIds : [],
+      healthCheckMessage: typeof data.message === 'string' ? data.message : null,
       status: 'pending',
       attempts: 0,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -83,7 +137,7 @@ const onSystemHealthCheckCreated = onDocumentCreated({
       errorMessage: null
     });
 
-    console.log(`[system-reports-outbox] ${docId} FAIL × ${discrepanciesCount} → outbox/${outboxRef.id}`);
+    console.log(`[system-reports-outbox] ${docId} ${healthStatus} × ${discrepanciesCount} → outbox/${outboxRef.id}`);
   } catch (err) {
     console.error(`[system-reports-outbox] Failed to write outbox for ${docId}:`, err);
     throw err; // let Cloud Functions retry
