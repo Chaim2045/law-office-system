@@ -538,15 +538,23 @@ const dailyInvariantCheck = onSchedule({
   // one Firestore query PER client across 200+ clients, plus two unbounded
   // collection scans (`timesheet_entries` per client + a `taskId != null`
   // scan for Check 3), accumulating minutes-maps in memory. The v2 defaults
-  // (60s / 256MiB) are sized for a simple callable, not this workload. Values
-  // mirror the existing precedent for the same per-client-iteration shape:
-  // `functions/reconciliation/index.js:199` (`reconcilePackageDrift`,
-  // timeoutSeconds:540, memory:'512MiB'). This does NOT detect a run that
-  // never fired at all (Cloud Scheduler disabled, quota exhausted, etc.) —
-  // that absence-alarm is PR-IG-B's job (docs/PLAN-INTEGRITY-GUARD-LAYER-2026-07.md
-  // §3, PR-IG-B2's ">26h since last run" banner). This PR only removes the
-  // single most likely cause of the crash going undetected by simply not
-  // crashing on a resource limit.
+  // (60s / 256MiB) are sized for a simple callable, not this workload.
+  //
+  // Values are justified directly by this run's own workload above — NOT by
+  // precedent from another function (corrected 2026-07-22, review response:
+  // an earlier version of this comment cited `functions/reconciliation/index.js:199`
+  // as precedent, but that function, `runReconciliationNow`, is an `onCall`,
+  // not a scheduled per-client-iteration job like this one, and it also
+  // carries `maxInstances:1`, which was never copied here — this function
+  // needs no such cap, since Cloud Scheduler invokes it at most once per
+  // firing. The function actually analogous to this one's shape,
+  // `reconcilePackageDrift` in `functions/scheduled/reconcile-package-drift.js`,
+  // declares NEITHER `timeoutSeconds` NOR `memory` at all). This does NOT
+  // detect a run that never fired at all (Cloud Scheduler disabled, quota
+  // exhausted, etc.) — that absence-alarm is PR-IG-B's job
+  // (docs/PLAN-INTEGRITY-GUARD-LAYER-2026-07.md §3, PR-IG-B2's ">26h since
+  // last run" banner). This PR only removes the single most likely cause of
+  // the crash going undetected by simply not crashing on a resource limit.
   timeoutSeconds: 540,
   memory: '512MiB'
 }, async () => {

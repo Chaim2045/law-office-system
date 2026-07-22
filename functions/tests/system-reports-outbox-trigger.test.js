@@ -8,19 +8,15 @@
  *   D. Source doc never mutated (trigger does not update system_health_checks)
  *   E. Missing snapshot data → no-op
  *   F. discrepanciesCount=0 with status FAIL / status ERROR (PR-IG-A1) → outbox write
- *   G. PR-IG-A1-FIX1 — the synthetic scan_incomplete entry on non-FAIL statuses
+ *   G. PR-IG-A1-FIX1 workaround REMOVED (2026-07-22 follow-up) — the outbox
+ *      `discrepancies` array is now exactly what the health-check document
+ *      held, on every status. The deployed bot formatter now reads the
+ *      census fields directly (hachnasovitz/system-reports/formatter.js,
+ *      live) — no synthetic entry is needed, and this suite asserts its
+ *      absence, plus that the fields the live bot depends on are present.
  *   H. PR-IG-A1-FIX6 — healthCheckStatus guard on a missing/undefined status
  *   I. PR-IG-A1-FIX5 — clientsScanErroredIds passthrough (capped, no names)
  */
-
-// PR-IG-A1-FIX1: mirrors the EXACT count expression from the deployed bot's
-// formatter.js (`hachnasovitz/system-reports/formatter.js`,
-// `formatOutboxMessage`) — reasoned from reading that file, not guessed. Used
-// below to assert what the bot would actually render, without a cross-repo
-// import (formatter.js lives in a different repository).
-function simulateFormatterCount(outboxPayload) {
-  return outboxPayload.discrepanciesCount || (outboxPayload.discrepancies || []).length || 0;
-}
 
 const mockOutboxAdd = jest.fn().mockResolvedValue({ id: 'outbox_auto_id' });
 const mockOutboxRef = { add: mockOutboxAdd };
@@ -292,18 +288,20 @@ describe('F. Edge cases', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// G. PR-IG-A1-FIX1 — the synthetic scan_incomplete entry
+// G. Synthetic scan_incomplete workaround REMOVED (2026-07-22 follow-up)
 //
-// Reasoned against hachnasovitz/system-reports/formatter.js (read, not
-// guessed — see simulateFormatterCount above and the comments in
-// system-reports-outbox-trigger.js):
-//   count = discrepanciesCount || discrepancies.length || 0
-//   formatItem()'s default: branch renders ANY unrecognized type instead of
-//   dropping it; groupByType() labels it with the raw type string.
+// The bot-side fix (hachnasovitz/system-reports/formatter.js) is deployed
+// and reads healthCheckStatus/healthCheckMessage/clientsScanChecked/
+// clientsScanErrored/clientsTotal directly, so this trigger no longer needs
+// to inject anything into `discrepancies[]` to make a PARTIAL/ERROR run
+// render truthfully. These tests assert the ABSENCE of the synthetic entry
+// (inverted from the pre-removal versions, which asserted its presence —
+// see git history on this file for the prior assertions) and that the
+// fields the live bot now depends on are present and correctly populated.
 // ═══════════════════════════════════════════════════════════════
 
-describe('G. FIX1 — synthetic scan_incomplete entry', () => {
-  test('PARTIAL with discrepanciesCount 0 → does NOT render as "0 gaps / all clean"', async () => {
+describe('G. scan_incomplete workaround removed', () => {
+  test('PARTIAL run → outbox discrepancies equals the health-check document\'s array exactly (no synthetic entry)', async () => {
     await registeredHandler(makeEvent({
       data: {
         type: 'invariant_check',
@@ -318,20 +316,21 @@ describe('G. FIX1 — synthetic scan_incomplete entry', () => {
     }));
 
     const payload = mockOutboxAdd.mock.calls[0][0];
-    // Before FIX1 this would be exactly 0 — the defect this closes.
-    expect(simulateFormatterCount(payload)).toBeGreaterThan(0);
-    expect(payload.discrepancies.length).toBe(1);
-    expect(payload.discrepancies[0].type).toBe('scan_incomplete');
-    expect(payload.discrepancies[0].healthCheckStatus).toBe('PARTIAL');
-    expect(payload.discrepancies[0].clientsScanErrored).toBe(3);
-    expect(payload.discrepancies[0].clientsScanChecked).toBe(10);
-    expect(payload.discrepancies[0].clientsTotal).toBe(13);
-    // discrepanciesCount itself is untouched — the summary line's true source
-    // when it IS truthy; here it's legitimately 0 (no real data discrepancy).
+    expect(payload.discrepancies).toEqual([]);
+    expect(payload.discrepancies.some((d) => d.type === 'scan_incomplete')).toBe(false);
     expect(payload.discrepanciesCount).toBe(0);
+
+    // Most important: the fields the live bot's formatter reads directly are
+    // present and correctly populated — dropping any of these silently
+    // breaks the deployed bot.
+    expect(payload.healthCheckStatus).toBe('PARTIAL');
+    expect(payload.healthCheckMessage).toBe('הבדיקה הושלמה חלקית');
+    expect(payload.clientsScanChecked).toBe(10);
+    expect(payload.clientsScanErrored).toBe(3);
+    expect(payload.clientsTotal).toBe(13);
   });
 
-  test('ERROR with discrepanciesCount 0 → does NOT render as "0 gaps / all clean"', async () => {
+  test('ERROR run → outbox discrepancies equals the health-check document\'s array exactly (no synthetic entry)', async () => {
     await registeredHandler(makeEvent({
       data: {
         type: 'invariant_check',
@@ -343,14 +342,16 @@ describe('G. FIX1 — synthetic scan_incomplete entry', () => {
     }));
 
     const payload = mockOutboxAdd.mock.calls[0][0];
-    expect(simulateFormatterCount(payload)).toBeGreaterThan(0);
-    expect(payload.discrepancies.length).toBe(1);
-    expect(payload.discrepancies[0].type).toBe('scan_incomplete');
-    expect(payload.discrepancies[0].healthCheckStatus).toBe('ERROR');
-    expect(payload.discrepancies[0].message).toBe('שגיאה בבדיקת תקינות: firestore is down');
+    expect(payload.discrepancies).toEqual([]);
+    expect(payload.discrepancies.some((d) => d.type === 'scan_incomplete')).toBe(false);
+    expect(payload.discrepanciesCount).toBe(0);
+
+    // Fields the live bot depends on for the ERROR render.
+    expect(payload.healthCheckStatus).toBe('ERROR');
+    expect(payload.healthCheckMessage).toBe('שגיאה בבדיקת תקינות: firestore is down');
   });
 
-  test('PARTIAL-with-discrepancies → discrepanciesCount is NOT corrupted by the synthetic entry', async () => {
+  test('PARTIAL-with-discrepancies → discrepancies array is byte-identical to the source (no injection)', async () => {
     const realDiscrepancies = [
       { type: 'aggregate_drift', clientId: 'c2', clientName: 'לקוח שני', driftFields: [] }
     ];
@@ -367,23 +368,12 @@ describe('G. FIX1 — synthetic scan_incomplete entry', () => {
     }));
 
     const payload = mockOutboxAdd.mock.calls[0][0];
-    // The true count (1 real discrepancy) is untouched by adding the
-    // synthetic entry — formatter's count line still shows 1, not 2.
     expect(payload.discrepanciesCount).toBe(1);
-    expect(simulateFormatterCount(payload)).toBe(1);
-    // But the array itself carries BOTH the real discrepancy and the
-    // scan_incomplete marker, so the detail block surfaces the incomplete
-    // scan alongside the real gap instead of hiding it.
-    expect(payload.discrepancies.length).toBe(2);
-    expect(payload.discrepancies).toEqual(
-      expect.arrayContaining([
-        realDiscrepancies[0],
-        expect.objectContaining({ type: 'scan_incomplete', healthCheckStatus: 'PARTIAL' })
-      ])
-    );
+    expect(payload.discrepancies).toEqual(realDiscrepancies);
+    expect(payload.discrepancies.length).toBe(1);
   });
 
-  test('genuine FAIL run → discrepancies array is byte-identical to the source (no synthetic entry)', async () => {
+  test('genuine FAIL run → outbox payload is UNCHANGED (regression guard on the working path)', async () => {
     const realDiscrepancies = [
       { type: 'aggregate_drift', clientId: 'c1', clientName: 'לקוח טסט', driftFields: [] },
       { type: 'package_drift', clientId: 'c2', clientName: 'לקוח שני', serviceId: 'svc1', totalHours: 10, sumPkgHours: 8, drift: 2 }
@@ -402,7 +392,27 @@ describe('G. FIX1 — synthetic scan_incomplete entry', () => {
     expect(payload.discrepancies).toEqual(realDiscrepancies);
     expect(payload.discrepancies.length).toBe(2);
     expect(payload.discrepanciesCount).toBe(2);
-    expect(simulateFormatterCount(payload)).toBe(2);
+  });
+
+  test('discrepanciesCount still carries the true total, unaffected by removal', async () => {
+    await registeredHandler(makeEvent({
+      data: {
+        type: 'invariant_check',
+        status: 'ERROR',
+        discrepanciesCount: 0,
+        discrepancies: [],
+        clientsScanErrored: 5,
+        clientsScanChecked: 0,
+        clientsTotal: 5
+      }
+    }));
+
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    // Zero discrepancies is the TRUE total here (the run crashed before
+    // finding any data discrepancy) — discrepanciesCount reports it exactly,
+    // with no inflation from a synthetic entry.
+    expect(payload.discrepanciesCount).toBe(0);
+    expect(payload.discrepancies).toEqual([]);
   });
 });
 

@@ -77,8 +77,8 @@
 - **קבצים:** `functions/scheduled/index.js` (JS קיים — נשאר JS לפי `functions/CLAUDE.md`: מודול קיים לא ממירים), `functions/triggers/system-reports-outbox-trigger.js` (JS קיים) + בדיקות יחידה על ה-helpers הטהורים.
 - **מה משתנה:**
   - מונה שגיאות פר-לקוח (במקום בליעה ב-`:598–601`) + מניית דילוגים.
-  - אוצר סטטוסים: `PASS | FAIL | PARTIAL | ERROR`. **`PASS` רק אם `clientsErrored===0`.** שגיאות חלקיות → `PARTIAL`.
-  - מסמך התוצאה נושא מפקד: `clientsTotal / clientsChecked / clientsSkippedConfig / clientsEmptySkipped / clientsErrored / checksRun / entriesRead / durationMs / discrepanciesCount`, וכן `schemaVersion: 2`. **`type:'invariant_check'` נשמר** — תאימות לבוט.
+  - אוצר סטטוסים: `PASS | FAIL | PARTIAL | ERROR`. **`PASS` רק אם `clientsScanErrored===0`.** שגיאות חלקיות → `PARTIAL`.
+  - מסמך התוצאה נושא מפקד: `clientsTotal / clientsScanChecked / clientsSkippedConfig / clientsEmptySkipped / clientsScanErrored / checksExecuted / entriesRead / durationMs / discrepanciesCount`, וכן `schemaVersion: 2`. **`type:'invariant_check'` נשמר** — תאימות לבוט.
   - בקריסה כוללת: כותבים את מסמך ה-`ERROR` **ואז זורקים מחדש** → מדד הכשל של Cloud Scheduler נדלק.
   - טריגר ה-outbox: שולח על **כל `status !== 'PASS'`** (כולל `FAIL` עם 0 פערים, `PARTIAL`, `ERROR`) — לא רק `FAIL` עם פערים.
 - **למשתמש:** חיים יתחיל לקבל וואטסאפ גם כשהבדיקה עצמה חולה — לא רק כשהנתונים חולים.
@@ -106,7 +106,7 @@
 
 - **מטרה:** קריאה ל-`stage-invariants` מתוך לולאת הלקוח בלילית, **על אותה קריאת רישומים קיימת** (תקדים Check-7) — **אפס קריאות נוספות**.
 - **קבצים:** `functions/scheduled/index.js` (JS קיים).
-- **למשתמש:** פערי-שלב מופיעים בדוח הלילי ובוואטסאפ; המפקד מ-A1 מקבל `checksRun` מעודכן ו-`unresolvedEntries`.
+- **למשתמש:** פערי-שלב מופיעים בדוח הלילי ובוואטסאפ; המפקד מ-A1 מקבל `checksExecuted` מעודכן ו-`unresolvedEntries`.
 - **התנהגותי:** מוסיף discrepancies מסוג חדש → יכול להפוך לילות ל-`FAIL`. **צפוי FAIL בלילה הראשון** — 75 הרישומים ההיסטוריים ידווחו. זה פיצ'ר, לא באג, אבל חיים צריך לדעת מראש (§8, החלטה 4).
 - **תלות:** PR-IG-A1 (סכימה), PR-IG-C1. **סיכון:** נמוך (read-only; תוספת ל-discrepancies). devils-advocate מומלץ, Grader חובה.
 

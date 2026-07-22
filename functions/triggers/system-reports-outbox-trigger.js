@@ -13,6 +13,21 @@
  * from a healthy one. See `functions/scheduled/index.js` `dailyInvariantCheck`
  * for the producing side of this contract.
  *
+ * PR-IG-A1-FIX1 (2026-07-22) injected a synthetic `scan_incomplete` entry into
+ * this doc's `discrepancies[]` array on any non-FAIL status, as a workaround
+ * for the bot's formatter not reading the new census fields. REMOVED
+ * (2026-07-22, follow-up): the bot-side fix has shipped and is LIVE in
+ * production (`hachnasovitz` repo, `system-reports/formatter.js`) — it now
+ * reads `healthCheckStatus`/`healthCheckMessage`/`clientsScanChecked`/
+ * `clientsScanErrored`/`clientsTotal` directly and renders proper Hebrew for
+ * PARTIAL/ERROR, and defensively filters out any stray `scan_incomplete`
+ * entry. The workaround was also independently found harmful on its own terms
+ * (round-2 review): it produced a nonzero gap count where zero gaps existed,
+ * printed an English type key + a JSON.stringify blob into a Hebrew RTL
+ * message, and pushed a raw English exception string into the group. The
+ * outbox document's `discrepancies` array below is now exactly what the
+ * health-check document held — no injection, no mutation.
+ *
  * Why outbox (not HTTP webhook):
  *   The bot already connects to law-office-system Firestore (via service
  *   account in `daily-reports/law-office-key.json`, read-only). Extending
@@ -79,58 +94,6 @@ const onSystemHealthCheckCreated = onDocumentCreated({
   // ERROR (a crashed run) is the more urgent case for whoever reads severity.
   const severity = healthStatus === 'ERROR' ? 'critical' : 'warning';
 
-  // PR-IG-A1-FIX1 (2026-07-22, adversarial-review response): the deployed bot
-  // formatter (hachnasovitz/system-reports/formatter.js) reads exactly six
-  // fields — createdAt, severity, source, discrepanciesCount, discrepancies,
-  // healthCheckDocId. It does NOT read healthCheckStatus/healthCheckMessage/
-  // clientsScanErrored/clientsScanChecked/clientsTotal — every field PR-IG-A1
-  // added. So a PARTIAL or ERROR run (0% or partial data examined) with
-  // discrepanciesCount===0 would render "📊 0 פערים זוהו" (0 gaps / all
-  // clean) and still print the fixed "run auditClientAggregates /
-  // repairClientAggregates" footer — the WhatsApp alert would say the
-  // opposite of the truth on exactly the two statuses this PR exists to
-  // surface.
-  //
-  // Verified in formatter.js before choosing this mechanism:
-  //   - `count = data.discrepanciesCount || (data.discrepancies||[]).length || 0`
-  //     — when discrepanciesCount is 0 (falsy), the fallback is the ARRAY
-  //     LENGTH, not literal 0. So an item appended to the array (without
-  //     touching discrepanciesCount) flips a "0 gaps" render to non-zero.
-  //   - `formatItem()`'s `default:` branch renders ANY unrecognized `type` as
-  //     `JSON.stringify(d)` instead of dropping it, and `groupByType()`
-  //     labels an unrecognized type with the raw string (`TYPE_LABEL[t] || t`)
-  //     — so a synthetic, non-PII entry is guaranteed to render as a visible
-  //     group, not silently discarded.
-  // This confirms the reviewer's suggested mechanism actually renders on the
-  // bot exactly as deployed today — chosen over alternatives (e.g. inflating
-  // discrepanciesCount itself) because that would violate "must not corrupt
-  // discrepanciesCount for real discrepancies": leaving discrepanciesCount
-  // untouched means a PARTIAL-with-real-discrepancies run still shows its
-  // true count on the summary line; only the truthful zero-count case is
-  // affected, via the array-length fallback above.
-  //
-  // Applies to every non-FAIL status (PARTIAL, ERROR, and any future status
-  // that isn't exactly 'FAIL') — a genuine FAIL run's discrepancies array is
-  // untouched, so its payload is byte-identical to pre-fix behavior.
-  //
-  // FOLLOW-UP (cross-repo, not in this PR): the proper fix is for the bot's
-  // formatter.js to read healthCheckStatus/healthCheckMessage directly and
-  // render its own PARTIAL/ERROR-specific message instead of relying on this
-  // synthetic discrepancies[] entry. That requires a hachnasovitz-repo change
-  // + manual SSH deploy, tracked separately — this PR only makes the payload
-  // truthful against the bot AS CURRENTLY DEPLOYED.
-  const outboxDiscrepancies = discrepancies.slice();
-  if (healthStatus !== 'FAIL') {
-    outboxDiscrepancies.push({
-      type: 'scan_incomplete',
-      healthCheckStatus: healthStatus,
-      clientsScanChecked: typeof data.clientsScanChecked === 'number' ? data.clientsScanChecked : null,
-      clientsScanErrored: typeof data.clientsScanErrored === 'number' ? data.clientsScanErrored : null,
-      clientsTotal: typeof data.clientsTotal === 'number' ? data.clientsTotal : null,
-      message: typeof data.message === 'string' ? data.message : null
-    });
-  }
-
   try {
     const outboxRef = await db.collection('system_reports_outbox').add({
       type: 'system_health_check',
@@ -152,10 +115,10 @@ const onSystemHealthCheckCreated = onDocumentCreated({
       // widened non-PASS predicate opens up.
       healthCheckStatus: typeof healthStatus === 'string' ? healthStatus : null,
       discrepanciesCount,
-      // PR-IG-A1-FIX1: outboxDiscrepancies, not the raw `discrepancies` — see
-      // above. The source `system_health_checks` doc (`data`) is never
-      // mutated; this array only exists on the outbox doc the bot reads.
-      discrepancies: outboxDiscrepancies,
+      // Exactly what the health-check document held — no injection, no
+      // mutation (see the FIX1-removal note in the file header). The source
+      // `system_health_checks` doc (`data`) is never mutated either way.
+      discrepancies,
       clientsScanErrored: typeof data.clientsScanErrored === 'number' ? data.clientsScanErrored : null,
       clientsScanChecked: typeof data.clientsScanChecked === 'number' ? data.clientsScanChecked : null,
       clientsTotal: typeof data.clientsTotal === 'number' ? data.clientsTotal : null,
