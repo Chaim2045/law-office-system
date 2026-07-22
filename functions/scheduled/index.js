@@ -513,15 +513,42 @@ const RESULT_SCHEMA_VERSION = 2;
 // `functions/scheduled/reconcile-package-drift.js` (`deferrals.slice(0, 200)`).
 const MAX_EMBEDDED_DISCREPANCIES = 200;
 
-// PR-IG-A1: fixed count of distinct check mechanisms this run executes (the
-// per-service hours-used comparison, Check 7 package invariants, and Checks 1-6
-// below) — all always run unconditionally, so this is a constant, not a counter.
-const CHECKS_RUN = 8;
+// PR-IG-A1-FIX5 (2026-07-22, adversarial-review response): same cap precedent,
+// applied to the list of client ids whose per-client scan phase errored, so a
+// standing nightly PARTIAL is diagnosable in one read instead of requiring a
+// log dig. Ids only — no names (repo is PUBLIC, CI logs world-readable).
+const MAX_ERRORED_CLIENT_IDS = 200;
+
+// PR-IG-A1-FIX2 (2026-07-22, adversarial-review response): replaces the old
+// `CHECKS_RUN = 8` constant, which was written into BOTH the PARTIAL document
+// (when every per-client check errored, i.e. `clientsScanChecked === 0`) and
+// the ERROR document (when the run crashed before a single check executed) —
+// asserting "8 checks ran" on exactly the two paths this whole PR exists to
+// make truthful. `checksExecuted` below is a real counter, incremented only
+// as each check MECHANISM actually completes this run. `MAX_POSSIBLE_CHECKS`
+// is documentation only — it is never written to a result document.
+const MAX_POSSIBLE_CHECKS = 8;
 
 const dailyInvariantCheck = onSchedule({
   schedule: '0 6 * * *',
   timeZone: 'Asia/Jerusalem',
-  region: 'us-central1'
+  region: 'us-central1',
+  // PR-IG-A1-FIX3 (2026-07-22, adversarial-review response): explicit
+  // timeout/memory so a timeout or OOM kill is less likely — this run does
+  // one Firestore query PER client across 200+ clients, plus two unbounded
+  // collection scans (`timesheet_entries` per client + a `taskId != null`
+  // scan for Check 3), accumulating minutes-maps in memory. The v2 defaults
+  // (60s / 256MiB) are sized for a simple callable, not this workload. Values
+  // mirror the existing precedent for the same per-client-iteration shape:
+  // `functions/reconciliation/index.js:199` (`reconcilePackageDrift`,
+  // timeoutSeconds:540, memory:'512MiB'). This does NOT detect a run that
+  // never fired at all (Cloud Scheduler disabled, quota exhausted, etc.) —
+  // that absence-alarm is PR-IG-B's job (docs/PLAN-INTEGRITY-GUARD-LAYER-2026-07.md
+  // §3, PR-IG-B2's ">26h since last run" banner). This PR only removes the
+  // single most likely cause of the crash going undetected by simply not
+  // crashing on a resource limit.
+  timeoutSeconds: 540,
+  memory: '512MiB'
 }, async () => {
   const SKIP_CLIENTS = ['2025003'];
   const TOLERANCE = 0.02;
@@ -531,12 +558,28 @@ const dailyInvariantCheck = onSchedule({
   // PR-IG-A1: census counters — a crashed/partial scan must never look identical
   // to a clean one. Declared outside the try so the outer catch can still report
   // whatever was counted before the crash.
+  //
+  // PR-IG-A1-FIX4 (2026-07-22, adversarial-review response): renamed
+  // clientsChecked/clientsErrored → clientsScanChecked/clientsScanErrored.
+  // These count coverage of the PER-CLIENT TIMESHEET-SCAN PHASE ONLY (the
+  // per-service hours-comparison + Check 7 package invariants, both inside
+  // the per-client try below) — NOT the whole run. A client counted in
+  // clientsScanErrored is still covered by Checks 2, 5 and 6, which iterate
+  // every client in `clientsSnapshot.docs` directly and do not sit inside
+  // this per-client try (Checks 2 and 5 don't even honour SKIP_CLIENTS; only
+  // Check 6 does). The old names + the old Hebrew message below ("X לקוחות
+  // לא נסרקו") read as "not examined at all", which overstated what was
+  // actually missed.
   let clientsTotal = 0;
-  let clientsChecked = 0;
+  let clientsScanChecked = 0;
   let clientsSkippedConfig = 0;
   let clientsEmptySkipped = 0;
-  let clientsErrored = 0;
+  let clientsScanErrored = 0;
+  // PR-IG-A1-FIX5: ids only, capped — see MAX_ERRORED_CLIENT_IDS above.
+  const clientsScanErroredIds = [];
   let entriesRead = 0;
+  // PR-IG-A1-FIX2: see MAX_POSSIBLE_CHECKS above.
+  let checksExecuted = 0;
 
   try {
     console.log('🔍 Starting daily invariant check...');
@@ -627,15 +670,29 @@ const dailyInvariantCheck = onSchedule({
           discrepancies.push({ ...d, clientId, clientName });
         }
 
-        clientsChecked += 1;
+        clientsScanChecked += 1;
       } catch (clientError) {
         // PR-IG-A1: this used to be swallowed with no counter — a run where every
         // client read failed still wrote PASS. Now counted so PASS can never be
         // claimed while clients went unscanned (see the status decision below).
-        clientsErrored += 1;
+        clientsScanErrored += 1;
+        // PR-IG-A1-FIX5: capture WHICH client, bounded — a standing nightly
+        // PARTIAL used to record only the count; the id lived solely in this
+        // console.error, invisible to anyone reading the result document.
+        if (clientsScanErroredIds.length < MAX_ERRORED_CLIENT_IDS) {
+          clientsScanErroredIds.push(clientId);
+        }
         console.error(`⚠️ Error checking client ${clientId}:`, clientError.message);
         // Continue to next client
       }
+    }
+
+    // PR-IG-A1-FIX2: the per-service hours-comparison + Check 7 package
+    // invariants above ran (for at least one client) only if the per-client
+    // scan phase actually reached at least one client successfully. If every
+    // client errored, neither mechanism executed even once this run.
+    if (clientsScanChecked > 0) {
+      checksExecuted += 2;
     }
 
     // Check 1: tasks without serviceId
@@ -654,6 +711,7 @@ const dailyInvariantCheck = onSchedule({
         });
       }
     });
+    checksExecuted += 1; // Check 1
 
     // Check 2: stages missing required fields
     const REQUIRED_STAGE_FIELDS = ['id', 'pricingType', 'status', 'order'];
@@ -679,6 +737,7 @@ const dailyInvariantCheck = onSchedule({
         }
       });
     });
+    checksExecuted += 1; // Check 2
 
     // Check 3: task.actualMinutes vs SUM entries
     const taskMinutes = {};
@@ -707,6 +766,7 @@ const dailyInvariantCheck = onSchedule({
         });
       }
     });
+    checksExecuted += 1; // Check 3
 
     // Check 4: task.actualHours vs task.actualMinutes (drift between aggregates)
     // Tolerance: 1 minute (0.0167h). Catches:
@@ -730,6 +790,7 @@ const dailyInvariantCheck = onSchedule({
         });
       }
     });
+    checksExecuted += 1; // Check 4
 
     // Check 5: package drift — service.totalHours vs Σ(packages.hours)
     // Catches the regression pattern fixed in commit 974152d (renewServiceHours
@@ -766,6 +827,7 @@ const dailyInvariantCheck = onSchedule({
         }
       });
     });
+    checksExecuted += 1; // Check 5
 
     // Check 6: client-aggregate drift (PR-C.1 — I1-I4 invariants).
     // Companion to PR-D's on-demand audit (admin/repair-aggregates.js).
@@ -787,16 +849,17 @@ const dailyInvariantCheck = onSchedule({
         });
       }
     });
+    checksExecuted += 1; // Check 6
 
     // PR-IG-A1: status vocabulary is PASS | FAIL | PARTIAL | ERROR.
-    // PASS requires clientsErrored === 0 — a scan that missed clients can never
-    // report green, even if the clients it DID reach were clean. This is the
-    // core fix for the "crashed scan reports green" defect (any client read
+    // PASS requires clientsScanErrored === 0 — a scan that missed clients can
+    // never report green, even if the clients it DID reach were clean. This is
+    // the core fix for the "crashed scan reports green" defect (any client read
     // failure used to be swallowed with no counter and no status impact).
     const discrepanciesCount = discrepancies.length;
     const durationMs = Date.now() - startTime;
     let status;
-    if (clientsErrored > 0) {
+    if (clientsScanErrored > 0) {
       status = 'PARTIAL';
     } else if (discrepanciesCount > 0) {
       status = 'FAIL';
@@ -806,22 +869,31 @@ const dailyInvariantCheck = onSchedule({
 
     const census = {
       clientsTotal,
-      clientsChecked,
+      clientsScanChecked,
       clientsSkippedConfig,
       clientsEmptySkipped,
-      clientsErrored,
-      checksRun: CHECKS_RUN,
+      clientsScanErrored,
+      // PR-IG-A1-FIX5: capped id list — see MAX_ERRORED_CLIENT_IDS above.
+      clientsScanErroredIds: clientsScanErroredIds.slice(0, MAX_ERRORED_CLIENT_IDS),
+      // PR-IG-A1-FIX2: real executed-check counter, replaces the old lying
+      // `checksRun: CHECKS_RUN` constant. Max possible this run = MAX_POSSIBLE_CHECKS (8).
+      checksExecuted,
       entriesRead,
       durationMs
     };
 
+    // PR-IG-A1-FIX4: wording describes the PER-CLIENT TIMESHEET-SCAN PHASE
+    // specifically ("לא הושלמה בדיקת שעות/חבילות") — not "לא נסרקו" (not
+    // scanned at all). Checks 2, 5 and 6 still ran over every client above,
+    // including the ones counted here; only the per-service hours-comparison
+    // + Check 7 package invariants were skipped for them.
     let message;
     if (status === 'PASS') {
       message = 'כל הנתונים תקינים';
     } else if (status === 'PARTIAL') {
       message = discrepanciesCount > 0
-        ? `הבדיקה הושלמה חלקית — ${clientsErrored} לקוחות לא נסרקו, נמצאו ${discrepanciesCount} פערים בנתונים שכן נסרקו`
-        : `הבדיקה הושלמה חלקית — ${clientsErrored} לקוחות לא נסרקו`;
+        ? `הבדיקה הושלמה חלקית — ל-${clientsScanErrored} לקוחות לא הושלמה בדיקת שעות/חבילות (שאר הבדיקות בוצעו עבורם), ונמצאו ${discrepanciesCount} פערים בלקוחות שכן הושלמה עבורם הבדיקה`
+        : `הבדיקה הושלמה חלקית — ל-${clientsScanErrored} לקוחות לא הושלמה בדיקת שעות/חבילות (שאר הבדיקות בוצעו עבורם)`;
     } else {
       message = `נמצאו ${discrepanciesCount} פערים בנתוני שעות`;
     }
@@ -842,7 +914,7 @@ const dailyInvariantCheck = onSchedule({
     if (status === 'PASS') {
       console.log('✅ Invariant check PASSED — no discrepancies');
     } else if (status === 'PARTIAL') {
-      console.log(`⚠️ Invariant check PARTIAL — ${clientsErrored} client scan errors, ${discrepanciesCount} discrepancies`);
+      console.log(`⚠️ Invariant check PARTIAL — ${clientsScanErrored} client scan-phase errors, ${discrepanciesCount} discrepancies`);
     } else {
       console.log(`❌ Invariant check FAILED — ${discrepanciesCount} discrepancies found`);
     }
@@ -859,11 +931,15 @@ const dailyInvariantCheck = onSchedule({
         discrepanciesCount: discrepancies.length,
         discrepancies: discrepancies.slice(0, MAX_EMBEDDED_DISCREPANCIES),
         clientsTotal,
-        clientsChecked,
+        clientsScanChecked,
         clientsSkippedConfig,
         clientsEmptySkipped,
-        clientsErrored,
-        checksRun: CHECKS_RUN,
+        clientsScanErrored,
+        clientsScanErroredIds: clientsScanErroredIds.slice(0, MAX_ERRORED_CLIENT_IDS),
+        // PR-IG-A1-FIX2: whatever completed before the crash — zero if the
+        // crash happened at the very first `clients.get()`, as it did for the
+        // documented defect (the ERROR document used to claim all 8 ran).
+        checksExecuted,
         entriesRead,
         durationMs,
         message: `שגיאה בבדיקת תקינות: ${error.message}`
@@ -964,6 +1040,8 @@ module.exports = {
     // PR-IG-A1
     RESULT_SCHEMA_VERSION,
     MAX_EMBEDDED_DISCREPANCIES,
-    CHECKS_RUN
+    // PR-IG-A1-FIX2 / FIX5 (2026-07-22, adversarial-review response)
+    MAX_POSSIBLE_CHECKS,
+    MAX_ERRORED_CLIENT_IDS
   }
 };

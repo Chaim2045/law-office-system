@@ -79,6 +79,58 @@ const onSystemHealthCheckCreated = onDocumentCreated({
   // ERROR (a crashed run) is the more urgent case for whoever reads severity.
   const severity = healthStatus === 'ERROR' ? 'critical' : 'warning';
 
+  // PR-IG-A1-FIX1 (2026-07-22, adversarial-review response): the deployed bot
+  // formatter (hachnasovitz/system-reports/formatter.js) reads exactly six
+  // fields — createdAt, severity, source, discrepanciesCount, discrepancies,
+  // healthCheckDocId. It does NOT read healthCheckStatus/healthCheckMessage/
+  // clientsScanErrored/clientsScanChecked/clientsTotal — every field PR-IG-A1
+  // added. So a PARTIAL or ERROR run (0% or partial data examined) with
+  // discrepanciesCount===0 would render "📊 0 פערים זוהו" (0 gaps / all
+  // clean) and still print the fixed "run auditClientAggregates /
+  // repairClientAggregates" footer — the WhatsApp alert would say the
+  // opposite of the truth on exactly the two statuses this PR exists to
+  // surface.
+  //
+  // Verified in formatter.js before choosing this mechanism:
+  //   - `count = data.discrepanciesCount || (data.discrepancies||[]).length || 0`
+  //     — when discrepanciesCount is 0 (falsy), the fallback is the ARRAY
+  //     LENGTH, not literal 0. So an item appended to the array (without
+  //     touching discrepanciesCount) flips a "0 gaps" render to non-zero.
+  //   - `formatItem()`'s `default:` branch renders ANY unrecognized `type` as
+  //     `JSON.stringify(d)` instead of dropping it, and `groupByType()`
+  //     labels an unrecognized type with the raw string (`TYPE_LABEL[t] || t`)
+  //     — so a synthetic, non-PII entry is guaranteed to render as a visible
+  //     group, not silently discarded.
+  // This confirms the reviewer's suggested mechanism actually renders on the
+  // bot exactly as deployed today — chosen over alternatives (e.g. inflating
+  // discrepanciesCount itself) because that would violate "must not corrupt
+  // discrepanciesCount for real discrepancies": leaving discrepanciesCount
+  // untouched means a PARTIAL-with-real-discrepancies run still shows its
+  // true count on the summary line; only the truthful zero-count case is
+  // affected, via the array-length fallback above.
+  //
+  // Applies to every non-FAIL status (PARTIAL, ERROR, and any future status
+  // that isn't exactly 'FAIL') — a genuine FAIL run's discrepancies array is
+  // untouched, so its payload is byte-identical to pre-fix behavior.
+  //
+  // FOLLOW-UP (cross-repo, not in this PR): the proper fix is for the bot's
+  // formatter.js to read healthCheckStatus/healthCheckMessage directly and
+  // render its own PARTIAL/ERROR-specific message instead of relying on this
+  // synthetic discrepancies[] entry. That requires a hachnasovitz-repo change
+  // + manual SSH deploy, tracked separately — this PR only makes the payload
+  // truthful against the bot AS CURRENTLY DEPLOYED.
+  const outboxDiscrepancies = discrepancies.slice();
+  if (healthStatus !== 'FAIL') {
+    outboxDiscrepancies.push({
+      type: 'scan_incomplete',
+      healthCheckStatus: healthStatus,
+      clientsScanChecked: typeof data.clientsScanChecked === 'number' ? data.clientsScanChecked : null,
+      clientsScanErrored: typeof data.clientsScanErrored === 'number' ? data.clientsScanErrored : null,
+      clientsTotal: typeof data.clientsTotal === 'number' ? data.clientsTotal : null,
+      message: typeof data.message === 'string' ? data.message : null
+    });
+  }
+
   try {
     const outboxRef = await db.collection('system_reports_outbox').add({
       type: 'system_health_check',
@@ -91,12 +143,25 @@ const onSystemHealthCheckCreated = onDocumentCreated({
       // confuse with the outbox delivery-lifecycle `status` field below
       // ('pending'/'sent'/'failed'), which the bot queries on and which stays
       // byte-identical to preserve the existing consumption contract.
-      healthCheckStatus: healthStatus,
+      //
+      // PR-IG-A1-FIX6 (2026-07-22, adversarial-review response): guarded like
+      // its four immediate siblings below. `admin.initializeApp()` sets no
+      // `ignoreUndefinedProperties`, so an undefined healthStatus would make
+      // this whole `.add()` reject and the alert would be lost entirely —
+      // latent today (only one writer exists) but exactly the class the
+      // widened non-PASS predicate opens up.
+      healthCheckStatus: typeof healthStatus === 'string' ? healthStatus : null,
       discrepanciesCount,
-      discrepancies,
-      clientsErrored: typeof data.clientsErrored === 'number' ? data.clientsErrored : null,
-      clientsChecked: typeof data.clientsChecked === 'number' ? data.clientsChecked : null,
+      // PR-IG-A1-FIX1: outboxDiscrepancies, not the raw `discrepancies` — see
+      // above. The source `system_health_checks` doc (`data`) is never
+      // mutated; this array only exists on the outbox doc the bot reads.
+      discrepancies: outboxDiscrepancies,
+      clientsScanErrored: typeof data.clientsScanErrored === 'number' ? data.clientsScanErrored : null,
+      clientsScanChecked: typeof data.clientsScanChecked === 'number' ? data.clientsScanChecked : null,
       clientsTotal: typeof data.clientsTotal === 'number' ? data.clientsTotal : null,
+      // PR-IG-A1-FIX5: passthrough of the capped errored-client-id list — ids
+      // only, no names.
+      clientsScanErroredIds: Array.isArray(data.clientsScanErroredIds) ? data.clientsScanErroredIds : [],
       healthCheckMessage: typeof data.message === 'string' ? data.message : null,
       status: 'pending',
       attempts: 0,

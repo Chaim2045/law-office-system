@@ -65,7 +65,10 @@ jest.mock('firebase-admin', () => {
       if (name === 'budget_tasks') {
         return {
           where: () => ({
-            get: async () => querySnap(MOCK_TASKS.map((t) => ({ id: t.id, data: () => t })))
+            get: async () => {
+              if (MOCK_TASKS === 'THROW') throw new Error('simulated budget_tasks read failure');
+              return querySnap(MOCK_TASKS.map((t) => ({ id: t.id, data: () => t })));
+            }
           })
         };
       }
@@ -158,7 +161,7 @@ describe('clean run', () => {
     const doc = lastHealthCheck();
     expect(doc.status).toBe('PASS');
     expect(doc.discrepanciesCount).toBe(0);
-    expect(doc.clientsErrored).toBe(0);
+    expect(doc.clientsScanErrored).toBe(0);
   });
 });
 
@@ -176,7 +179,7 @@ describe('discrepancies present', () => {
     const doc = lastHealthCheck();
     expect(doc.status).toBe('FAIL');
     expect(doc.discrepanciesCount).toBeGreaterThan(0);
-    expect(doc.clientsErrored).toBe(0);
+    expect(doc.clientsScanErrored).toBe(0);
   });
 });
 
@@ -199,8 +202,15 @@ describe('the headline defect — crashed scan must not report green', () => {
     const doc = lastHealthCheck();
     expect(doc.status).not.toBe('PASS');
     expect(doc.status).toBe('PARTIAL');
-    expect(doc.clientsErrored).toBe(2);
-    expect(doc.clientsChecked).toBe(0);
+    expect(doc.clientsScanErrored).toBe(2);
+    expect(doc.clientsScanChecked).toBe(0);
+    // FIX2: Checks 1-6 still ran over the whole client set even though the
+    // per-client scan phase (hours-comparison + Check 7) never completed for
+    // any client (clientsScanChecked === 0) — checksExecuted should be 6, not 8.
+    expect(doc.checksExecuted).toBe(6);
+    // FIX5: both errored client ids are recorded (bounded, no names).
+    expect(doc.clientsScanErroredIds).toEqual(expect.arrayContaining(['c1', 'c2']));
+    expect(doc.clientsScanErroredIds.length).toBe(2);
   });
 });
 
@@ -223,8 +233,46 @@ describe('partial scan', () => {
 
     const doc = lastHealthCheck();
     expect(doc.status).toBe('PARTIAL');
-    expect(doc.clientsErrored).toBe(1);
-    expect(doc.clientsChecked).toBe(1);
+    expect(doc.clientsScanErrored).toBe(1);
+    expect(doc.clientsScanChecked).toBe(1);
+    // FIX2: at least one client completed the scan phase → the 2 per-client
+    // checks DID run (for c2), plus the 6 unconditional checks = 8.
+    expect(doc.checksExecuted).toBe(8);
+    // FIX5
+    expect(doc.clientsScanErroredIds).toEqual(['c1']);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PARTIAL-with-discrepancies — some clients error AND the clients that WERE
+// scanned have a real gap. This branch was flagged by the grader as
+// uncovered: it's the only path where BOTH the "לא נסרקו/לא הושלמה" wording
+// AND a nonzero discrepanciesCount appear in the same message.
+// ═══════════════════════════════════════════════════════════════
+
+describe('PARTIAL with real discrepancies', () => {
+  test('one client errors, another has a real gap → PARTIAL, discrepanciesCount > 0, message mentions both', async () => {
+    MOCK_CLIENTS = [
+      makeClient('c1', [makeHoursService('svc1', 2)]),     // errors
+      makeClient('c2', [makeHoursService('svc2', 5)])      // card says 5h
+    ];
+    MOCK_TIMESHEET_BY_CLIENT = {
+      c1: 'THROW',
+      c2: [{ clientId: 'c2', serviceId: 'svc2', minutes: 60 }] // timesheet says 1h — real gap
+    };
+
+    await dailyInvariantCheck();
+
+    const doc = lastHealthCheck();
+    expect(doc.status).toBe('PARTIAL');
+    expect(doc.clientsScanErrored).toBe(1);
+    expect(doc.clientsScanChecked).toBe(1);
+    expect(doc.discrepanciesCount).toBeGreaterThan(0);
+    // FIX4: message names BOTH the incomplete-scan count and the real gap
+    // count — neither is silently dropped in this combined branch.
+    expect(doc.message).toContain(String(doc.clientsScanErrored));
+    expect(doc.message).toContain(String(doc.discrepanciesCount));
+    expect(doc.message).not.toContain('לא נסרקו');
   });
 });
 
@@ -251,12 +299,17 @@ describe('census fields', () => {
     expect(doc.clientsTotal).toBe(4);
     expect(doc.clientsSkippedConfig).toBe(1);
     expect(doc.clientsEmptySkipped).toBe(1);
-    expect(doc.clientsChecked).toBe(1);
-    expect(doc.clientsErrored).toBe(1);
-    expect(doc.clientsChecked + doc.clientsErrored + doc.clientsSkippedConfig + doc.clientsEmptySkipped)
+    expect(doc.clientsScanChecked).toBe(1);
+    expect(doc.clientsScanErrored).toBe(1);
+    expect(doc.clientsScanChecked + doc.clientsScanErrored + doc.clientsSkippedConfig + doc.clientsEmptySkipped)
       .toBe(doc.clientsTotal);
-    expect(typeof doc.checksRun).toBe('number');
-    expect(doc.checksRun).toBeGreaterThan(0);
+    // FIX2: exact value, not just ">0" — the old assertion couldn't have
+    // caught checksRun:8 being wrong. clientsScanChecked=1 (>0) → +2, plus the
+    // 6 unconditional checks = 8.
+    expect(doc.checksExecuted).toBe(8);
+    expect(doc.checksExecuted).toBeLessThanOrEqual(_test.MAX_POSSIBLE_CHECKS);
+    // FIX5: errored client id is present, bounded, no names.
+    expect(doc.clientsScanErroredIds).toEqual(['c_err']);
     expect(typeof doc.entriesRead).toBe('number');
     expect(typeof doc.durationMs).toBe('number');
   });
@@ -308,5 +361,30 @@ describe('total failure', () => {
     expect(doc.status).toBe('ERROR');
     expect(doc.type).toBe('invariant_check');
     expect(doc.schemaVersion).toBe(2);
+    // FIX2 (the headline case for this fix): the crash happened at the very
+    // first `clients.get()` — before ANY check mechanism ran. The ERROR
+    // document must not claim checks ran when none did (the old
+    // `checksRun: CHECKS_RUN` constant asserted 8 here regardless).
+    expect(doc.checksExecuted).toBe(0);
+    expect(doc.clientsScanChecked).toBe(0);
+    expect(doc.clientsScanErrored).toBe(0);
+    expect(doc.clientsScanErroredIds).toEqual([]);
+  });
+
+  test('a crash mid-run (after some clients scanned, before Checks 1-6) reports a partial checksExecuted', async () => {
+    MOCK_CLIENTS = [makeClient('c1', [makeHoursService('svc1', 1)])];
+    MOCK_TIMESHEET_BY_CLIENT = { c1: [{ clientId: 'c1', serviceId: 'svc1', minutes: 60 }] };
+    // budget_tasks query (Check 1) throws — simulates a crash after the
+    // per-client loop completed but before the whole-collection checks ran.
+    MOCK_TASKS = 'THROW';
+
+    await expect(dailyInvariantCheck()).rejects.toThrow();
+
+    const doc = lastHealthCheck();
+    expect(doc.status).toBe('ERROR');
+    // clientsScanChecked > 0 → the per-client phase (+2) ran; Checks 1-6 never
+    // reached completion → checksExecuted reflects only the +2, not 8.
+    expect(doc.checksExecuted).toBe(2);
+    expect(doc.clientsScanChecked).toBe(1);
   });
 });
