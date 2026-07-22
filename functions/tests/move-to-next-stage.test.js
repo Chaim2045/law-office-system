@@ -22,10 +22,27 @@ const mockTransaction = {
 };
 const mockRunTransaction = jest.fn(async (fn) => fn(mockTransaction));
 
+// PR-B-2 (2026-07-21): moveToNextStage now also queries budget_tasks (via
+// transaction.get(db.collection('budget_tasks').where(...))) to re-point any
+// open task pointing at the closing stage. This mock's `budget_tasks` branch
+// only needs a chainable `.where()` — the actual resolved snapshot is
+// controlled by `mockTransaction.get`'s queued values in setupTxMocks below
+// (this pre-existing suite doesn't exercise the re-point behavior itself;
+// see tests/move-to-next-stage-repoint.test.js for that coverage — it always
+// queues an EMPTY task snapshot so the no-op/zero-writes path is exercised
+// here, keeping this file's existing assertions — e.g. exactly ONE
+// transaction.update call for the client write — valid).
+const mockBudgetTasksQuery = {
+  where: jest.fn().mockReturnThis()
+};
+
 const mockDb = {
-  collection: jest.fn(() => ({
-    doc: jest.fn((id) => ({ id: id || 'auto_id' }))
-  })),
+  collection: jest.fn((name) => {
+    if (name === 'budget_tasks') {
+      return mockBudgetTasksQuery;
+    }
+    return { doc: jest.fn((id) => ({ id: id || 'auto_id' })) };
+  }),
   runTransaction: mockRunTransaction
 };
 
@@ -146,8 +163,9 @@ function makeCtx(uid = 'user1') {
 function setupTxMocks(clientDoc) {
   mockTransaction.get.mockReset();
   mockTransaction.get
-    .mockResolvedValueOnce(clientDoc)
-    .mockResolvedValueOnce(clientDoc);
+    .mockResolvedValueOnce(clientDoc) // 3a: outer client read
+    .mockResolvedValueOnce({ docs: [] }) // PR-B-2: budget_tasks query — no open tasks
+    .mockResolvedValueOnce(clientDoc); // internal re-read inside writeClientWithCanonicalAggregates
 }
 
 beforeEach(() => {

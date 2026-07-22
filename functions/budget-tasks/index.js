@@ -202,6 +202,79 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
         timeEntries: []
       };
 
+      // CHANGE 3 (2026-07-22, PR-B-2 R3): detect-only log for the
+      // creation-time race. A lawyer can open the add-task dialog while the
+      // case sits on stage א, an admin advances the case to stage ב, and the
+      // lawyer submits — the task is born pointing at an already-CLOSED
+      // stage, and moveToNextStage's re-point filter (functions/services/
+      // index.js) will never reach it: that filter only re-points a task
+      // whose serviceId matches the EXACT stage being closed on that
+      // specific advance, and this task was never open during any advance.
+      //
+      // Do NOT block, reject, or coerce here — that decision belongs to a
+      // later gated feature, and this repo has a documented incident where
+      // blocking a lawyer from logging legitimately caused the hours to be
+      // recorded under `internal_office` and never billed (see project
+      // memory `project_internal_office_billing_leak`). This is detection
+      // only.
+      //
+      // Reuses `clientData` (already read into THIS transaction above, at
+      // the Phase 1 client read) — adds NO new read on the common path. If
+      // the resolution is ambiguous (no parentServiceId/serviceId stamped,
+      // the parent service isn't found, it has no stages array, or the
+      // stamped stage id isn't found on it) log NOTHING rather than guess —
+      // per instruction, a confident determination is required to log.
+      // FIX A (2026-07-22, PR-B-2 R4 — devils-advocate/outcomes-grader
+      // finding): the block above used `(clientData.services || []).find(...)`
+      // unguarded. Two real crash paths on this hot creation-time path:
+      // (1) `services` present but NOT an array (e.g. a corrupted/legacy doc
+      // with `services` as an object) → `.find` is `undefined` → calling it
+      // throws a TypeError inside the transaction → task creation FAILS.
+      // (2) any null element inside `services` → `s.id` throws a TypeError
+      // → same failure. The very next line already guarded
+      // `Array.isArray(parentService.stages)` for the stages array — the
+      // services array deserved the identical treatment (mirrors the
+      // canonical writer's own guard, functions/shared/client-writer.js
+      // `Array.isArray(merged.services) ? merged.services.filter(Boolean) : []`).
+      // A detect-only log that can crash the operation it observes is worse
+      // than the defect it measures — so this whole block is now (a)
+      // Array.isArray-guarded on `services`, (b) filters out null elements
+      // before `.find`, and (c) wrapped in try/catch as belt-and-braces so
+      // NO exception from this detection logic can ever propagate into the
+      // task-creation transaction. On any unexpected shape, log nothing
+      // rather than guess (unchanged from the original intent) — never
+      // block, never reject, never coerce, on every path.
+      try {
+        if (taskData.parentServiceId && taskData.serviceId) {
+          const servicesArray = Array.isArray(clientData.services)
+            ? clientData.services.filter(Boolean)
+            : [];
+          const parentService = servicesArray.find(
+            (s) => s.id === taskData.parentServiceId
+          );
+          const stampedStage = parentService && Array.isArray(parentService.stages)
+            ? parentService.stages.find((st) => st && st.id === taskData.serviceId)
+            : null;
+          if (stampedStage && stampedStage.status === 'completed') {
+            // Identifiers only — no client name, employee, description, or
+            // hours (PUBLIC repo, world-readable CI logs).
+            console.warn('BUDGET_TASK_CREATED_ON_COMPLETED_STAGE', {
+              taskId: taskRef.id,
+              stageId: taskData.serviceId,
+              serviceId: taskData.parentServiceId,
+              clientId: clientId
+            });
+          }
+        }
+      } catch (detectErr) {
+        // Never let detection-only observability abort task creation.
+        console.error('BUDGET_TASK_DETECT_LOG_FAILED', {
+          taskId: taskRef.id,
+          clientId: clientId,
+          errorCode: (detectErr && detectErr.code) || 'unknown'
+        });
+      }
+
       // ✅ Create approval history record (for tracking/FYI)
       const approvalRecord = {
         taskId: taskRef.id,
