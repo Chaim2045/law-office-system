@@ -51,8 +51,30 @@
  *      stranded on an EARLIER completed stage is NOT re-pointed (J,
  *      inverted) but IS counted (`strandedOnEarlierStageCount`) and
  *      detect-logged, and the counter is 0 when no such task exists.
- *   Q. CHANGE 5 — the audit's `fromStageId` reflects the task's own actual
- *      prior `serviceId`, not a value assumed equal to `currentStage.id`.
+ *   Q. CHANGE 5 — pins that the audit payload carries a `fromStageId` key
+ *      sourced from the task's OWN snapshot (read before the update), not a
+ *      literal. NOTE (FIX C, R4, honest re-label): under the narrow
+ *      write-selection filter a written task always has
+ *      `serviceId === currentStage.id` by construction, so `fromStageId`
+ *      and `currentStage.id` are provably equal for every fixture this
+ *      filter can ever select — no fixture can discriminate "read from the
+ *      snapshot" from "hardcoded to currentStage.id" without violating the
+ *      filter itself. This test therefore proves the field is WIRED
+ *      (sourced from the task doc, present under the expected key), not
+ *      that it is CURRENTLY OBSERVABLE-DIFFERENT-FROM-a-hardcode. It is
+ *      future-proofing for a later loosened filter, not a live behavioral
+ *      guarantee today.
+ *
+ * ── PR-B-2 R4 (2026-07-22, final review-fix pass — devils-advocate +
+ *    outcomes-grader) ──────────────────────────────────────────────────────
+ *   N is RE-FIXTURED below: the original synchronous `NOT_FOUND` throw from
+ *   `transaction.update` does not model the real Firestore SDK (real
+ *   `transaction.update`/`transaction.set` BUFFER their write; a missing
+ *   document fails at COMMIT, outside this try/catch). N now injects a
+ *   synchronous throw from `logCriticalActionInTxn` (mirroring a
+ *   `validateActorUid` rejection) — a failure class that genuinely can
+ *   throw synchronously inside the callback, which is exactly what the
+ *   per-task try/catch defends against.
  */
 
 // ─── Mock transaction + Firestore db ───────────────────────────────────────
@@ -583,12 +605,24 @@ describe('P. CHANGE 2 — strandedOnEarlierStageCount is 0 when no such task exi
 });
 
 // ═══════════════════════════════════════════════════════════════
-// Q. CHANGE 5 — the audit's fromStageId reflects the task's OWN actual
-//    prior serviceId, captured before the update
+// Q. CHANGE 5 — pins that the audit payload's fromStageId is sourced from
+//    the task's own snapshot and carries the expected key/value shape.
+//
+// HONEST SCOPE (FIX C, R4): this does NOT prove "not a hardcoded stage" —
+// under the narrow write-selection filter, every task this filter can ever
+// select has serviceId === currentStage.id, so fromStageId and
+// currentStage.id are equal BY CONSTRUCTION in any fixture reachable
+// through this filter. A hardcoded `fromStageId: currentStage.id` would
+// pass this exact assertion too. What this test DOES pin: the field exists,
+// is read off the task doc (not omitted, not undefined), and travels
+// through to the audit call — useful future-proofing if the write filter
+// is ever loosened again (R2 FIX 1's history), at which point this test
+// would need a fixture where the two values diverge to mean what its name
+// used to claim.
 // ═══════════════════════════════════════════════════════════════
 
-describe('Q. CHANGE 5 — logCriticalActionInTxn fromStageId is the task\'s actual prior stage', () => {
-  test('a service starting on stage_b (not stage_a) repoints with fromStageId=stage_b, not a hardcoded stage_a', async () => {
+describe('Q. CHANGE 5 — logCriticalActionInTxn fromStageId is sourced from the task snapshot', () => {
+  test('a service starting on stage_b (not stage_a) repoints with fromStageId=stage_b (equal to currentStage.id by construction under the narrow filter)', async () => {
     const openTask = makeTaskDoc('task-from-b', { serviceId: 'stage_b' });
     const service = makeLegalProcedure('s1', {
       stages: [
@@ -611,6 +645,72 @@ describe('Q. CHANGE 5 — logCriticalActionInTxn fromStageId is the task\'s actu
         toStageId: 'stage_c'
       })
     );
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// R. FIX E (R4) — unresolvedStageForServiceCount: an open task explicitly
+//    owned by this service (parentServiceId matches) whose serviceId is not
+//    any stage of this service at all is counted, never re-pointed, and the
+//    counter is 0 when no such task exists.
+// ═══════════════════════════════════════════════════════════════
+
+describe('R. FIX E — unresolvedStageForServiceCount', () => {
+  test('parentServiceId matches this service but serviceId matches no stage on it -> counted, not re-pointed', async () => {
+    const unresolvedTask = makeTaskDoc('task-unresolved', {
+      parentServiceId: 's1',
+      serviceId: 'stage_GARBAGE'
+    });
+    setupTxMocks(makeClientDoc([makeLegalProcedure('s1')]), [unresolvedTask]);
+
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
+
+    expect(mockTransaction.update).toHaveBeenCalledTimes(1); // client only
+    const taskUpdateCall = mockTransaction.update.mock.calls.find(
+      ([ref]) => ref === unresolvedTask.ref
+    );
+    expect(taskUpdateCall).toBeUndefined();
+    expect(result.repointedTaskCount).toBe(0);
+    expect(result.unresolvedStageForServiceCount).toBe(1);
+    expect(mockLogCriticalActionInTxn).not.toHaveBeenCalled();
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'BUDGET_TASK_UNRESOLVED_STAGE_FOR_SERVICE',
+      expect.objectContaining({
+        taskId: 'task-unresolved',
+        stageId: 'stage_GARBAGE',
+        serviceId: 's1',
+        clientId: 'c1'
+      })
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  test('zero unresolved tasks -> counter is 0', async () => {
+    const openTask = makeTaskDoc('task-normal');
+    setupTxMocks(makeClientDoc([makeLegalProcedure('s1')]), [openTask]);
+
+    const result = await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
+
+    expect(result.unresolvedStageForServiceCount).toBe(0);
+  });
+
+  test('serviceId matches no stage but parentServiceId is FALSY -> deliberately NOT counted (ambiguous attribution)', async () => {
+    const ambiguousTask = makeTaskDoc('task-ambiguous', {
+      parentServiceId: null,
+      serviceId: 'stage_GARBAGE'
+    });
+    setupTxMocks(makeClientDoc([makeLegalProcedure('s1')]), [ambiguousTask]);
+
+    const result = await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
+
+    // Not counted by the new counter (attribution would be a guess), not
+    // re-pointed, and not counted by the pre-existing counters either.
+    expect(result.unresolvedStageForServiceCount).toBe(0);
+    expect(result.strandedOnEarlierStageCount).toBe(0);
+    expect(result.skippedForMissingParentServiceIdCount).toBe(0);
   });
 });
 
@@ -710,15 +810,31 @@ describe('M. FIX 3 — exceeding the safe re-point ceiling throws failed-precond
 // N. FIX 4 — enriched, re-thrown error on a per-task failure
 // ═══════════════════════════════════════════════════════════════
 
-describe('N. FIX 4 — a failing task update produces an error naming the taskId', () => {
-  test('transaction.update throwing for one task aborts with a taskId-naming error, no swallow', async () => {
+describe('N. FIX 4 (re-fixtured R4) — a SYNCHRONOUS throw while buffering a task write aborts the advance with a taskId-naming error', () => {
+  // R4 NOTE (FIX D): the previous fixture made `transaction.update` throw a
+  // synchronous `NOT_FOUND` — that does NOT model the real Firestore SDK.
+  // The real `transaction.update`/`transaction.set` BUFFER their write; a
+  // missing-document failure surfaces at COMMIT time, which is OUTSIDE this
+  // callback and OUTSIDE this try/catch entirely (see the corrected comment
+  // at functions/services/index.js, the try/catch around the repoint
+  // writes). This test now injects a failure class that CAN genuinely throw
+  // synchronously inside the callback — a `validateActorUid` rejection
+  // surfacing from `logCriticalActionInTxn` (post-FIX-B, this call runs
+  // BEFORE `transaction.update` for each task, audit-FIRST) — which is
+  // exactly what the per-task try/catch is built to catch and enrich.
+  //
+  // IMPORTANT: this does NOT cover a concurrent delete (that fails at
+  // commit, outside this try/catch) — see the comment in
+  // functions/services/index.js for what is and is not caught here.
+  test('logCriticalActionInTxn throwing synchronously for one task aborts with a taskId-naming error, no swallow', async () => {
     const failingTask = makeTaskDoc('task-boom');
     setupTxMocks(makeClientDoc([makeLegalProcedure('s1')]), [failingTask]);
 
-    mockTransaction.update.mockImplementation((ref) => {
-      if (ref === failingTask.ref) {
-        throw new Error('NOT_FOUND: no entity to update');
+    mockLogCriticalActionInTxn.mockImplementation((tx, action, actorUid) => {
+      if (actorUid && failingTask) {
+        throw new Error('actorUid failed validateActorUid: malformed uid');
       }
+      return 'audit-doc-id';
     });
 
     await expect(
@@ -727,10 +843,13 @@ describe('N. FIX 4 — a failing task update produces an error naming the taskId
       message: expect.stringContaining('task-boom')
     });
 
-    // The audit call for THIS task must not have happened either (audit
-    // follows the update inside the same try, and the throw aborts before
-    // it) — the failure is not partially applied.
-    expect(mockLogCriticalActionInTxn).not.toHaveBeenCalled();
+    // The task update for THIS task must not have happened either — the
+    // audit call throws BEFORE transaction.update runs (audit-FIRST,
+    // post-FIX-B), so the failure is not partially applied.
+    const taskUpdateCall = mockTransaction.update.mock.calls.find(
+      ([ref]) => ref === failingTask.ref
+    );
+    expect(taskUpdateCall).toBeUndefined();
   });
 });
 

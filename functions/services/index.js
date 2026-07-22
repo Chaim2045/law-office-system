@@ -1064,6 +1064,40 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       // ZERO writes ever result from this branch.
       let strandedOnEarlierStageCount = 0;
 
+      // FIX E (2026-07-22, PR-B-2 R4 — outcomes-grader "blind spot" finding):
+      // a third detect-only bucket. `strandedOnEarlierStageCount` only fires
+      // when `t.parentServiceId === service.id` — but an OPEN task with a
+      // FALSY parentServiceId whose `serviceId` doesn't correspond to ANY
+      // stage of THIS service (not the closing stage, not an earlier
+      // completed stage, not a future pending stage) previously fell through
+      // every branch uncounted: it fails the stranded check (requires
+      // parentServiceId===service.id), then fails the second block's
+      // `t.serviceId !== currentStage.id` return before ever reaching the
+      // `!t.parentServiceId` counter (that counter only increments when
+      // serviceId DOES equal currentStage.id). This counter closes that gap
+      // for the UNAMBIGUOUS case only: `parentServiceId === service.id`
+      // (the task explicitly names this service) but `serviceId` matches no
+      // stage on it at all — data corruption / a stale-stage bug, not the
+      // drift class either existing counter targets. ZERO writes, ever.
+      //
+      // Deliberately NOT counted (would require guessing): an OPEN task with
+      // a FALSY parentServiceId whose serviceId happens to equal an earlier
+      // completed stage id (e.g. 'stage_a') of THIS service. Stage ids
+      // ('stage_a'/'stage_b'/'stage_c') are literal constants reused across
+      // EVERY legal_procedure service on a client (SYSTEM_CONSTANTS.
+      // VALID_STAGE_IDS) — so without parentServiceId there is no way to
+      // tell whether that task belongs to THIS service or a sibling
+      // legal_procedure service on the same client with the same stage ids.
+      // Counting it here would be an attribution guess dressed up as a
+      // measurement — per instruction, a wrong counter is worse than a
+      // missing one, so this case is left uncounted (already partially
+      // visible via `skippedForMissingParentServiceIdCount` in the one
+      // sub-case where serviceId also happens to equal currentStage.id).
+      let unresolvedStageForServiceCount = 0;
+      const stageIdsOfThisService = new Set(
+        Array.isArray(service.stages) ? service.stages.map((s) => s.id) : []
+      );
+
       const tasksToRepoint = clientBudgetTasksSnap.docs.filter((taskDoc) => {
         const t = taskDoc.data();
         if (t.status !== OPEN_TASK_STATUS) return false;
@@ -1080,6 +1114,27 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
         ) {
           strandedOnEarlierStageCount++;
           console.warn('STRANDED_BUDGET_TASK_EARLIER_STAGE', {
+            taskId: taskDoc.id,
+            stageId: t.serviceId,
+            serviceId: service.id,
+            clientId: data.clientId
+          });
+          return false;
+        }
+
+        // Detect-only (FIX E): an open task explicitly owned by THIS service
+        // (parentServiceId matches) whose serviceId is not any stage of this
+        // service at all — unresolvable, not covered by the stranded branch
+        // above (which requires completedStageIds.has(serviceId)). Never
+        // selected for write.
+        if (
+          t.parentServiceId === service.id &&
+          t.serviceId !== currentStage.id &&
+          !completedStageIds.has(t.serviceId) &&
+          !stageIdsOfThisService.has(t.serviceId)
+        ) {
+          unresolvedStageForServiceCount++;
+          console.warn('BUDGET_TASK_UNRESOLVED_STAGE_FOR_SERVICE', {
             taskId: taskDoc.id,
             stageId: t.serviceId,
             serviceId: service.id,
@@ -1218,8 +1273,14 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
         // is NOT caught here — it propagates as the transaction's own
         // rejection, unnamed by taskId, same as before this guard existed.
         try {
-          transaction.update(taskDoc.ref, taskUpdatePayload);
-
+          // FIX B (2026-07-22, PR-B-2 R4 — Mechanical bar item, MASTER_PLAN
+          // §2.0.2 "Audit-FIRST, mutation-SECOND ordering"): audit call
+          // MUST precede the mutation (mirrors reconciliation/index.js's
+          // set-mode transaction). Both calls buffer into the same
+          // transaction and commit together — this swap changes ordering
+          // only, not atomicity or outcome. `priorStageId` was captured
+          // above from the pre-update task snapshot, so it is unaffected by
+          // this reordering.
           logCriticalActionInTxn(transaction, 'REPOINT_BUDGET_TASK_STAGE', user.uid, {
             clientId: data.clientId,
             taskId: taskDoc.id,
@@ -1227,6 +1288,8 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
             fromStageId: priorStageId,
             toStageId: nextStage.id
           });
+
+          transaction.update(taskDoc.ref, taskUpdatePayload);
         } catch (repointErr) {
           console.error('Error re-pointing budget_task during moveToNextStage:', taskDoc.id, repointErr);
           throw new functions.https.HttpsError(
@@ -1251,7 +1314,10 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
         // CHANGE 2 (2026-07-22, R3): observability-only — see the comment
         // at 3g4. Never repaired by this code; surfaced so the future
         // reopen/modal flow has a measurable target.
-        strandedOnEarlierStageCount: strandedOnEarlierStageCount
+        strandedOnEarlierStageCount: strandedOnEarlierStageCount,
+        // FIX E (2026-07-22, R4): observability-only — see the comment at
+        // the counter's declaration above. Never repaired by this code.
+        unresolvedStageForServiceCount: unresolvedStageForServiceCount
       };
     });
 
@@ -1267,11 +1333,12 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       serviceName: result.serviceName,
       repointedTaskCount: result.repointedTaskCount,
       skippedForMissingParentServiceIdCount: result.skippedForMissingParentServiceIdCount,
-      strandedOnEarlierStageCount: result.strandedOnEarlierStageCount
+      strandedOnEarlierStageCount: result.strandedOnEarlierStageCount,
+      unresolvedStageForServiceCount: result.unresolvedStageForServiceCount
     });
 
     // 5. Return
-    console.log(`✅ Stage moved: ${result.currentStage.id} → ${result.nextStage.id} for client ${data.clientId} (repointed ${result.repointedTaskCount} open task(s), skipped ${result.skippedForMissingParentServiceIdCount} for missing parentServiceId, ${result.strandedOnEarlierStageCount} stranded on an earlier closed stage)`);
+    console.log(`✅ Stage moved: ${result.currentStage.id} → ${result.nextStage.id} for client ${data.clientId} (repointed ${result.repointedTaskCount} open task(s), skipped ${result.skippedForMissingParentServiceIdCount} for missing parentServiceId, ${result.strandedOnEarlierStageCount} stranded on an earlier closed stage, ${result.unresolvedStageForServiceCount} with an unresolved stage for this service)`);
 
     return {
       success: true,
@@ -1283,6 +1350,7 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       repointedTaskCount: result.repointedTaskCount,
       skippedForMissingParentServiceIdCount: result.skippedForMissingParentServiceIdCount,
       strandedOnEarlierStageCount: result.strandedOnEarlierStageCount,
+      unresolvedStageForServiceCount: result.unresolvedStageForServiceCount,
       message: `עברת לשלב "${result.nextStage.name}"`
     };
 

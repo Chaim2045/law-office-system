@@ -214,4 +214,79 @@ describe('createBudgetTask — CHANGE 3 detect-only stale-stage log', () => {
 
     warnSpy.mockRestore();
   });
+
+  // ── FIX A (2026-07-22, R4 — devils-advocate/outcomes-grader finding) ──────
+  // The original block did `(clientData.services || []).find(...)` unguarded
+  // against `services` being a non-array, or containing a null element.
+  // Both are real corrupted/legacy-doc shapes that would previously throw a
+  // TypeError INSIDE the transaction and fail task creation entirely — a
+  // detect-only log crashing the operation it observes. These two tests pin
+  // that task creation completes successfully on both shapes.
+
+  test('FIX A — client.services is a non-array (an object) -> task creation still succeeds, no throw, no console.warn', async () => {
+    mockTransaction.get.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({
+        clientName: 'לקוח טסט',
+        caseNumber: '2025001',
+        services: { notAnArray: true } // corrupted shape
+      })
+    });
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const data = { ...baseData, serviceId: 'stage_a', parentServiceId: 's1' };
+    const result = await createBudgetTask(data, makeCtx());
+
+    expect(result.success).toBe(true); // task creation NOT aborted
+    // Ambiguous shape -> log nothing rather than guess (no crash-observability
+    // log either, since the try/catch swallows only unexpected exceptions —
+    // here the Array.isArray guard itself prevents any exception at all).
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      'BUDGET_TASK_CREATED_ON_COMPLETED_STAGE',
+      expect.anything()
+    );
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      'BUDGET_TASK_DETECT_LOG_FAILED',
+      expect.anything()
+    );
+
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  test('FIX A — client.services contains a null element -> task creation still succeeds, no throw', async () => {
+    mockTransaction.get.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({
+        clientName: 'לקוח טסט',
+        caseNumber: '2025001',
+        services: [null, legalProcedureService] // corrupted element + the real one
+      })
+    });
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    // stamped stage is completed on the (still-resolvable) real service ->
+    // the guard must skip the null element and still resolve + log normally.
+    const data = { ...baseData, serviceId: 'stage_a', parentServiceId: 's1' };
+    const result = await createBudgetTask(data, makeCtx());
+
+    expect(result.success).toBe(true); // task creation NOT aborted
+    expect(warnSpy).toHaveBeenCalledWith(
+      'BUDGET_TASK_CREATED_ON_COMPLETED_STAGE',
+      expect.objectContaining({
+        stageId: 'stage_a',
+        serviceId: 's1',
+        clientId: '2025001'
+      })
+    );
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      'BUDGET_TASK_DETECT_LOG_FAILED',
+      expect.anything()
+    );
+
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
 });
