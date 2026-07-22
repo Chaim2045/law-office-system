@@ -202,6 +202,47 @@ exports.createBudgetTask = functions.https.onCall(async (data, context) => {
         timeEntries: []
       };
 
+      // CHANGE 3 (2026-07-22, PR-B-2 R3): detect-only log for the
+      // creation-time race. A lawyer can open the add-task dialog while the
+      // case sits on stage א, an admin advances the case to stage ב, and the
+      // lawyer submits — the task is born pointing at an already-CLOSED
+      // stage, and moveToNextStage's re-point filter (functions/services/
+      // index.js) will never reach it: that filter only re-points a task
+      // whose serviceId matches the EXACT stage being closed on that
+      // specific advance, and this task was never open during any advance.
+      //
+      // Do NOT block, reject, or coerce here — that decision belongs to a
+      // later gated feature, and this repo has a documented incident where
+      // blocking a lawyer from logging legitimately caused the hours to be
+      // recorded under `internal_office` and never billed (see project
+      // memory `project_internal_office_billing_leak`). This is detection
+      // only.
+      //
+      // Reuses `clientData` (already read into THIS transaction above, at
+      // the Phase 1 client read) — adds NO new read on the common path. If
+      // the resolution is ambiguous (no parentServiceId/serviceId stamped,
+      // the parent service isn't found, it has no stages array, or the
+      // stamped stage id isn't found on it) log NOTHING rather than guess —
+      // per instruction, a confident determination is required to log.
+      if (taskData.parentServiceId && taskData.serviceId) {
+        const parentService = (clientData.services || []).find(
+          (s) => s.id === taskData.parentServiceId
+        );
+        const stampedStage = parentService && Array.isArray(parentService.stages)
+          ? parentService.stages.find((st) => st.id === taskData.serviceId)
+          : null;
+        if (stampedStage && stampedStage.status === 'completed') {
+          // Identifiers only — no client name, employee, description, or
+          // hours (PUBLIC repo, world-readable CI logs).
+          console.warn('BUDGET_TASK_CREATED_ON_COMPLETED_STAGE', {
+            taskId: taskRef.id,
+            stageId: taskData.serviceId,
+            serviceId: taskData.parentServiceId,
+            clientId: clientId
+          });
+        }
+      }
+
       // ✅ Create approval history record (for tracking/FYI)
       const approvalRecord = {
         taskId: taskRef.id,

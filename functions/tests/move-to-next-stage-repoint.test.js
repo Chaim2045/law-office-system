@@ -29,8 +29,13 @@
  *      no task matches
  *
  * ── PR-B-2 R2 (2026-07-22, adversarial-review fixes) ──────────────────────
- *   J. FIX 1 — a task stranded on an EARLIER completed stage (not just the
- *      one closing right now) IS re-pointed on a later advance
+ *   J. [INVERTED in R3 — see below] originally asserted FIX 1's WIDENED
+ *      write-selection (a task stranded on an earlier completed stage WAS
+ *      re-pointed). R3 reverted the write-widening after an independent
+ *      product-owner review (the 2025006 stage-closure ruling + the
+ *      2026057 pre-emption risk — see functions/services/index.js 3f2 for
+ *      the full rationale). J now asserts the OPPOSITE: such a task is NOT
+ *      re-pointed, and is instead counted + detect-logged (CHANGE 2).
  *   K. FIX 1 — a task on a `pending` (future) stage is NOT touched
  *   L. FIX 2 — `lastModifiedBy` is OMITTED when user.username is falsy, and
  *      PRESENT (exact key set) when it is set
@@ -39,6 +44,15 @@
  *   N. FIX 4 — a failing task update produces an error naming the taskId,
  *      and does not swallow / continue past the failure
  *   O. FIX 5 — the skipped-for-missing-parentServiceId counter
+ *
+ * ── PR-B-2 R3 (2026-07-22, filter reverted to narrow + detect-only added) ──
+ *   P. CHANGE 1 — the write-selection filter is narrow again: only a task
+ *      pointing at the EXACT stage closing right now is re-pointed. A task
+ *      stranded on an EARLIER completed stage is NOT re-pointed (J,
+ *      inverted) but IS counted (`strandedOnEarlierStageCount`) and
+ *      detect-logged, and the counter is 0 when no such task exists.
+ *   Q. CHANGE 5 — the audit's `fromStageId` reflects the task's own actual
+ *      prior `serviceId`, not a value assumed equal to `currentStage.id`.
  */
 
 // ─── Mock transaction + Firestore db ───────────────────────────────────────
@@ -491,14 +505,18 @@ describe('I. Audit-in-txn (logCriticalActionInTxn) called exactly once per re-po
 });
 
 // ═══════════════════════════════════════════════════════════════
-// J. FIX 1 — task stranded on an EARLIER completed stage IS re-pointed
+// J. [INVERTED R3] a task stranded on an EARLIER completed stage is NOT
+//    re-pointed — it is counted + detect-logged instead (CHANGE 1 + 2)
 // ═══════════════════════════════════════════════════════════════
 
-describe('J. FIX 1 — a task stranded on an EARLIER completed stage IS re-pointed', () => {
-  test('service advancing stage_b -> stage_c re-points a task still on stage_a', async () => {
-    // stage_a already completed (a prior advance closed it and — pre-FIX-1 —
-    // failed to catch this task), stage_b is the ACTIVE stage now closing,
-    // stage_c is the incoming active stage.
+describe('J. [R3 inverted] a task stranded on an EARLIER completed stage is NOT re-pointed', () => {
+  test('service advancing stage_b -> stage_c does NOT touch a task still on stage_a; counts + logs it instead', async () => {
+    // stage_a already completed, stage_b is the ACTIVE stage now closing,
+    // stage_c is the incoming active stage. Under the narrow (reverted)
+    // write filter, only a task pointing at stage_b (the stage closing
+    // RIGHT NOW) is eligible for re-pointing — a task still on stage_a is
+    // deliberately left alone (the 2025006 ruling: the stage closure, not
+    // the task's pointer, was the error).
     const strandedTask = makeTaskDoc('task-stranded', { serviceId: 'stage_a' });
     const service = makeLegalProcedure('s1', {
       stages: [
@@ -509,14 +527,90 @@ describe('J. FIX 1 — a task stranded on an EARLIER completed stage IS re-point
     });
     setupTxMocks(makeClientDoc([service]), [strandedTask]);
 
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const result = await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
 
+    // NOT re-pointed: only the client update happened.
+    expect(mockTransaction.update).toHaveBeenCalledTimes(1);
     const taskUpdateCall = mockTransaction.update.mock.calls.find(
       ([ref]) => ref === strandedTask.ref
     );
-    expect(taskUpdateCall).toBeDefined();
-    expect(taskUpdateCall[1]).toMatchObject({ serviceId: 'stage_c' });
+    expect(taskUpdateCall).toBeUndefined();
+    expect(result.repointedTaskCount).toBe(0);
+    expect(mockLogCriticalActionInTxn).not.toHaveBeenCalled();
+
+    // Counted instead.
+    expect(result.strandedOnEarlierStageCount).toBe(1);
+
+    // Detect-logged — identifiers only.
+    expect(warnSpy).toHaveBeenCalledWith(
+      'STRANDED_BUDGET_TASK_EARLIER_STAGE',
+      expect.objectContaining({
+        taskId: 'task-stranded',
+        stageId: 'stage_a',
+        serviceId: 's1',
+        clientId: 'c1'
+      })
+    );
+
+    warnSpy.mockRestore();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// P. CHANGE 1/2 — the stranded-earlier-stage counter is 0 when no such
+//    task exists (and the narrow filter still re-points the exact-stage task)
+// ═══════════════════════════════════════════════════════════════
+
+describe('P. CHANGE 2 — strandedOnEarlierStageCount is 0 when no such task exists', () => {
+  test('a normal exact-stage re-point produces zero stranded count', async () => {
+    const openTask = makeTaskDoc('task-open-normal');
+    setupTxMocks(makeClientDoc([makeLegalProcedure('s1')]), [openTask]);
+
+    const result = await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
+
     expect(result.repointedTaskCount).toBe(1);
+    expect(result.strandedOnEarlierStageCount).toBe(0);
+  });
+
+  test('zero tasks at all -> zero stranded count', async () => {
+    setupTxMocks(makeClientDoc([makeLegalProcedure('s1')]), []);
+
+    const result = await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
+
+    expect(result.strandedOnEarlierStageCount).toBe(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Q. CHANGE 5 — the audit's fromStageId reflects the task's OWN actual
+//    prior serviceId, captured before the update
+// ═══════════════════════════════════════════════════════════════
+
+describe('Q. CHANGE 5 — logCriticalActionInTxn fromStageId is the task\'s actual prior stage', () => {
+  test('a service starting on stage_b (not stage_a) repoints with fromStageId=stage_b, not a hardcoded stage_a', async () => {
+    const openTask = makeTaskDoc('task-from-b', { serviceId: 'stage_b' });
+    const service = makeLegalProcedure('s1', {
+      stages: [
+        { id: 'stage_a', name: 'שלב א', status: 'completed', totalHours: 5 },
+        { id: 'stage_b', name: 'שלב ב', status: 'active', totalHours: 5 },
+        { id: 'stage_c', name: 'שלב ג', status: 'pending', totalHours: 5 }
+      ]
+    });
+    setupTxMocks(makeClientDoc([service]), [openTask]);
+
+    await moveToNextStage({ clientId: 'c1', serviceId: 's1' }, makeCtx());
+
+    expect(mockLogCriticalActionInTxn).toHaveBeenCalledWith(
+      mockTransaction,
+      'REPOINT_BUDGET_TASK_STAGE',
+      'user1',
+      expect.objectContaining({
+        taskId: 'task-from-b',
+        fromStageId: 'stage_b',
+        toStageId: 'stage_c'
+      })
+    );
   });
 });
 

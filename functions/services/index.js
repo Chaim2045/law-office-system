@@ -971,13 +971,30 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       const nextStage = service.stages[activeIndex + 1];
       const now = new Date().toISOString();
 
-      // 3f2. PR-B-2 (2026-07-21, R3; widened 2026-07-22 R2 FIX 1): find OPEN
-      // budget_tasks still pointing at ANY already-completed stage of this
-      // service (not just the one being closed RIGHT NOW), so they can be
-      // re-pointed to the newly-active stage in this same transaction — the
-      // ROOT-CAUSE fix for hours logged against a task landing on an
-      // already-completed stage's package (measured in PROD 2026-07-21: 75
-      // entries / 101.60h across 6 clients).
+      // 3f2. PR-B-2 (2026-07-21, R3): find OPEN budget_tasks still pointing at
+      // the stage being closed RIGHT NOW, so they can be re-pointed to the
+      // newly-active stage in this same transaction — the ROOT-CAUSE fix for
+      // hours logged against a task landing on an already-completed stage's
+      // package (measured in PROD 2026-07-21: 75 entries / 101.60h across 6
+      // clients).
+      //
+      // R2 FIX 1 (2026-07-22) WIDENED this to ANY completed stage of the
+      // service. REVERTED R3 (2026-07-22, same day) after an independent
+      // product-owner review: for client 2025006, the owner ruled the STAGE
+      // CLOSURE itself was the error and the tasks pointing at the closed
+      // stage are CORRECT where they are — the widened filter would have
+      // forcibly (and irreversibly — no write path exists anywhere for a
+      // task's `serviceId` outside this callable) moved exactly those tasks.
+      // Client 2026057 (fixed-price, ~₪90,000 turning on stage attribution)
+      // is the one client the owner is handling supervised/human-decided —
+      // its stage_a is closed, and the widened filter would have auto-moved
+      // its tasks on the next advance, pre-empting that reserved decision on
+      // the highest-stakes client in the dataset. The widened set was also
+      // built from `status === 'completed'` with NO positional constraint —
+      // a later stage marked completed (as a future `reopenStage` feature
+      // will deliberately do) could move a task BACKWARD. The narrow filter
+      // below is correct for WRITES; CHANGE 2 below adds detect-only
+      // observability for what the narrow filter deliberately leaves behind.
       //
       // Re-point, NEVER close: completing a task is irreversible (no reopen
       // callable exists) and completeTask refuses when actualMinutes===0
@@ -1014,14 +1031,13 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       const updatedService = { ...service, stages: updatedStages };
       const updatedServices = services.map((s, idx) => idx === serviceIndex ? updatedService : s);
 
-      // 3g2. PR-B-2 R2 FIX 1: build the set of THIS service's completed
-      // stage ids from `updatedStages` — both the stage just closed above
-      // AND any earlier stage that was already `completed` before this
-      // advance. A task stranded on an earlier closed stage (e.g. the
-      // service already sits on stage_b and a task is still on stage_a) is
-      // now caught on every subsequent advance, not just the one that closed
-      // its exact stage. A task on a `pending` (future) stage is never in
-      // this set and stays untouched.
+      // 3g2. CHANGE 2 (2026-07-22, R3): `completedStageIds` — the set of THIS
+      // service's completed stage ids (both the stage just closed above AND
+      // any earlier stage already `completed` before this advance). This
+      // set exists ONLY to power the detect-only counter below
+      // (`strandedOnEarlierStageCount`). IT MUST NEVER AGAIN BE USED TO
+      // SELECT WHAT GETS WRITTEN — that was R2 FIX 1's mistake, reverted
+      // above. A task on a `pending` (future) stage is never in this set.
       const completedStageIds = new Set(
         updatedStages.filter((s) => s.status === 'completed').map((s) => s.id)
       );
@@ -1036,10 +1052,45 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       // Does NOT change behaviour — count only, never re-point on this basis.
       let skippedForMissingParentServiceIdCount = 0;
 
+      // 3g4. CHANGE 2 (2026-07-22, R3): detect-only counter for OPEN tasks
+      // that belong to THIS service and are stranded on an EARLIER completed
+      // stage of this service (not the one closing right now). These tasks
+      // are real, still open, and are DELIBERATELY not re-pointed by the
+      // narrow write filter below — see the 2025006 ruling and the 2026057
+      // pre-emption risk in the comment above. Their disposition belongs to
+      // a human (the future reopen/modal flow), not to this code. This
+      // counter — plus the console.warn emitted per matching task, below —
+      // is the measurable residual the narrow filter leaves behind.
+      // ZERO writes ever result from this branch.
+      let strandedOnEarlierStageCount = 0;
+
       const tasksToRepoint = clientBudgetTasksSnap.docs.filter((taskDoc) => {
         const t = taskDoc.data();
         if (t.status !== OPEN_TASK_STATUS) return false;
-        if (!completedStageIds.has(t.serviceId)) return false;
+
+        // Detect-only: an open task of THIS service, stranded on an earlier
+        // completed stage (not the one closing now). Never selected for
+        // write. Identifiers only in the log — no client name, employee
+        // email, task description, or hours (PUBLIC repo, world-readable
+        // CI logs).
+        if (
+          t.parentServiceId === service.id &&
+          t.serviceId !== currentStage.id &&
+          completedStageIds.has(t.serviceId)
+        ) {
+          strandedOnEarlierStageCount++;
+          console.warn('STRANDED_BUDGET_TASK_EARLIER_STAGE', {
+            taskId: taskDoc.id,
+            stageId: t.serviceId,
+            serviceId: service.id,
+            clientId: data.clientId
+          });
+          return false;
+        }
+
+        // WRITE-SELECTION predicate (narrow — reverted to the pre-R2-FIX-1
+        // shape): only a task pointing at the EXACT stage being closed now.
+        if (t.serviceId !== currentStage.id) return false;
         if (t.parentServiceId === service.id) return true;
         if (!t.parentServiceId) skippedForMissingParentServiceIdCount++;
         return false;
@@ -1123,6 +1174,15 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       // repoint writes already live inside the single db.runTransaction that
       // wraps the entire stage-advance.
       for (const taskDoc of tasksToRepoint) {
+        // CHANGE 5 (2026-07-22, R3): capture the task's OWN prior serviceId
+        // before the update, rather than assuming it equals `currentStage.id`.
+        // Under the narrow write filter above the two are always equal by
+        // construction (only tasks with serviceId === currentStage.id are
+        // ever selected here) — but reading it off the task keeps the audit
+        // field truthful even if the filter is ever changed again, at zero
+        // cost.
+        const priorStageId = taskDoc.data().serviceId;
+
         // PR-B-2 R2 FIX 2: mirror shared/client-writer.js:238's guard —
         // `user.username` (functions/shared/auth.js:48 `employee.username`)
         // has no default and is written verbatim from caller input
@@ -1139,16 +1199,24 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
           taskUpdatePayload.lastModifiedBy = user.username;
         }
 
-        // PR-B-2 R2 FIX 4: catch, enrich with the failing taskId, and
-        // RE-THROW. Abort semantics are UNCHANGED by design — any failure
-        // here still aborts the whole transaction (do not swallow, do not
-        // continue). Without this, a concurrent task delete (NOT_FOUND at
-        // commit) or a malformed actor uid (validateActorUid throwing inside
-        // logCriticalActionInTxn) surfaces as a raw English SDK string with
-        // no way for an admin to know which task caused it — and there is no
-        // UI anywhere that lets an admin fix a budget_task's stage (the
-        // admin task editor renders it read-only), so a named error is the
-        // only diagnostic path available.
+        // PR-B-2 R2 FIX 4 (comment corrected 2026-07-22 R3 — CHANGE 4): this
+        // try/catch does NOT protect against a concurrently-deleted task
+        // (NOT_FOUND at commit), despite the original comment's claim.
+        // `transaction.update` and `logCriticalActionInTxn`'s `transaction.set`
+        // both BUFFER their write — a missing-document failure surfaces at
+        // COMMIT time, which is OUTSIDE this callback and OUTSIDE this
+        // try/catch entirely. What this guard genuinely catches is the
+        // SYNCHRONOUS-throw class only: undefined-value validation inside
+        // `transaction.update`/`transaction.set`, or `validateActorUid`
+        // throwing synchronously inside `logCriticalActionInTxn`. On any of
+        // those, catch, enrich with the failing taskId, and RE-THROW — abort
+        // semantics are UNCHANGED by design (do not swallow, do not
+        // continue); there is no UI anywhere that lets an admin fix a
+        // budget_task's stage (the admin task editor renders it read-only),
+        // so a named error is the only diagnostic path available for this
+        // synchronous class. A commit-time failure (e.g. concurrent delete)
+        // is NOT caught here — it propagates as the transaction's own
+        // rejection, unnamed by taskId, same as before this guard existed.
         try {
           transaction.update(taskDoc.ref, taskUpdatePayload);
 
@@ -1156,7 +1224,7 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
             clientId: data.clientId,
             taskId: taskDoc.id,
             parentServiceId: service.id,
-            fromStageId: currentStage.id,
+            fromStageId: priorStageId,
             toStageId: nextStage.id
           });
         } catch (repointErr) {
@@ -1179,7 +1247,11 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
         // re-pointed to the new stage as part of this stage advance.
         repointedTaskCount: tasksToRepoint.length,
         // PR-B-2 R2 FIX 5: observability-only — see the comment at 3g3.
-        skippedForMissingParentServiceIdCount: skippedForMissingParentServiceIdCount
+        skippedForMissingParentServiceIdCount: skippedForMissingParentServiceIdCount,
+        // CHANGE 2 (2026-07-22, R3): observability-only — see the comment
+        // at 3g4. Never repaired by this code; surfaced so the future
+        // reopen/modal flow has a measurable target.
+        strandedOnEarlierStageCount: strandedOnEarlierStageCount
       };
     });
 
@@ -1194,11 +1266,12 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       toStageName: result.nextStage.name,
       serviceName: result.serviceName,
       repointedTaskCount: result.repointedTaskCount,
-      skippedForMissingParentServiceIdCount: result.skippedForMissingParentServiceIdCount
+      skippedForMissingParentServiceIdCount: result.skippedForMissingParentServiceIdCount,
+      strandedOnEarlierStageCount: result.strandedOnEarlierStageCount
     });
 
     // 5. Return
-    console.log(`✅ Stage moved: ${result.currentStage.id} → ${result.nextStage.id} for client ${data.clientId} (repointed ${result.repointedTaskCount} open task(s), skipped ${result.skippedForMissingParentServiceIdCount} for missing parentServiceId)`);
+    console.log(`✅ Stage moved: ${result.currentStage.id} → ${result.nextStage.id} for client ${data.clientId} (repointed ${result.repointedTaskCount} open task(s), skipped ${result.skippedForMissingParentServiceIdCount} for missing parentServiceId, ${result.strandedOnEarlierStageCount} stranded on an earlier closed stage)`);
 
     return {
       success: true,
@@ -1209,6 +1282,7 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       isLastStage: result.isLastStage,
       repointedTaskCount: result.repointedTaskCount,
       skippedForMissingParentServiceIdCount: result.skippedForMissingParentServiceIdCount,
+      strandedOnEarlierStageCount: result.strandedOnEarlierStageCount,
       message: `עברת לשלב "${result.nextStage.name}"`
     };
 
