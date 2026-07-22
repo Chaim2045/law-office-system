@@ -1,10 +1,17 @@
 /**
  * System Reports Outbox Trigger — PR-C.2-fns (2026-05-18)
  *
- * Fires on every `system_health_checks` document creation. If the health
- * check reports a FAIL (discrepancies > 0), writes a `system_reports_outbox`
- * doc that the hachnasovitz WhatsApp bot consumes (PR-C.2-bot) and forwards
- * to the "דיווחי מערכת" group.
+ * Fires on every `system_health_checks` document creation. Writes a
+ * `system_reports_outbox` doc that the hachnasovitz WhatsApp bot consumes
+ * (PR-C.2-bot) and forwards to the "דיווחי מערכת" group.
+ *
+ * PR-IG-A1 (2026-07-22) — BEHAVIORAL CHANGE: widened from "FAIL with
+ * discrepancies > 0" to "any status !== 'PASS'" (FAIL / PARTIAL / ERROR all
+ * emit now). Before this change, a FAIL with zero discrepancies (an internal
+ * consistency signal) and every ERROR (a crashed run) were silently dropped —
+ * the two defects that made a crashed or partial nightly scan indistinguishable
+ * from a healthy one. See `functions/scheduled/index.js` `dailyInvariantCheck`
+ * for the producing side of this contract.
  *
  * Why outbox (not HTTP webhook):
  *   The bot already connects to law-office-system Firestore (via service
@@ -55,27 +62,42 @@ const onSystemHealthCheckCreated = onDocumentCreated({
 
   const data = snap.data() || {};
 
-  // Only emit on FAIL with non-empty discrepancies.
-  const status = data.status;
+  // PR-IG-A1: emit on any status !== 'PASS' — FAIL (with or without
+  // discrepancies), PARTIAL, and ERROR all reach the outbox now. Only a clean
+  // PASS is silent.
+  const healthStatus = data.status;
   const discrepanciesCount = typeof data.discrepanciesCount === 'number'
     ? data.discrepanciesCount
     : Array.isArray(data.discrepancies) ? data.discrepancies.length : 0;
 
-  if (status !== 'FAIL' || discrepanciesCount === 0) {
-    console.log(`[system-reports-outbox] ${docId} status=${status} count=${discrepanciesCount} — no outbox write`);
+  if (healthStatus === 'PASS') {
+    console.log(`[system-reports-outbox] ${docId} status=PASS — no outbox write`);
     return null;
   }
 
   const discrepancies = Array.isArray(data.discrepancies) ? data.discrepancies : [];
+  // ERROR (a crashed run) is the more urgent case for whoever reads severity.
+  const severity = healthStatus === 'ERROR' ? 'critical' : 'warning';
 
   try {
     const outboxRef = await db.collection('system_reports_outbox').add({
       type: 'system_health_check',
-      severity: 'warning',
+      severity,
       source: 'dailyInvariantCheck',
       healthCheckDocId: docId,
+      // PR-IG-A1: additive context so the bot can distinguish "the data is
+      // dirty" from "the scan itself was incomplete/crashed". IMPORTANT: this
+      // is the health-check's own status (PASS/FAIL/PARTIAL/ERROR) — do NOT
+      // confuse with the outbox delivery-lifecycle `status` field below
+      // ('pending'/'sent'/'failed'), which the bot queries on and which stays
+      // byte-identical to preserve the existing consumption contract.
+      healthCheckStatus: healthStatus,
       discrepanciesCount,
       discrepancies,
+      clientsErrored: typeof data.clientsErrored === 'number' ? data.clientsErrored : null,
+      clientsChecked: typeof data.clientsChecked === 'number' ? data.clientsChecked : null,
+      clientsTotal: typeof data.clientsTotal === 'number' ? data.clientsTotal : null,
+      healthCheckMessage: typeof data.message === 'string' ? data.message : null,
       status: 'pending',
       attempts: 0,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -83,7 +105,7 @@ const onSystemHealthCheckCreated = onDocumentCreated({
       errorMessage: null
     });
 
-    console.log(`[system-reports-outbox] ${docId} FAIL × ${discrepanciesCount} → outbox/${outboxRef.id}`);
+    console.log(`[system-reports-outbox] ${docId} ${healthStatus} × ${discrepanciesCount} → outbox/${outboxRef.id}`);
   } catch (err) {
     console.error(`[system-reports-outbox] Failed to write outbox for ${docId}:`, err);
     throw err; // let Cloud Functions retry

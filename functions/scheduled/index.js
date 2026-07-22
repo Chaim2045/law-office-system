@@ -502,6 +502,22 @@ function detectPackageInvariants(clientData, packageMinutes, orphanMinutesByServ
   return out;
 }
 
+// PR-IG-A1 (2026-07-22): result-document schema version. schemaVersion 2 adds
+// the census fields + PASS|FAIL|PARTIAL|ERROR vocabulary below. `type:'invariant_check'`
+// is UNCHANGED — the external hachnasovitz WhatsApp bot keys off it.
+const RESULT_SCHEMA_VERSION = 2;
+
+// PR-IG-A1: cap the embedded discrepancies[] array so the result document stays
+// well under Firestore's 1 MiB limit even in a mass-drift event; discrepanciesCount
+// always carries the true total. Mirrors the precedent in
+// `functions/scheduled/reconcile-package-drift.js` (`deferrals.slice(0, 200)`).
+const MAX_EMBEDDED_DISCREPANCIES = 200;
+
+// PR-IG-A1: fixed count of distinct check mechanisms this run executes (the
+// per-service hours-used comparison, Check 7 package invariants, and Checks 1-6
+// below) — all always run unconditionally, so this is a constant, not a counter.
+const CHECKS_RUN = 8;
+
 const dailyInvariantCheck = onSchedule({
   schedule: '0 6 * * *',
   timeZone: 'Asia/Jerusalem',
@@ -510,17 +526,30 @@ const dailyInvariantCheck = onSchedule({
   const SKIP_CLIENTS = ['2025003'];
   const TOLERANCE = 0.02;
   const discrepancies = [];
+  const startTime = Date.now();
+
+  // PR-IG-A1: census counters — a crashed/partial scan must never look identical
+  // to a clean one. Declared outside the try so the outer catch can still report
+  // whatever was counted before the crash.
+  let clientsTotal = 0;
+  let clientsChecked = 0;
+  let clientsSkippedConfig = 0;
+  let clientsEmptySkipped = 0;
+  let clientsErrored = 0;
+  let entriesRead = 0;
 
   try {
     console.log('🔍 Starting daily invariant check...');
 
     const clientsSnapshot = await db.collection('clients').get();
+    clientsTotal = clientsSnapshot.size;
     console.log(`📊 Checking ${clientsSnapshot.size} clients`);
 
     for (const clientDoc of clientsSnapshot.docs) {
       const clientId = clientDoc.id;
 
       if (SKIP_CLIENTS.includes(clientId)) {
+        clientsSkippedConfig += 1;
         continue;
       }
 
@@ -530,6 +559,7 @@ const dailyInvariantCheck = onSchedule({
         const services = clientData.services || [];
 
         if (services.length === 0) {
+          clientsEmptySkipped += 1;
           continue;
         }
 
@@ -537,6 +567,7 @@ const dailyInvariantCheck = onSchedule({
         const timesheetSnapshot = await db.collection('timesheet_entries')
           .where('clientId', '==', clientId)
           .get();
+        entriesRead += timesheetSnapshot.size;
 
         // Group minutes by effective serviceId (parentServiceId for legal_procedure stages).
         // PR-DRIFT-1: from the SAME single read, also group by packageId (Check 7) and
@@ -595,7 +626,13 @@ const dailyInvariantCheck = onSchedule({
         for (const d of pkgDiscrepancies) {
           discrepancies.push({ ...d, clientId, clientName });
         }
+
+        clientsChecked += 1;
       } catch (clientError) {
+        // PR-IG-A1: this used to be swallowed with no counter — a run where every
+        // client read failed still wrote PASS. Now counted so PASS can never be
+        // claimed while clients went unscanned (see the status decision below).
+        clientsErrored += 1;
         console.error(`⚠️ Error checking client ${clientId}:`, clientError.message);
         // Continue to next client
       }
@@ -648,6 +685,7 @@ const dailyInvariantCheck = onSchedule({
     const allEntriesSnapshot = await db.collection('timesheet_entries')
       .where('taskId', '!=', null)
       .get();
+    entriesRead += allEntriesSnapshot.size;
     allEntriesSnapshot.forEach(doc => {
       const entry = doc.data();
       if (entry.taskId) {
@@ -750,43 +788,95 @@ const dailyInvariantCheck = onSchedule({
       }
     });
 
-    // Save result to system_health_checks
-    if (discrepancies.length > 0) {
-      await db.collection('system_health_checks').add({
-        type: 'invariant_check',
-        status: 'FAIL',
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        discrepanciesCount: discrepancies.length,
-        discrepancies,
-        message: `נמצאו ${discrepancies.length} פערים בנתוני שעות`
-      });
-      console.log(`❌ Invariant check FAILED — ${discrepancies.length} discrepancies found`);
+    // PR-IG-A1: status vocabulary is PASS | FAIL | PARTIAL | ERROR.
+    // PASS requires clientsErrored === 0 — a scan that missed clients can never
+    // report green, even if the clients it DID reach were clean. This is the
+    // core fix for the "crashed scan reports green" defect (any client read
+    // failure used to be swallowed with no counter and no status impact).
+    const discrepanciesCount = discrepancies.length;
+    const durationMs = Date.now() - startTime;
+    let status;
+    if (clientsErrored > 0) {
+      status = 'PARTIAL';
+    } else if (discrepanciesCount > 0) {
+      status = 'FAIL';
     } else {
-      await db.collection('system_health_checks').add({
-        type: 'invariant_check',
-        status: 'PASS',
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        discrepanciesCount: 0,
-        discrepancies: [],
-        message: 'כל הנתונים תקינים'
-      });
+      status = 'PASS';
+    }
+
+    const census = {
+      clientsTotal,
+      clientsChecked,
+      clientsSkippedConfig,
+      clientsEmptySkipped,
+      clientsErrored,
+      checksRun: CHECKS_RUN,
+      entriesRead,
+      durationMs
+    };
+
+    let message;
+    if (status === 'PASS') {
+      message = 'כל הנתונים תקינים';
+    } else if (status === 'PARTIAL') {
+      message = discrepanciesCount > 0
+        ? `הבדיקה הושלמה חלקית — ${clientsErrored} לקוחות לא נסרקו, נמצאו ${discrepanciesCount} פערים בנתונים שכן נסרקו`
+        : `הבדיקה הושלמה חלקית — ${clientsErrored} לקוחות לא נסרקו`;
+    } else {
+      message = `נמצאו ${discrepanciesCount} פערים בנתוני שעות`;
+    }
+
+    await db.collection('system_health_checks').add({
+      type: 'invariant_check',
+      schemaVersion: RESULT_SCHEMA_VERSION,
+      status,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      discrepanciesCount,
+      // PR-IG-A1: cap the embedded array (Firestore 1 MiB doc limit); the true
+      // count always travels in discrepanciesCount above.
+      discrepancies: discrepancies.slice(0, MAX_EMBEDDED_DISCREPANCIES),
+      ...census,
+      message
+    });
+
+    if (status === 'PASS') {
       console.log('✅ Invariant check PASSED — no discrepancies');
+    } else if (status === 'PARTIAL') {
+      console.log(`⚠️ Invariant check PARTIAL — ${clientsErrored} client scan errors, ${discrepanciesCount} discrepancies`);
+    } else {
+      console.log(`❌ Invariant check FAILED — ${discrepanciesCount} discrepancies found`);
     }
 
   } catch (error) {
     console.error('❌ Invariant check ERROR:', error);
+    const durationMs = Date.now() - startTime;
     try {
       await db.collection('system_health_checks').add({
         type: 'invariant_check',
+        schemaVersion: RESULT_SCHEMA_VERSION,
         status: 'ERROR',
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        discrepanciesCount: 0,
-        discrepancies: [],
+        discrepanciesCount: discrepancies.length,
+        discrepancies: discrepancies.slice(0, MAX_EMBEDDED_DISCREPANCIES),
+        clientsTotal,
+        clientsChecked,
+        clientsSkippedConfig,
+        clientsEmptySkipped,
+        clientsErrored,
+        checksRun: CHECKS_RUN,
+        entriesRead,
+        durationMs,
         message: `שגיאה בבדיקת תקינות: ${error.message}`
       });
     } catch (saveError) {
       console.error('❌ Failed to save error status:', saveError);
     }
+    // PR-IG-A1: rethrow so Cloud Scheduler's failure metric fires. Previously
+    // this function returned normally on total crash, so a crashed run had
+    // NO operator-visible signal beyond a document nobody was reading.
+    // BEHAVIORAL CHANGE: this function can now throw where it previously
+    // always returned normally.
+    throw error;
   }
 });
 
@@ -870,6 +960,10 @@ module.exports = {
     AGG_DRIFT_TOLERANCE,
     PKG_HOURSUSED_TOLERANCE,
     syncHolidaysForYear,
-    _hashHolidays
+    _hashHolidays,
+    // PR-IG-A1
+    RESULT_SCHEMA_VERSION,
+    MAX_EMBEDDED_DISCREPANCIES,
+    CHECKS_RUN
   }
 };

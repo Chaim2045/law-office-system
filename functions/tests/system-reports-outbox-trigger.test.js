@@ -7,7 +7,7 @@
  *   C. Outbox doc shape (status: 'pending', attempts: 0, etc.)
  *   D. Source doc never mutated (trigger does not update system_health_checks)
  *   E. Missing snapshot data → no-op
- *   F. discrepanciesCount=0 with status FAIL (edge) → no outbox write
+ *   F. discrepanciesCount=0 with status FAIL / status ERROR (PR-IG-A1) → outbox write
  */
 
 const mockOutboxAdd = jest.fn().mockResolvedValue({ id: 'outbox_auto_id' });
@@ -194,7 +194,11 @@ describe('E. Missing snapshot', () => {
 // ═══════════════════════════════════════════════════════════════
 
 describe('F. Edge cases', () => {
-  test('status FAIL but discrepanciesCount 0 → no outbox write', async () => {
+  // PR-IG-A1 (2026-07-22) BEHAVIORAL CHANGE: these two scenarios previously
+  // asserted "no outbox write" — that was exactly the silent-failure defect
+  // this PR closes (a FAIL with 0 discrepancies, and every ERROR, used to be
+  // invisible to the WhatsApp channel). Flipped to assert emission.
+  test('status FAIL but discrepanciesCount 0 → outbox write (PR-IG-A1: previously silent)', async () => {
     await registeredHandler(makeEvent({
       data: {
         type: 'invariant_check',
@@ -203,10 +207,13 @@ describe('F. Edge cases', () => {
         discrepancies: []
       }
     }));
-    expect(mockOutboxAdd).not.toHaveBeenCalled();
+    expect(mockOutboxAdd).toHaveBeenCalledTimes(1);
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    expect(payload.healthCheckStatus).toBe('FAIL');
+    expect(payload.severity).toBe('warning');
   });
 
-  test('status ERROR → no outbox write', async () => {
+  test('status ERROR → outbox write with critical severity (PR-IG-A1: previously silent)', async () => {
     await registeredHandler(makeEvent({
       data: {
         type: 'invariant_check',
@@ -214,6 +221,43 @@ describe('F. Edge cases', () => {
         discrepanciesCount: 0,
         discrepancies: [],
         message: 'שגיאה'
+      }
+    }));
+    expect(mockOutboxAdd).toHaveBeenCalledTimes(1);
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    expect(payload.healthCheckStatus).toBe('ERROR');
+    expect(payload.severity).toBe('critical');
+    expect(payload.healthCheckMessage).toBe('שגיאה');
+  });
+
+  test('status PARTIAL → outbox write with warning severity (PR-IG-A1: new status)', async () => {
+    await registeredHandler(makeEvent({
+      data: {
+        type: 'invariant_check',
+        status: 'PARTIAL',
+        discrepanciesCount: 0,
+        discrepancies: [],
+        clientsErrored: 3,
+        clientsChecked: 10,
+        clientsTotal: 13
+      }
+    }));
+    expect(mockOutboxAdd).toHaveBeenCalledTimes(1);
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    expect(payload.healthCheckStatus).toBe('PARTIAL');
+    expect(payload.severity).toBe('warning');
+    expect(payload.clientsErrored).toBe(3);
+    expect(payload.clientsChecked).toBe(10);
+    expect(payload.clientsTotal).toBe(13);
+  });
+
+  test('status PASS → no outbox write (unchanged)', async () => {
+    await registeredHandler(makeEvent({
+      data: {
+        type: 'invariant_check',
+        status: 'PASS',
+        discrepanciesCount: 0,
+        discrepancies: []
       }
     }));
     expect(mockOutboxAdd).not.toHaveBeenCalled();
