@@ -181,7 +181,7 @@ this.db.collection('employees').get()
 ```javascript
 this.db.collection('timesheet_entries')
     .orderBy('date', 'desc')
-    .limit(5000)
+    .limit(20000) // raised from 5000 2026-07-22 - see warnIfTruncated below
     .get()
 ```
 
@@ -203,7 +203,7 @@ this.db.collection('timesheet_entries')
 getClientTimesheetEntries(clientName, startDate = null, endDate = null)
 ```
 
-**⚠️ Performance Note:** Loads up to 5000 entries in memory, filtered client-side
+**⚠️ Performance Note:** Loads up to 20000 entries in memory, filtered client-side. As of 2026-07-22 a `warnIfTruncated` guard (`console.error` + admin toast) fires loudly if the query ever returns exactly the cap - see `ClientsDataManager.js`.
 
 ---
 
@@ -214,7 +214,7 @@ getClientTimesheetEntries(clientName, startDate = null, endDate = null)
 **Query:**
 ```javascript
 this.db.collection('budget_tasks')
-    .limit(5000)
+    .limit(20000) // raised from 5000 2026-07-22 - see warnIfTruncated below
     .get()
 ```
 
@@ -235,7 +235,7 @@ this.db.collection('budget_tasks')
 getClientBudgetTasks(clientName, startDate = null, endDate = null)
 ```
 
-**⚠️ Performance Note:** Loads up to 5000 tasks in memory, filtered client-side
+**⚠️ Performance Note:** Loads up to 20000 tasks in memory, filtered client-side. As of 2026-07-22 a `warnIfTruncated` guard (`console.error` + admin toast) fires loudly if the query ever returns exactly the cap - see `ClientsDataManager.js`.
 
 ---
 
@@ -705,11 +705,15 @@ tokenResult.claims.role === 'admin' OR tokenResult.claims.admin === true
 
 ## 🐛 Potential Issues & Recommendations
 
-### Issue 1: 5000 Document Limits
+### Issue 1: 5000 Document Limits (raised to 20000, 2026-07-22)
 
-**Problem:**
-- `timesheet_entries` and `budget_tasks` limited to 5000 documents
-- If exceeded, client reports will be incomplete
+**Problem (historical):**
+- `timesheet_entries` and `budget_tasks` were limited to 5000 documents
+- If exceeded, client reports would be incomplete with no indication - PROD measured 4,962/5,000
+  before this was caught. The cap was raised to 20000 and a `warnIfTruncated` guard
+  (`console.error` + admin toast) now fires loudly if either query ever hits its cap again.
+  This buys headroom (~2 years at the observed growth rate), it is NOT the structural fix -
+  see the recommendation below and `docs/MASTER_PLAN.md`.
 
 **Recommendation:**
 - Add date range filters to initial queries
