@@ -114,6 +114,7 @@
 'use strict';
 
 const { SYSTEM_CONSTANTS } = require('./constants');
+const { NON_AGGREGATING_STATUSES } = require('./aggregates');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
@@ -146,6 +147,15 @@ function toYmd(value) {
  * Build a lookup of every legal_procedure service on the client, each with
  * an index of its stages and, per stage, an index of its packages.
  *
+ * Services whose `status` is in `NON_AGGREGATING_STATUSES` (currently just
+ * `archived` — the SSOT in `./aggregates`, PR-G.3.14) are EXCLUDED. Every
+ * writer in the system deliberately stops maintaining an archived service's
+ * aggregates (`aggregates.js`, `client-writer.js`); comparing those
+ * intentionally-frozen numbers against a live ledger produces a false
+ * `entry_on_closed_stage`/`stage_hours_ledger_mismatch` on ordinary
+ * post-archive cleanup time. Honour the same SSOT the rest of the system
+ * honours — do NOT re-declare the status list here.
+ *
  * @param {object} clientData
  * @returns {Map<string, {service: object, stages: Map<string, object>, packageOwner: Map<string, string>}>}
  *   keyed by serviceId. `packageOwner` maps packageId -> stageId within that service.
@@ -159,6 +169,7 @@ function indexLegalProcedureServices(clientData) {
 
   for (const svc of services) {
     if (!svc || svc.type !== ST.LEGAL_PROCEDURE || !svc.id) continue;
+    if (NON_AGGREGATING_STATUSES.includes(svc.status)) continue;
 
     const stages = Array.isArray(svc.stages) ? svc.stages.filter(Boolean) : [];
     const stagesById = new Map();
@@ -256,14 +267,19 @@ function stageKey(serviceId, stageId) {
  * the stage's stored hours (field selected by pricingType — see file
  * header) against Σ(minutes/60) of entries resolved to that stage.
  *
+ * F-4: no `serviceName` (or any other free-text field) in the output — see
+ * file header PII section. `serviceId` is an opaque identifier; sufficient
+ * for an operator to look the service up. Never a truncated/hashed
+ * substitute either.
+ *
  * @param {Map} servicesById   output of indexLegalProcedureServices
  * @param {Map<string, number>} stageMinutes  stageKey(serviceId,stageId) -> summed minutes (resolved entries only)
- * @returns {object[]} discrepancies, sorted by (serviceId, stageId)
+ * @returns {object[]} discrepancies, sorted by stageKey(serviceId, stageId)
  */
 function detectStageHoursMismatch(servicesById, stageMinutes) {
   const out = [];
 
-  for (const [serviceId, { service, stages }] of servicesById) {
+  for (const [serviceId, { stages }] of servicesById) {
     for (const [stageId, stage] of stages) {
       // ⚠️ Field selection is pricingType-dependent — see file header (V12).
       const storedHours = stage.pricingType === PT.FIXED
@@ -278,7 +294,6 @@ function detectStageHoursMismatch(servicesById, stageMinutes) {
         out.push({
           type: DISCREPANCY_TYPE.STAGE_HOURS_MISMATCH,
           serviceId,
-          serviceName: service.name || service.type || serviceId,
           stageId,
           stageStatus: stage.status || null,
           pricingType: stage.pricingType || null,
@@ -290,7 +305,12 @@ function detectStageHoursMismatch(servicesById, stageMinutes) {
     }
   }
 
-  out.sort((a, b) => (a.serviceId + a.stageId).localeCompare(b.serviceId + b.stageId));
+  // F-5: reuse stageKey() (`::`-separated) — a bare `a.serviceId + a.stageId`
+  // concatenation can collide across distinct pairs (e.g. serviceId='ab',
+  // stageId='c' vs serviceId='a', stageId='bc'), and JS sort stability then
+  // makes output order depend on input order, breaking the determinism
+  // guarantee in the file header.
+  out.sort((a, b) => stageKey(a.serviceId, a.stageId).localeCompare(stageKey(b.serviceId, b.stageId)));
   return out;
 }
 
@@ -299,20 +319,37 @@ function detectStageHoursMismatch(servicesById, stageMinutes) {
  * a `completedAt`, sums (at day granularity) the hours of resolved entries
  * dated strictly after the closure date, and flags the stage if any exist.
  *
+ * F-4: no `serviceName` (or any other free-text field) in the output — see
+ * file header PII section and `detectStageHoursMismatch` above.
+ *
+ * F-6: a stage whose `completedAt` is not a parseable YYYY-MM-DD-prefixed
+ * string, or an entry whose `date` is not parseable, is silently excluded
+ * from this variant rather than crashing (detect-only — never throw). That
+ * silence is itself a signal: `counters.skippedUnparseableDates` is
+ * incremented once per such stage and once per such entry so a caller can
+ * tell "this variant found nothing" apart from "this variant went blind on
+ * degraded input" — the same silent-narrowing defect class this whole
+ * module exists to catch, one level up.
+ *
  * @param {Map} servicesById  output of indexLegalProcedureServices
  * @param {Map<string, Array<{date: string, minutes: number}>>} stageEntryDates
  *   stageKey(serviceId,stageId) -> array of { date, minutes } for every entry resolved to that stage.
- * @returns {object[]} discrepancies, sorted by (serviceId, stageId)
+ * @param {{skippedUnparseableDates: number}} counters  mutated in place; caller supplies { skippedUnparseableDates: 0 }.
+ * @returns {object[]} discrepancies, sorted by stageKey(serviceId, stageId)
  */
-function detectEntriesOnClosedStage(servicesById, stageEntryDates) {
+function detectEntriesOnClosedStage(servicesById, stageEntryDates, counters) {
   const out = [];
+  const tally = counters || { skippedUnparseableDates: 0 };
 
-  for (const [serviceId, { service, stages }] of servicesById) {
+  for (const [serviceId, { stages }] of servicesById) {
     for (const [stageId, stage] of stages) {
       if (stage.status !== 'completed') continue;
 
       const closedYmd = toYmd(stage.completedAt);
-      if (!closedYmd) continue; // no usable completedAt — nothing to compare against
+      if (!closedYmd) {
+        tally.skippedUnparseableDates += 1;
+        continue; // no usable completedAt — nothing to compare against
+      }
 
       const dated = stageEntryDates.get(stageKey(serviceId, stageId)) || [];
       let lateMinutes = 0;
@@ -321,7 +358,10 @@ function detectEntriesOnClosedStage(servicesById, stageEntryDates) {
 
       for (const { date, minutes } of dated) {
         const entryYmd = toYmd(date) || (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null);
-        if (!entryYmd) continue;
+        if (!entryYmd) {
+          tally.skippedUnparseableDates += 1;
+          continue;
+        }
         // Strictly-after, day granularity — same-day is NOT flagged.
         if (entryYmd > closedYmd) {
           lateMinutes += (minutes || 0);
@@ -334,7 +374,6 @@ function detectEntriesOnClosedStage(servicesById, stageEntryDates) {
         out.push({
           type: DISCREPANCY_TYPE.ENTRY_ON_CLOSED_STAGE,
           serviceId,
-          serviceName: service.name || service.type || serviceId,
           stageId,
           stageCompletedAt: stage.completedAt,
           entriesCount: lateCount,
@@ -345,7 +384,7 @@ function detectEntriesOnClosedStage(servicesById, stageEntryDates) {
     }
   }
 
-  out.sort((a, b) => (a.serviceId + a.stageId).localeCompare(b.serviceId + b.stageId));
+  out.sort((a, b) => stageKey(a.serviceId, a.stageId).localeCompare(stageKey(b.serviceId, b.stageId)));
   return out;
 }
 
@@ -367,6 +406,7 @@ function detectEntriesOnClosedStage(servicesById, stageEntryDates) {
  *   discrepancies: object[],
  *   unresolvedCount: number,
  *   unresolvedSamples: object[],
+ *   skippedUnparseableDates: number,
  * }}
  */
 function detectStageInvariants(clientData, entries) {
@@ -378,6 +418,14 @@ function detectStageInvariants(clientData, entries) {
   let unresolvedCount = 0;
   const unresolvedSamples = [];
   const MAX_SAMPLES = 20;
+
+  // F-7: loop-invariant — `clientData.services` does not change per-entry.
+  // Hoisted out of the per-entry loop (previously rebuilt via `.filter(Boolean)`
+  // on every iteration inside a hot loop this module is destined to run
+  // nightly across every client).
+  const allServices = Array.isArray(clientData && clientData.services)
+    ? clientData.services.filter(Boolean)
+    : [];
 
   for (const entry of list) {
     // Only entries that anchor to SOME service at all are in scope for this
@@ -398,9 +446,6 @@ function detectStageInvariants(clientData, entries) {
     // not) — if it matches a non-legal_procedure service, skip silently;
     // if it matches nothing recognizable there, or matches a
     // legal_procedure service but we can't pin the stage, it's unresolved.
-    const allServices = Array.isArray(clientData && clientData.services)
-      ? clientData.services.filter(Boolean)
-      : [];
     const candidateServiceId = entry.parentServiceId || entry.serviceId || null;
     if (candidateServiceId) {
       const namedService = allServices.find((s) => s && s.id === candidateServiceId);
@@ -420,9 +465,23 @@ function detectStageInvariants(clientData, entries) {
       // Only count as unresolved if there's at least a plausible
       // legal_procedure service in play (otherwise this entry was never a
       // Check-8 concern to begin with).
+      //
+      // F-1 fix: `entry.serviceId.startsWith('stage_')` MUST also count as
+      // plausible — that IS the canonical legal_procedure entry shape (see
+      // `functions/timesheet/index.js:244`: "For legal_procedure: serviceId
+      // = stage ID, actual service is in parentServiceId"). An entry with a
+      // stale/null parentServiceId and a stage-shaped serviceId (e.g. the
+      // exact production shape `addTimeToTask_v2.js` can write: a closed
+      // stage's id stamped as `serviceId`, `parentServiceId` and/or
+      // `packageId` both null) is a legal_procedure concern this module
+      // could not anchor — it must be counted, never silently dropped
+      // (file header, "UNRESOLVED ENTRIES ARE COUNTED, NEVER DROPPED").
+      const candidateIsStagePointer =
+        typeof entry.serviceId === 'string' && entry.serviceId.startsWith('stage_');
       const plausibleLegalProcedure =
         (candidateServiceId && servicesById.has(candidateServiceId)) ||
-        (entry.packageId && servicesById.size > 0);
+        (entry.packageId && servicesById.size > 0) ||
+        (candidateIsStagePointer && servicesById.size > 0);
 
       if (plausibleLegalProcedure) {
         unresolvedCount += 1;
@@ -447,12 +506,17 @@ function detectStageInvariants(clientData, entries) {
     stageEntryDates.get(key).push({ date: entry.date, minutes: entry.minutes || 0 });
   }
 
+  // F-6: shared counter mutated by detectEntriesOnClosedStage at both
+  // unparseable-date sites (stage completedAt, entry date).
+  const dateCounters = { skippedUnparseableDates: 0 };
+
   const discrepancies = [
     ...detectStageHoursMismatch(servicesById, stageMinutes),
-    ...detectEntriesOnClosedStage(servicesById, stageEntryDates),
+    ...detectEntriesOnClosedStage(servicesById, stageEntryDates, dateCounters),
   ].sort((a, b) => {
     if (a.type !== b.type) return a.type.localeCompare(b.type);
-    return (a.serviceId + a.stageId).localeCompare(b.serviceId + b.stageId);
+    // F-5: reuse stageKey() — see the same fix in the two variant sorters.
+    return stageKey(a.serviceId, a.stageId).localeCompare(stageKey(b.serviceId, b.stageId));
   });
 
   unresolvedSamples.sort((a, b) =>
@@ -463,6 +527,7 @@ function detectStageInvariants(clientData, entries) {
     discrepancies,
     unresolvedCount,
     unresolvedSamples,
+    skippedUnparseableDates: dateCounters.skippedUnparseableDates,
   };
 }
 
