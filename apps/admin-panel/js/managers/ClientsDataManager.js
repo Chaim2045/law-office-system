@@ -309,10 +309,20 @@
                 console.log('📥 Loading timesheet entries...');
 
                 // Load all timesheet entries (we'll filter by client later)
+                // Cap raised 5000 -> 20000 (2026-07-22): measured 4,962/5,000 in PROD,
+                // growing ~64 entries / 3 days (~21/day) -> the old cap would have been
+                // crossed within days. 20,000 leaves ~15,000 entries of headroom, which
+                // at the observed growth rate is ~2 years before this needs revisiting.
+                // This is NOT a fix for the underlying issue (an unbounded client-side
+                // download) - it buys time. The real fix is per-client querying
+                // (tracked separately, out of scope here).
+                const timesheetLimit = 20000;
                 const snapshot = await this.db.collection('timesheet_entries')
                     .orderBy('date', 'desc')
-                    .limit(5000) // Reasonable limit
+                    .limit(timesheetLimit)
                     .get();
+
+                this.warnIfTruncated('timesheet_entries', snapshot, timesheetLimit);
 
                 this.timesheetEntries = snapshot.docs.map(doc => ({
                     id: doc.id,
@@ -337,9 +347,16 @@
             try {
                 console.log('📥 Loading budget tasks...');
 
+                // Cap raised 5000 -> 20000 (2026-07-22), same rationale as
+                // loadTimesheetEntries above - budget_tasks is far from its cap today
+                // (704) but carries the identical silent-truncation trap. Kept in sync
+                // for consistency; see warnIfTruncated for the loudness guard.
+                const budgetTasksLimit = 20000;
                 const snapshot = await this.db.collection('budget_tasks')
-                    .limit(5000)
+                    .limit(budgetTasksLimit)
                     .get();
+
+                this.warnIfTruncated('budget_tasks', snapshot, budgetTasksLimit);
 
                 this.budgetTasks = snapshot.docs.map(doc => ({
                     id: doc.id,
@@ -353,6 +370,63 @@
             } catch (error) {
                 console.error('❌ Error loading budget tasks:', error);
                 return { success: false, error: error.message };
+            }
+        }
+
+        /**
+         * Loudly flag a capped Firestore query that returned exactly `limit` docs.
+         * When the returned count equals the limit, we cannot tell whether that's
+         * a coincidence or silent truncation - so we must always assume truncation
+         * and say so loudly. This must NEVER throw: it runs inside a data-load path,
+         * and an exception here must not break the rest of the admin panel.
+         *
+         * החזרה שקטה של המספר המרבי מהשאילתה עשויה להעיד על קיטום שקט של נתונים -
+         * לכן כל חריגה מהמגבלה חייבת להיזרק בקול רם ל-console.error, לעולם לא בשקט.
+         *
+         * @param {string} collectionName - Firestore collection name (no PII).
+         * @param {object} snapshot - the Firestore QuerySnapshot (or malformed/undefined).
+         * @param {number} limit - the `.limit()` value used for the query.
+         */
+        warnIfTruncated(collectionName, snapshot, limit) {
+            try {
+                const docs = snapshot && snapshot.docs;
+                if (!Array.isArray(docs)) {
+                    return;
+                }
+
+                // A non-positive limit is never a real query cap (both call sites pass a
+                // hardcoded 20000) - treat it as "not applicable" rather than let
+                // docs.length===0===limit produce a false-positive truncation warning.
+                if (typeof limit === 'number' && limit > 0 && docs.length === limit) {
+                    console.error(
+                        `🔴 TRUNCATION: collection="${collectionName}" hit its query limit ` +
+                        `(${limit} docs returned). Data shown in the admin panel is INCOMPLETE - ` +
+                        'the oldest records are missing. Raise the limit or switch this loader ' +
+                        'to per-client querying.'
+                    );
+
+                    // Also surface to the admin via the existing toast system (if loaded) -
+                    // a console.error alone is invisible to anyone not watching devtools,
+                    // and an admin reading a report built from truncated data has no other
+                    // way to know the numbers are wrong. Reuses the app's existing
+                    // notification mechanism (window.notify) rather than inventing a new one.
+                    // Uses show() with duration:0 (never auto-hide) instead of the error()
+                    // shorthand (hardcoded 6s) - this fires during loadAllData()'s initial
+                    // load, while the admin is still watching a loading table, and every
+                    // screen opened afterwards in that session would otherwise show
+                    // truncated numbers with no visible trace once the toast disappears.
+                    if (typeof window !== 'undefined' && window.notify && typeof window.notify.show === 'function') {
+                        window.notify.show({
+                            type: 'error',
+                            title: 'נתונים חלקיים',
+                            message: 'חלק מהנתונים ההיסטוריים לא נטענו עקב מגבלת כמות - הדוחות עשויים להיות חלקיים. פנה לתמיכה הטכנית.',
+                            duration: 0
+                        });
+                    }
+                }
+            } catch (guardError) {
+                // Never let the guard itself break the data-load path.
+                console.error('❌ Error in warnIfTruncated guard:', guardError && guardError.message);
             }
         }
 
