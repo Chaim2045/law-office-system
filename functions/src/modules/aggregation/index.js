@@ -51,6 +51,60 @@ function calcServiceHoursUsedFromStages(stages) {
 }
 
 /**
+ * PR-STAGE-OWN (2026-07-23), extended: canonical rule for recomputing an
+ * HOURLY stage's hoursUsed from its packages while never destroying
+ * "orphan" hours — work that was legitimately counted directly on the stage
+ * with no package backing at all (applyLegalProcedureDeltaStageOnly, below,
+ * increments stage.hoursUsed directly whenever a deduction finds no active
+ * package for the stage — addTimeToTask_v2.js "No active package for stage"
+ * fallback, also timesheet/index.js + triggers/timesheet-trigger.js).
+ *
+ * THE FLAW A NAIVE FLOOR HAS (verified by hand before writing this, per the
+ * 2026-07-23 review): `hoursUsed = max(Σnewpackages, oldStage.hoursUsed)` —
+ * the rule functions/services/index.js originally shipped for
+ * addHoursPackageToStage — is WRONG the moment packages themselves can move
+ * (this module's applyLegalProcedureDelta applies POSITIVE deltas from
+ * ordinary timesheet entries AND NEGATIVE deltas from entry edit/delete, via
+ * triggers/timesheet-trigger.js). A naive floor (a) UNDERCOUNTS growth —
+ * oldStage.hoursUsed already includes the orphan, so max() silently caps a
+ * legitimate increase at the stale total instead of adding to it — and
+ * (b) FREEZES forever on any decrease, because oldStage.hoursUsed (which
+ * already contains the orphan) is always >= the new Σpackages once the
+ * orphan is nonzero, so max() always returns the stale value and a genuine
+ * downward correction (edit/delete lowering a package's hoursUsed) can never
+ * take effect. Both failure modes were confirmed numerically before this
+ * function was written — see the commit message.
+ *
+ * THE CORRECT RULE — an additive offset, not a floor:
+ *   orphan = max(0, oldStage.hoursUsed - Σ(oldStage.packages.hoursUsed))   [captured from the PRE-delta state]
+ *   new stage.hoursUsed = orphan + Σ(newPackages.hoursUsed)
+ *
+ * This preserves the orphan as a constant additive term while letting the
+ * package-backed portion move freely in EITHER direction with the packages
+ * (so a legitimate edit/delete decrease is never blocked), and is
+ * bit-identical to the old plain-Σ(packages) behavior whenever orphan===0
+ * (the healthy majority — no regression).
+ *
+ * Used by BOTH applyLegalProcedureDelta (below, ordinary +/- deltas) and
+ * functions/services/index.js addHoursPackageToStage (adding a package,
+ * where "newPackages" = the array AFTER the push and "oldStage" is the
+ * pre-push snapshot) — the single place this rule lives; do not hand-copy it.
+ */
+function recomputeStageHoursUsedPreservingOrphan(oldStage, newPackages) {
+  const oldPackagesHoursUsed = round2(
+    (oldStage.packages || []).reduce((sum, p) => sum + (p.hoursUsed || 0), 0)
+  );
+  const oldStageHoursUsed = round2(oldStage.hoursUsed || 0);
+  const orphan = round2(Math.max(0, oldStageHoursUsed - oldPackagesHoursUsed));
+
+  const newPackagesHoursUsed = round2(
+    (newPackages || []).reduce((sum, p) => sum + (p.hoursUsed || 0), 0)
+  );
+
+  return { hoursUsed: round2(orphan + newPackagesHoursUsed), orphan };
+}
+
+/**
  * Build an updated services array (immutable) after applying a minutes delta
  * to the target package within the target service.
  *
@@ -174,10 +228,20 @@ function applyLegalProcedureDelta(services, serviceId, stageId, packageId, minut
         };
       });
 
-      // Recalculate stage-level aggregates from packages
-      const stageHoursUsed = round2(
-        updatedPackages.reduce((sum, p) => sum + (p.hoursUsed || 0), 0)
-      );
+      // PR-STAGE-OWN fix 1c (2026-07-23): recompute stage-level hoursUsed via
+      // the canonical orphan-preserving rule (recomputeStageHoursUsedPreservingOrphan
+      // above), NOT a plain Σ(updatedPackages.hoursUsed). This path applies
+      // BOTH positive deltas (ordinary timesheet entries) and NEGATIVE deltas
+      // (entry edit/delete reversal — triggers/timesheet-trigger.js passes
+      // -(before.minutes)). A plain Σpackages recompute here silently erases
+      // any stage-only-counted orphan hours (same collision #1 as
+      // addHoursPackageToStage) the next time ANYONE logs, edits, or deletes
+      // time against a package on that stage — no package ADD required. The
+      // orphan-preserving rule keeps the orphan intact while still letting a
+      // legitimate decrease (edit/delete lowering the package) take effect —
+      // see the function doc for why a naive floor would freeze the value
+      // instead.
+      const { hoursUsed: stageHoursUsed } = recomputeStageHoursUsedPreservingOrphan(stage, updatedPackages);
       const stageHoursRemaining = round2((stage.totalHours || 0) - stageHoursUsed);
 
       return {
@@ -316,6 +380,7 @@ module.exports = {
   round2,
   calcStageEffectiveHoursUsed,
   calcServiceHoursUsedFromStages,
+  recomputeStageHoursUsedPreservingOrphan,
   applyHoursDelta,
   applyHoursDeltaServiceOnly,
   applyLegalProcedureDelta,

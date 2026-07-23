@@ -389,3 +389,122 @@ describe('Test 5 — all transaction reads happen before any transaction write',
     expect(callOrder).toEqual(['get', 'get', 'update']);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// EXTENSION (2026-07-23 review round) — the SECOND door: ordinary
+// package-backed timesheet deductions (applyLegalProcedureDelta), which
+// apply BOTH positive deltas (new entries) and NEGATIVE deltas (entry
+// edit/delete reversal via triggers/timesheet-trigger.js). These tests call
+// the real pure function directly — no callable harness needed.
+// ═══════════════════════════════════════════════════════════════
+
+const { applyLegalProcedureDelta } = require('../src/modules/aggregation');
+
+function makeOrphanLegalProcedure() {
+  // Mirrors the measured client 2025366/stage_a shape: stage.hoursUsed=67.58,
+  // one package hoursUsed=65.58 (2h orphan, stage-only-counted, no package
+  // backing).
+  return [
+    {
+      id: 'lp1',
+      type: 'legal_procedure',
+      pricingType: 'hourly',
+      totalHours: 100,
+      hoursUsed: 67.58,
+      hoursRemaining: 32.42,
+      stages: [
+        {
+          id: 'stage_a',
+          pricingType: 'hourly',
+          totalHours: 100,
+          hoursUsed: 67.58,
+          hoursRemaining: 32.42,
+          packages: [
+            { id: 'pkg_1', hours: 100, hoursUsed: 65.58, hoursRemaining: 34.42, status: 'active' }
+          ]
+        }
+      ]
+    }
+  ];
+}
+
+describe('Test 6 — orphan hours survive an ORDINARY package-backed deduction (no package add involved)', () => {
+  test('logging +5h against the orphan-carrying stage preserves the 2h orphan AND applies the new hours correctly', () => {
+    const services = makeOrphanLegalProcedure();
+
+    // +5h logged (300 minutes) against pkg_1 on stage_a — the everyday path,
+    // NOT addHoursPackageToStage. This is what silently destroyed the orphan
+    // pre-fix: a plain Σ(packages.hoursUsed) recompute would have produced
+    // 65.58+5=70.58, dropping the 2h orphan. FAILS against pre-change code
+    // (which would assert 70.58, not 72.58).
+    const result = applyLegalProcedureDelta(services, 'lp1', 'stage_a', 'pkg_1', 300);
+
+    expect(result).not.toBeNull();
+    const updatedStage = result.updatedServices[0].stages[0];
+    const updatedPkg = updatedStage.packages[0];
+
+    expect(updatedPkg.hoursUsed).toBe(70.58); // package itself moved correctly
+    // Orphan (2h) preserved AND the +5h landed: 67.58 + 5 = 72.58, NOT 70.58.
+    expect(updatedStage.hoursUsed).toBe(72.58);
+    expect(updatedStage.hoursRemaining).toBe(27.42); // 100 - 72.58
+
+    const updatedService = result.updatedServices[0];
+    expect(updatedService.hoursUsed).toBe(72.58);
+  });
+});
+
+describe('Test 7 — a LEGITIMATE decrease (entry edit/delete) still decreases — the guard must not freeze', () => {
+  test('a negative delta (edit lowering logged time) lowers stage.hoursUsed by the same amount, orphan still intact', () => {
+    const services = makeOrphanLegalProcedure();
+
+    // Entry edit reduces logged time by 3h (-180 minutes) against pkg_1 —
+    // mirrors triggers/timesheet-trigger.js's `-(before.minutes)` reversal
+    // pattern for edit/delete. A NAIVE max(Σpackages, oldStageHoursUsed)
+    // floor would freeze this at 67.58 forever (verified by hand before
+    // writing the fix — see the commit message). FAILS against a
+    // hypothetical naive-floor implementation; the orphan-preserving rule
+    // must let it drop to 64.58.
+    const result = applyLegalProcedureDelta(services, 'lp1', 'stage_a', 'pkg_1', -180);
+
+    expect(result).not.toBeNull();
+    const updatedStage = result.updatedServices[0].stages[0];
+    const updatedPkg = updatedStage.packages[0];
+
+    expect(updatedPkg.hoursUsed).toBe(62.58); // 65.58 - 3
+    // The stage-level total must ALSO decrease by exactly 3h: 67.58 - 3 = 64.58.
+    // A frozen/never-shrinks guard would incorrectly report 67.58 here.
+    expect(updatedStage.hoursUsed).toBe(64.58);
+    expect(updatedStage.hoursRemaining).toBe(35.42); // 100 - 64.58
+
+    // Applying a SECOND negative delta proves it keeps moving (not a one-time
+    // unfreeze) — a genuinely frozen guard would report 67.58 again here too.
+    const result2 = applyLegalProcedureDelta(result.updatedServices, 'lp1', 'stage_a', 'pkg_1', -60);
+    const stage2 = result2.updatedServices[0].stages[0];
+    expect(stage2.hoursUsed).toBe(63.58); // 64.58 - 1
+  });
+});
+
+describe('Test 8 — healthy majority (no orphan): applyLegalProcedureDelta behaves identically to before', () => {
+  test('no orphan present → stage.hoursUsed is a plain Σ(packages.hoursUsed), both directions', () => {
+    const services = [
+      {
+        id: 'lp2', type: 'legal_procedure', pricingType: 'hourly',
+        totalHours: 10, hoursUsed: 3, hoursRemaining: 7,
+        stages: [{
+          id: 'stage_a', pricingType: 'hourly', totalHours: 10, hoursUsed: 3, hoursRemaining: 7,
+          packages: [{ id: 'pkg_1', hours: 10, hoursUsed: 3, hoursRemaining: 7, status: 'active' }]
+        }]
+      }
+    ];
+
+    // This test is WEAK as a fix-proof: it is a NON-REGRESSION check that
+    // passes against both pre- and post-change code whenever no orphan
+    // exists (the healthy majority) — it proves the common path is
+    // untouched, nothing about the fix itself.
+    const plus = applyLegalProcedureDelta(services, 'lp2', 'stage_a', 'pkg_1', 120); // +2h
+    expect(plus.updatedServices[0].stages[0].hoursUsed).toBe(5);
+
+    const minus = applyLegalProcedureDelta(plus.updatedServices, 'lp2', 'stage_a', 'pkg_1', -300); // -5h
+    expect(minus.updatedServices[0].stages[0].hoursUsed).toBe(0);
+  });
+});
