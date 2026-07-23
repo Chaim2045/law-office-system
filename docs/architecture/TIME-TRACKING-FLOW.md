@@ -1,5 +1,22 @@
 # Time-Tracking Flow — Deep Audit
 
+> ## 📌 מסמך תקף — אך מיושן בשני דברים (עודכן 2026-07-23)
+>
+> המנגנונים שמתוארים כאן אומתו מול הקוד ועדיין נכונים. **שתי הסתייגויות לפני שקוראים:**
+>
+> 1. **ההכרזה על "steady-state קנוני" כבר לא נכונה.** המסמך קודם לעיצוב-מחדש של
+>    בעלות יחידה על אגרגטים (`docs/SINGLE-OWNER-AGGREGATE-DESIGN.md`, 2026-06) ולממצאי
+>    2026-07 (`docs/FINDINGS-STAGE-TRANSITION-MECHANISM-2026-07.md`,
+>    `docs/FINDINGS-INTERNAL-OFFICE-BILLING-LEAK-2026-07.md`,
+>    `docs/PLAN-HOURS-STAGE-INTEGRITY-2026-07.md`). המערכת אינה במצב סופי.
+> 2. **שני שמות אוספים במסמך שגויים.** `client_reservations` (שורות 55, 344, 488) ו-
+>    `processed_idempotency` (שורות 56, 117, 321) אינם קיימים בקוד. השמות בפועל הם
+>    `reservations` (`functions/timesheet/helpers.js:147`) ו-`processed_operations`
+>    (`functions/clients/index.js:71`). אל תשאילת אותם בשמות שבמסמך.
+>
+> לסיווג שירותים ראה `docs/architecture/SERVICE_TYPES.md`.
+> מסמכים שהוחלפו לגמרי: [`docs/archive/README.md`](../archive/README.md).
+
 **תאריך:** 2026-05-18
 **מסמך מאת:** Claude (deep audit, read-only)
 **סטטוס:** מסמך סקירה — מקור אמת לזרימת מעקב השעות אחרי PR-A/B/C/D/E

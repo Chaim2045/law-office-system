@@ -1,3 +1,27 @@
+> # ⚠️ מסמך בארכיון — אינו מתאר את המערכת הנוכחית
+>
+> **הועבר לארכיון:** 2026-07-23 · **תקף בערך:** 2025-11-11 → 2026-05
+> **מיקום קודם:** `docs/architecture/DEDUCTION_FLOW_EXPLAINED.md`
+>
+> **למה:** המסמך מפנה שוב ושוב ל-`functions/index.js` כמקום שבו יושבים `createClient()`
+> וקוד הקיזוז (שורות 171, 193, 249, 546). זה לא נכון היום:
+> `createClient` נמצא ב-`functions/clients/index.js:65`, הקיזוז ב-`functions/timesheet/index.js:304`
+> ו-`:385`, ו-`functions/index.js` הוא registry בן 221 שורות שאין בו אזכור אחד ל-`DeductionSystem`.
+> בנוסף המסמך מציג `procedureType` ברמת הלקוח כ-"סוג השירות" (שורה 23) — שדה שמסומן
+> במפורש כ-legacy ב-`docs/architecture/SERVICE_TYPES.md` ("Common mistakes", סעיף 2).
+>
+> **קרא במקום:**
+> - `docs/architecture/TIME-TRACKING-FLOW.md` — מפת הזרימה מקצה לקצה (ראה כותרת התיקון שם)
+> - `functions/src/modules/deduction/deduction-logic.js` — לוגיקת הקיזוז הקנונית
+> - `functions/timesheet/index.js` — נקודות הכתיבה בפועל
+>
+> **עדיין שימושי כדי:** להבין את כוונת התכנון המקורית של קיזוז שלב→חבילה, ולמה
+> שדות `hoursRemaining` מוכפלים בין שלב לחבילה.
+>
+> אינדקס הארכיון המלא: [docs/archive/README.md](README.md)
+
+---
+
 # 🎯 הסבר מלא: איך קיזוז השעות עובד
 
 **תאריך:** 2025-11-11

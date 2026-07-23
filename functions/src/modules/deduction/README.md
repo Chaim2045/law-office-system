@@ -189,7 +189,7 @@ npm run test calculators.test.ts
 
 - [DEDUCTION_SYSTEM_GUIDE.md](../../docs/DEDUCTION_SYSTEM_GUIDE.md) - מדריך מקיף
 - [PACKAGES_SYSTEM.md](../../docs/PACKAGES_SYSTEM.md) - מערכת החבילות
-- [DATA_STRUCTURE_STANDARD.md](../../docs/DATA_STRUCTURE_STANDARD.md) - מבנה הנתונים
+- [DATA_STRUCTURE_STANDARD.md](../../../../docs/archive/DATA_STRUCTURE_STANDARD.md) - מבנה הנתונים (⚠️ בארכיון — לא מתאר את המערכת הנוכחית; ראה `docs/architecture/SERVICE_TYPES.md`)
 
 ## 📝 Version History
 

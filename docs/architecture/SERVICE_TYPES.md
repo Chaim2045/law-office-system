@@ -87,7 +87,9 @@ Note that shapes 2 and 4 both show "פיקס" text — they're disambiguated by 
 | File | Purpose |
 |------|---------|
 | `functions/shared/constants.js` | `SYSTEM_CONSTANTS.SERVICE_TYPES` (`HOURS`, `FIXED`, `LEGAL_PROCEDURE`) + `PRICING_TYPES` (`HOURLY`, `FIXED`) |
-| `functions/shared/aggregates.js:23-26` | `isFixedService` canonical implementation |
+| `shared/business-rules/service-classification.js` | `isFixedService` **canonical implementation** (SOT). Moved here in PR-2.1.1 (2026-05-26), which consolidated 4 prior copies. |
+| `functions/shared/business-rules/service-classification.js` | In-tree mirror of the canonical file — required because `firebase.json` deploys only `functions/`. Kept identical by `tests/unit/shared/business-rules.sync.test.ts`. Do not edit directly. |
+| `functions/shared/aggregates.js:23` | Thin re-export only (`require('./business-rules/service-classification')`) — no longer the implementation. Backend `require('./shared/aggregates')` still works. |
 | `apps/admin-panel/js/core/client-type-display.js:29-35` | Frontend mirror (must stay in sync) |
 | `functions/shared/client-writer.js:_recomputeTotalHours` | Uses both to decide billable inclusion |
 

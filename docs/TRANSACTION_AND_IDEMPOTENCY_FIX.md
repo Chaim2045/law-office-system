@@ -207,7 +207,7 @@ console.log(result1.caseNumber === result2.caseNumber); // true
 
 ## ✅ Compliance with Project Rules
 
-Per **DATA_STRUCTURE_STANDARD.md**:
+Per **archive/DATA_STRUCTURE_STANDARD.md**:
 
 - [x] **Rule 1:** Write to NEW structure ONLY → ✅ Yes
 - [x] **Rule 2:** Read from BOTH structures → ✅ Yes
@@ -225,7 +225,7 @@ Per **DATA_STRUCTURE_STANDARD.md**:
 
 ## 🔗 Related Documents
 
-- [DATA_STRUCTURE_STANDARD.md](DATA_STRUCTURE_STANDARD.md)
+- [archive/DATA_STRUCTURE_STANDARD.md](archive/DATA_STRUCTURE_STANDARD.md) — ⚠️ הועבר לארכיון 2026-07-23, אינו מתאר את המערכת הנוכחית (ראה `docs/archive/README.md`)
 - [LEGAL_PROCEDURE_HOURS_DEDUCTION_FIX.md](LEGAL_PROCEDURE_HOURS_DEDUCTION_FIX.md)
 - [CREATECLIENT_NEW_STRUCTURE_FIX.md](CREATECLIENT_NEW_STRUCTURE_FIX.md)
 

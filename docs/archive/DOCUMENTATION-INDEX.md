@@ -1,3 +1,24 @@
+> # ⚠️ מסמך בארכיון — אינו מתאר את המערכת הנוכחית
+>
+> **הועבר לארכיון:** 2026-07-23 · **תקף בערך:** 2025-10 → 2025-11
+>
+> **למה:** זהו אינדקס תיעוד שרוב היעדים שלו אינם קיימים. חמישה מתוך שישה קישורים מתים:
+> `docs/README-MIGRATION.md`, `docs/MIGRATION-GUIDE.md`, `docs/MIGRATION-SUMMARY.md`,
+> `docs/run-validation.html`, `docs/js/validation-script.js` — כולם לא קיימים ברפו
+> (רק `docs/QUICK-START.md` שרד). המסמך גם מכריז "Status: ✅ Complete & Production Ready"
+> ומתאר מיגרציית Client=Case שהסתיימה מזמן. מצביע שבור בדיוק כזה הוא הכשל שהמסמך הזה יצר.
+>
+> **קרא במקום:**
+> - `CLAUDE.md` (שורש הרפו) — נקודת הכניסה בפועל לסשן חדש
+> - `README.md` (שורש הרפו) — מפת הפרויקט
+> - `docs/MASTER_PLAN.md` — התוכנית הרב-שלבית הפעילה
+>
+> **עדיין שימושי כדי:** לתעד אילו מסמכי מיגרציה היו קיימים ב-2025 ומה הם כיסו.
+>
+> אינדקס הארכיון המלא: [docs/archive/README.md](README.md)
+
+---
+
 # 📚 Documentation Index - Client=Case Migration
 
 ## 🎯 Start Here
