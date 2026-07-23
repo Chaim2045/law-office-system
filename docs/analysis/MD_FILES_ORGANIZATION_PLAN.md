@@ -76,7 +76,7 @@
 
 ### 🏗️ **ארכיטקטורה והסברים** → `docs/architecture/` (4 קבצים):
 
-1. **DEDUCTION_FLOW_EXPLAINED.md** - הסבר תהליך ניכוי
+1. **DEDUCTION_FLOW_EXPLAINED.md** - הסבר תהליך ניכוי — ⚠️ הועבר מאז ל-`docs/archive/DEDUCTION_FLOW_EXPLAINED.md` (2026-07-23)
 2. **FIREBASE_INDEXES_EXPLAINED.md** - הסבר אינדקסים
 3. **TASKS_VS_SERVICES_EXPLAINED.md** - הסבר משימות vs שירותים
 4. **REACT_MIGRATION_PLAN.md** - תוכנית מעבר ל-React
@@ -134,7 +134,7 @@ law-office-system/
 │   │   └── ENABLE-PITR-MANUALLY.md
 │   │
 │   ├── architecture/                          # ארכיטקטורה (4) - כבר קיים
-│   │   ├── DEDUCTION_FLOW_EXPLAINED.md
+│   │   ├── DEDUCTION_FLOW_EXPLAINED.md   # הועבר ל-docs/archive/ ב-2026-07-23
 │   │   ├── FIREBASE_INDEXES_EXPLAINED.md
 │   │   ├── REACT_MIGRATION_PLAN.md
 │   │   └── TASKS_VS_SERVICES_EXPLAINED.md
@@ -214,7 +214,7 @@ mv ENABLE-PITR-MANUALLY.md docs/backup/
 ### שלב 6: העברת קבצי Architecture
 
 ```bash
-mv DEDUCTION_FLOW_EXPLAINED.md docs/architecture/
+mv DEDUCTION_FLOW_EXPLAINED.md docs/architecture/   # רשומה היסטורית; הקובץ הועבר מאז ל-docs/archive/ (2026-07-23)
 mv FIREBASE_INDEXES_EXPLAINED.md docs/architecture/
 mv REACT_MIGRATION_PLAN.md docs/architecture/
 mv TASKS_VS_SERVICES_EXPLAINED.md docs/architecture/

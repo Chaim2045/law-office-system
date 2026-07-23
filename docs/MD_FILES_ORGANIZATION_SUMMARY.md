@@ -105,7 +105,7 @@ docs/
 
 מסמכי ארכיטקטורה והסברים טכניים:
 
-1. ✅ DEDUCTION_FLOW_EXPLAINED.md - הסבר תהליך ניכוי
+1. ✅ DEDUCTION_FLOW_EXPLAINED.md - הסבר תהליך ניכוי — ⚠️ הועבר מאז ל-`docs/archive/DEDUCTION_FLOW_EXPLAINED.md` (2026-07-23)
 2. ✅ FIREBASE_INDEXES_EXPLAINED.md - הסבר אינדקסים
 3. ✅ REACT_MIGRATION_PLAN.md - תוכנית מעבר ל-React
 4. ✅ TASKS_VS_SERVICES_EXPLAINED.md - הסבר משימות vs שירותים
@@ -168,7 +168,7 @@ law-office-system/
 │   │   └── ENABLE-PITR-MANUALLY.md
 │   │
 │   ├── architecture/                         # ארכיטקטורה (6)
-│   │   ├── DEDUCTION_FLOW_EXPLAINED.md
+│   │   ├── DEDUCTION_FLOW_EXPLAINED.md   # הועבר ל-docs/archive/ ב-2026-07-23
 │   │   ├── FIREBASE_INDEXES_EXPLAINED.md
 │   │   ├── REACT_MIGRATION_PLAN.md
 │   │   ├── TASKS_VS_SERVICES_EXPLAINED.md
@@ -315,7 +315,7 @@ mv BACKUP-STRATEGY.md docs/backup/
 # ... (3 נוספים)
 
 # Architecture (4 קבצים)
-mv DEDUCTION_FLOW_EXPLAINED.md docs/architecture/
+mv DEDUCTION_FLOW_EXPLAINED.md docs/architecture/   # רשומה היסטורית; הקובץ הועבר מאז ל-docs/archive/ (2026-07-23)
 # ... (3 נוספים)
 
 # Testing (1 קובץ)

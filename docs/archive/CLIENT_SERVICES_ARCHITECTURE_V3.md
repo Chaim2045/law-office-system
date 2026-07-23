@@ -1,3 +1,26 @@
+> # ⚠️ מסמך בארכיון — אינו מתאר את המערכת הנוכחית
+>
+> **הועבר לארכיון:** 2026-07-23 · **תקף בערך:** 2025-11-05 → 2026-05
+>
+> **למה:** מודל החבילות שמתועד כאן לא מומש. המסמך בונה את כל לוגיקת הקיזוז סביב
+> מצביע `stage.currentPackageIndex` (שורות 263, 289, 494) — שדה שאינו קיים באף שורת קוד
+> ברפו (`git grep currentPackageIndex` → 0 תוצאות; גם `currentPackageId` → 0).
+> הקוד בפועל מאתר חבילה לפי מזהה: `functions/addTimeToTask_v2.js:559-570`
+> (`resolvedPackageId` → `targetService.packages.find(p => p.id === ...)`).
+> בנוסף המסמך מציג `procedureType` ברמת הלקוח כשדה מבני חי (שורה 227).
+>
+> **קרא במקום:**
+> - `docs/architecture/SERVICE_TYPES.md` — צורות השירות והבחנה נכונה ביניהן
+> - `docs/SINGLE-OWNER-AGGREGATE-DESIGN.md` — בעלות יחידה על אגרגטים
+> - `functions/src/modules/deduction/deduction-logic.js` — לוגיקת הקיזוז בפועל
+>
+> **עדיין שימושי כדי:** להבין את הדרישות העסקיות המקוריות (הליך רב-שלבי, חבילות מרובות לשלב)
+> ולמה מבנה `services[]` נראה כפי שהוא.
+>
+> אינדקס הארכיון המלא: [docs/archive/README.md](README.md)
+
+---
+
 # Client Services Architecture v3.0
 ## תיעוד ארכיטקטורת מערך הלקוחות והשירותים
 

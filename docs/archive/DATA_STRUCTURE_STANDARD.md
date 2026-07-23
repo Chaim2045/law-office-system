@@ -1,3 +1,23 @@
+> # ⚠️ מסמך בארכיון — אינו מתאר את המערכת הנוכחית
+>
+> **הועבר לארכיון:** 2026-07-23 · **תקף בערך:** 2025-11-05 → 2026-05
+>
+> **למה:** המסמך מצהיר על עצמו "Official Standard" אך מתעד סוג תמחור `pricingType: "retainer"`
+> שלא קיים במערכת. `functions/shared/constants.js:34` מגדיר
+> `VALID_PRICING_TYPES: ['hourly', 'fixed']` בלבד, ו-`isValidPricingType()` (שם, שורה 133)
+> דוחה כל ערך אחר. בנוסף המסמך קודם לעיצוב-מחדש של single-owner aggregates (2026-06).
+>
+> **קרא במקום:**
+> - `docs/architecture/SERVICE_TYPES.md` — ארבע צורות השירות והיררכיית `type`/`pricingType`
+> - `docs/SINGLE-OWNER-AGGREGATE-DESIGN.md` — מודל האגרגטים הנוכחי
+> - `functions/shared/constants.js` — מקור האמת לערכים חוקיים
+>
+> **עדיין שימושי כדי:** להבין למה נתונים היסטוריים של לקוחות נראים כפי שהם.
+>
+> אינדקס הארכיון המלא: [docs/archive/README.md](README.md)
+
+---
+
 # 🏗️ Data Structure Standard - Law Office System
 ## High-Tech Enterprise Architecture v3.0
 
