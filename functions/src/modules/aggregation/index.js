@@ -28,6 +28,29 @@ function round2(n) {
 }
 
 /**
+ * Canonical pricing-aware selection of a legal_procedure stage's "hours used"
+ * figure. A FIXED-pricing stage tracks work in totalHoursWorked (hoursUsed is
+ * not the counted field for a fixed stage — see applyLegalProcedureDelta
+ * below); an HOURLY stage tracks work in hoursUsed.
+ *
+ * This is the single rule every stage-hours-used consumer must use.
+ * functions/services/index.js (addHoursPackageToStage) imports
+ * calcServiceHoursUsedFromStages below instead of hand-copying this ternary —
+ * see the PR-STAGE-OWN comment there.
+ */
+function calcStageEffectiveHoursUsed(stage) {
+  return stage.pricingType === PT.FIXED ? (stage.totalHoursWorked || 0) : (stage.hoursUsed || 0);
+}
+
+/**
+ * Pricing-aware Σ of a legal_procedure service's hoursUsed across its stages.
+ * Canonical implementation — see calcStageEffectiveHoursUsed above.
+ */
+function calcServiceHoursUsedFromStages(stages) {
+  return round2((stages || []).reduce((sum, st) => sum + calcStageEffectiveHoursUsed(st), 0));
+}
+
+/**
  * Build an updated services array (immutable) after applying a minutes delta
  * to the target package within the target service.
  *
@@ -165,10 +188,8 @@ function applyLegalProcedureDelta(services, serviceId, stageId, packageId, minut
       };
     });
 
-    // Recalculate service-level aggregates from stages
-    const svcHoursUsed = round2(
-      updatedStages.reduce((sum, st) => sum + (st.pricingType === PT.FIXED ? (st.totalHoursWorked || 0) : (st.hoursUsed || 0)), 0)
-    );
+    // Recalculate service-level aggregates from stages (canonical pricing-aware rule)
+    const svcHoursUsed = calcServiceHoursUsedFromStages(updatedStages);
     const svcHoursRemaining = svc.pricingType === PT.FIXED
       ? null
       : round2((svc.totalHours || 0) - svcHoursUsed);
@@ -265,10 +286,8 @@ function applyLegalProcedureDeltaStageOnly(services, serviceId, stageId, minutes
       };
     });
 
-    // Recalculate service-level aggregates from stages
-    const svcHoursUsed = round2(
-      updatedStages.reduce((sum, st) => sum + (st.pricingType === PT.FIXED ? (st.totalHoursWorked || 0) : (st.hoursUsed || 0)), 0)
-    );
+    // Recalculate service-level aggregates from stages (canonical pricing-aware rule)
+    const svcHoursUsed = calcServiceHoursUsedFromStages(updatedStages);
     const svcHoursRemaining = svc.pricingType === PT.FIXED
       ? null
       : round2((svc.totalHours || 0) - svcHoursUsed);
@@ -295,6 +314,8 @@ function applyLegalProcedureDeltaStageOnly(services, serviceId, stageId, minutes
 
 module.exports = {
   round2,
+  calcStageEffectiveHoursUsed,
+  calcServiceHoursUsedFromStages,
   applyHoursDelta,
   applyHoursDeltaServiceOnly,
   applyLegalProcedureDelta,

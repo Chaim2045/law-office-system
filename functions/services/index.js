@@ -10,6 +10,11 @@ const { logAction } = require('../shared/audit');
 const { sanitizeString } = require('../shared/validators');
 
 const { round2, isFixedService } = require('../shared/aggregates');
+// PR-STAGE-OWN (2026-07-23): canonical pricing-aware stage→service hoursUsed
+// rule, single-sourced in src/modules/aggregation (see calcStageEffectiveHoursUsed
+// there for why a FIXED stage/service reads totalHoursWorked instead of hoursUsed).
+// Reused here instead of hand-copying the ternary — see addHoursPackageToStage.
+const { calcServiceHoursUsedFromStages } = require('../src/modules/aggregation');
 const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
 // PR-B-2 (2026-07-21): audit-FIRST-in-txn for the budget_tasks re-point that
 // happens inside moveToNextStage. Compiled TS output — see functions/src-ts/
@@ -736,30 +741,86 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
 
       targetStage.packages.push(newPackage);
 
-      // ✅ CRITICAL: חישוב כל ה-aggregates מה-packages (Single Source of Truth)
+      // ✅ Capacity (totalHours) is always recomputed from packages — packages
+      // define capacity, this is safe for both pricing types.
       targetStage.totalHours = targetStage.packages.reduce((sum, pkg) =>
         sum + (pkg.hours || 0), 0);
 
-      targetStage.hoursUsed = targetStage.packages.reduce((sum, pkg) =>
-        sum + (pkg.hoursUsed || 0), 0);
+      const isFixedStage = targetStage.pricingType === PT.FIXED;
 
-      targetStage.hoursRemaining = targetStage.packages.reduce((sum, pkg) =>
-        sum + (pkg.hoursRemaining || 0), 0);
+      if (isFixedStage) {
+        // PR-STAGE-OWN fix 1b (2026-07-23): a FIXED-pricing stage tracks worked
+        // hours in totalHoursWorked (canonical rule — src/modules/aggregation
+        // calcStageEffectiveHoursUsed), NOT in hoursUsed recomputed from
+        // packages, and hoursRemaining is DELIBERATELY null for fixed pricing
+        // (87 of 150 stages in prod are fixed). This function only adds
+        // capacity (a package) to the stage — it never adds worked hours —
+        // so totalHoursWorked and hoursUsed are intentionally left untouched
+        // here. Never write hoursRemaining: 0 in place of null, and never
+        // zero totalHoursWorked.
+        targetStage.hoursRemaining = null;
+      } else {
+        // PR-STAGE-OWN fix 1a (2026-07-23): hoursUsed must NEVER be recomputed
+        // as a pure Σ(packages.hoursUsed). applyLegalProcedureDeltaStageOnly
+        // (src/modules/aggregation) increments stage.hoursUsed DIRECTLY
+        // whenever a deduction finds no active package for this stage
+        // (addTimeToTask_v2.js "No active package for stage" fallback, also
+        // timesheet/index.js + triggers/timesheet-trigger.js). That
+        // stage-only-counted work has no package backing at all. Recomputing
+        // hoursUsed = Σpackages here would silently ERASE it the instant any
+        // package is added to the stage — measured live case: client 2025366
+        // / stage_a, stage.hoursUsed=67.58h vs Σpackages=65.58h (2h would be
+        // destroyed by the unpatched version of this exact code path).
+        //
+        // Rule chosen (of the two considered): hoursUsed = max(Σpackages,
+        // current stage.hoursUsed) — i.e. this function can only ever GROW
+        // hoursUsed, never shrink it. Mirrors the OWN-0(c) precedent at line
+        // ~449 above (service-level "preserve as-is" for the identical
+        // hazard). Package REMOVAL/correction is out of scope for this
+        // function (it only ever ADDS a package) — so the cost of "never
+        // shrink" is not paid here; a genuine downward correction requires a
+        // dedicated repair path (same posture as OWN-0(c) relying on the
+        // forward-replay repair rather than an in-place decrease).
+        const sumPackagesHoursUsed = round2(
+          targetStage.packages.reduce((sum, pkg) => sum + (pkg.hoursUsed || 0), 0)
+        );
+        const currentStageHoursUsed = round2(targetStage.hoursUsed || 0);
+
+        if (sumPackagesHoursUsed < currentStageHoursUsed) {
+          // Observability: the guard actually engaged — Σpackages would have
+          // lowered hoursUsed. Ids/counts only, no PII.
+          console.warn(
+            `[OWN-STAGE-GUARD] preserved stage-level hoursUsed — case=${caseId} ` +
+            `stage=${data.stageId} sumPackagesHoursUsed=${sumPackagesHoursUsed} ` +
+            `currentStageHoursUsed=${currentStageHoursUsed} ` +
+            `preventedLossHours=${round2(currentStageHoursUsed - sumPackagesHoursUsed)}`
+          );
+        }
+
+        targetStage.hoursUsed = Math.max(sumPackagesHoursUsed, currentStageHoursUsed);
+        targetStage.hoursRemaining = round2(targetStage.totalHours - targetStage.hoursUsed);
+      }
 
       stages[stageIndex] = targetStage;
 
       // 🔄 Step 7: עדכון ה-service
       legalProcedure.stages = stages;
 
-      // ✅ חישוב aggregates של service מחדש מה-stages
+      // ✅ קיבולת (totalHours) — Σ מה-stages, ללא תלות ב-pricing type.
       legalProcedure.totalHours = stages.reduce((sum, stage) =>
         sum + (stage.totalHours || 0), 0);
 
-      legalProcedure.hoursUsed = stages.reduce((sum, stage) =>
-        sum + (stage.hoursUsed || 0), 0);
+      // PR-STAGE-OWN fix 2 (2026-07-23): pricing-aware Σ via the canonical
+      // helper (src/modules/aggregation.calcServiceHoursUsedFromStages) —
+      // replaces the old plain Σ(stage.hoursUsed), which silently ignored
+      // FIXED stages' totalHoursWorked and could disagree with
+      // aggregation/index.js's own service-level recompute (a second,
+      // independent drift door on top of collision #1 above).
+      legalProcedure.hoursUsed = calcServiceHoursUsedFromStages(stages);
 
-      legalProcedure.hoursRemaining = stages.reduce((sum, stage) =>
-        sum + (stage.hoursRemaining || 0), 0);
+      legalProcedure.hoursRemaining = legalProcedure.pricingType === PT.FIXED
+        ? null
+        : round2(legalProcedure.totalHours - legalProcedure.hoursUsed);
 
       services[legalProcedureIndex] = legalProcedure;
 
