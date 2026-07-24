@@ -10,6 +10,15 @@ const { logAction } = require('../shared/audit');
 const { sanitizeString } = require('../shared/validators');
 
 const { round2, isFixedService } = require('../shared/aggregates');
+// PR-STAGE-OWN (2026-07-23): canonical pricing-aware stage→service hoursUsed
+// rule, single-sourced in src/modules/aggregation (see calcStageEffectiveHoursUsed
+// there for why a FIXED stage/service reads totalHoursWorked instead of hoursUsed).
+// Reused here instead of hand-copying the ternary — see addHoursPackageToStage.
+// recomputeStageHoursUsedPreservingOrphan (extended 2026-07-23) is the SAME
+// stage-level orphan-preservation rule used at aggregation/index.js's
+// applyLegalProcedureDelta (the package-backed timesheet deduction path) —
+// reused here too instead of a second hand-written copy.
+const { calcServiceHoursUsedFromStages, recomputeStageHoursUsedPreservingOrphan } = require('../src/modules/aggregation');
 const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
 // PR-B-2 (2026-07-21): audit-FIRST-in-txn for the budget_tasks re-point that
 // happens inside moveToNextStage. Compiled TS output — see functions/src-ts/
@@ -736,30 +745,119 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
 
       targetStage.packages.push(newPackage);
 
-      // ✅ CRITICAL: חישוב כל ה-aggregates מה-packages (Single Source of Truth)
+      // ✅ Capacity (totalHours) is always recomputed from packages — packages
+      // define capacity, this is safe for both pricing types.
       targetStage.totalHours = targetStage.packages.reduce((sum, pkg) =>
         sum + (pkg.hours || 0), 0);
 
-      targetStage.hoursUsed = targetStage.packages.reduce((sum, pkg) =>
-        sum + (pkg.hoursUsed || 0), 0);
+      const isFixedStage = targetStage.pricingType === PT.FIXED;
 
-      targetStage.hoursRemaining = targetStage.packages.reduce((sum, pkg) =>
-        sum + (pkg.hoursRemaining || 0), 0);
+      if (isFixedStage) {
+        // PR-STAGE-OWN fix 1b (2026-07-23): a FIXED-pricing stage tracks worked
+        // hours in totalHoursWorked (canonical rule — src/modules/aggregation
+        // calcStageEffectiveHoursUsed), NOT in hoursUsed recomputed from
+        // packages, and hoursRemaining is DELIBERATELY null for fixed pricing
+        // (87 of 150 stages in prod are fixed). This function only adds
+        // capacity (a package) to the stage — it never adds worked hours —
+        // so totalHoursWorked and hoursUsed are intentionally left untouched
+        // here. Never write hoursRemaining: 0 in place of null, and never
+        // zero totalHoursWorked.
+        targetStage.hoursRemaining = null;
+      } else {
+        // PR-STAGE-OWN fix 1a (2026-07-23, corrected 2026-07-23 review round):
+        // hoursUsed must NEVER be recomputed as a pure Σ(packages.hoursUsed).
+        // applyLegalProcedureDeltaStageOnly (src/modules/aggregation)
+        // increments stage.hoursUsed DIRECTLY whenever a deduction finds no
+        // active package for this stage (addTimeToTask_v2.js "No active
+        // package for stage" fallback, also timesheet/index.js +
+        // triggers/timesheet-trigger.js). That stage-only-counted work has
+        // no package backing at all. Recomputing hoursUsed = Σpackages here
+        // would silently ERASE it the instant any package is added to the
+        // stage — measured live case: client 2025366/stage_a,
+        // stage.hoursUsed=67.58h vs Σpackages=65.58h (2h would be destroyed
+        // by the unpatched version of this exact code path).
+        //
+        // CORRECTED RULE: originally shipped as a naive floor
+        // (hoursUsed = max(Σpackages, current stage.hoursUsed)). A 2026-07-23
+        // adversarial review found that floor breaks the moment packages
+        // themselves can move in EITHER direction (which happens at
+        // aggregation/index.js's applyLegalProcedureDelta — ordinary
+        // timesheet entries AND entry edit/delete reversal, both routed
+        // through that function, not this one) — a floor undercounts growth
+        // and FREEZES the value forever on any decrease, since
+        // oldStage.hoursUsed already contains the orphan and is therefore
+        // always >= a lowered Σpackages. Verified numerically before fixing
+        // (see the commit message). The canonical rule is now the SAME
+        // orphan-preserving additive recompute used at that other call site:
+        // recomputeStageHoursUsedPreservingOrphan (src/modules/aggregation)
+        // — orphan = max(0, oldHoursUsed - ΣoldPackages), new hoursUsed =
+        // orphan + ΣnewPackages. This function only ever ADDS a package
+        // (never removes one), so oldPackages = the array immediately before
+        // the push above = packages.slice(0, -1) (push always appends
+        // exactly one). Reused via the shared helper — not hand-copied here
+        // — so both call sites (this one, and the ordinary-entry deduction
+        // path) can never silently diverge again.
+        const oldPackagesBeforePush = targetStage.packages.slice(0, -1);
+        const oldStageSnapshot = { hoursUsed: targetStage.hoursUsed, packages: oldPackagesBeforePush };
+        const { hoursUsed: newStageHoursUsed, orphan } = recomputeStageHoursUsedPreservingOrphan(
+          oldStageSnapshot,
+          targetStage.packages
+        );
+
+        if (orphan > 0) {
+          // Observability: the guard actually engaged — Σpackages alone
+          // would have lowered hoursUsed. Ids/counts only, no PII.
+          //
+          // ASYMMETRY (disclosed, not a regression — identical to
+          // pre-2026-07-23 behavior): this warns only when the orphan is
+          // POSITIVE (Σpackages < stage.hoursUsed). The opposite case —
+          // Σpackages > stage.hoursUsed, which the trigger can legitimately
+          // produce after an entry-delete lowers the orphan-only portion
+          // below zero (floored to 0 here) — silently RAISES the value with
+          // no signal. That silent-raise behavior is unchanged from before
+          // this fix existed; it is not introduced by this rule.
+          console.warn(
+            `[OWN-STAGE-GUARD] preserved stage-level hoursUsed — case=${caseId} ` +
+            `stage=${data.stageId} orphanHours=${orphan} newStageHoursUsed=${newStageHoursUsed}`
+          );
+        }
+
+        targetStage.hoursUsed = newStageHoursUsed;
+        targetStage.hoursRemaining = round2(targetStage.totalHours - targetStage.hoursUsed);
+      }
 
       stages[stageIndex] = targetStage;
 
       // 🔄 Step 7: עדכון ה-service
       legalProcedure.stages = stages;
 
-      // ✅ חישוב aggregates של service מחדש מה-stages
+      // ✅ קיבולת (totalHours) — Σ מה-stages, ללא תלות ב-pricing type.
       legalProcedure.totalHours = stages.reduce((sum, stage) =>
         sum + (stage.totalHours || 0), 0);
 
-      legalProcedure.hoursUsed = stages.reduce((sum, stage) =>
-        sum + (stage.hoursUsed || 0), 0);
+      // PR-STAGE-OWN fix 2 (2026-07-23): pricing-aware Σ via the canonical
+      // helper (src/modules/aggregation.calcServiceHoursUsedFromStages) —
+      // replaces the old plain Σ(stage.hoursUsed), which silently ignored
+      // FIXED stages' totalHoursWorked and could disagree with
+      // aggregation/index.js's own service-level recompute (a second,
+      // independent drift door on top of collision #1 above).
+      //
+      // DISCLOSED PERSISTED-VALUE CHANGE (2026-07-23 review — do not lose
+      // this the way the original commit message did): for a legal_procedure
+      // that contains one of the 23 fossil-`hoursUsed` FIXED stages (out of
+      // scope to repair — see "Explicitly NOT in scope"), this line will
+      // produce a DIFFERENT number than the old plain-Σ(stage.hoursUsed) the
+      // next time ANY package is added anywhere in that procedure — because
+      // the fossil stage's `hoursUsed` field is now correctly excluded and
+      // its `totalHoursWorked` used instead (calcStageEffectiveHoursUsed).
+      // This is the CORRECT number, not a bug, but it is a real change to a
+      // persisted value on next write, same class of disclosure as the
+      // fixed-stage hoursRemaining→null change already noted above.
+      legalProcedure.hoursUsed = calcServiceHoursUsedFromStages(stages);
 
-      legalProcedure.hoursRemaining = stages.reduce((sum, stage) =>
-        sum + (stage.hoursRemaining || 0), 0);
+      legalProcedure.hoursRemaining = legalProcedure.pricingType === PT.FIXED
+        ? null
+        : round2(legalProcedure.totalHours - legalProcedure.hoursUsed);
 
       services[legalProcedureIndex] = legalProcedure;
 
