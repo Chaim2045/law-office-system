@@ -6,15 +6,27 @@
 
 ```
 src/modules/deduction/
-├── index.js              → Public API (Facade)
+├── index.js              → Public API (Facade, CommonJS — Firebase Functions)
 ├── calculators.js        → Pure calculation functions
 ├── validators.js         → Input validation
-├── aggregators.js        → Aggregate fields updates
-├── deduction-logic.js    → Core deduction logic
+├── deduction-logic.js    → Core deduction logic (the only module index.js re-exports)
 ├── builders.js           → Package/Stage builders
 ├── ui/                   → UI Components (future)
 └── README.md            → This file
 ```
+
+> **2026-07-23 (PR-STAGE-OWN cleanup):** `aggregators.js` — which duplicated the exact
+> Σ(packages.hoursUsed) stage-recompute this PR removed from
+> `src/modules/aggregation/index.js` and `functions/services/index.js` for
+> destroying stage-only-counted ("orphan") hours — was **deleted**. It was
+> genuinely dead in the Cloud Functions runtime: the CJS facade `index.js`
+> only ever re-exports from `deduction-logic.js` (never imported
+> `aggregators.js`), and a repo-wide grep of `functions/` found no other
+> caller. A near-identical `aggregators.js` still exists at
+> `apps/user-app/src/modules/deduction/aggregators.js` — that copy IS live
+> (loaded directly by `apps/user-app/index.html` as a native ES module
+> script tag) and was intentionally left untouched; it is a separate
+> frontend file, out of scope for this backend fix.
 
 ## 🚀 Quick Start
 
@@ -147,8 +159,9 @@ if (validation.valid) {
   // ...
 }
 
-// 3. עדכן aggregates אחרי קיזוז
-DeductionSystem.updateServiceAggregates(service, username);
+// 3. עדכן aggregates אחרי קיזוז — דרך ה-canonical helpers, לא ה-aggregators.js
+//    שנמחק (2026-07-23): src/modules/aggregation (calcServiceHoursUsedFromStages,
+//    recomputeStageHoursUsedPreservingOrphan) או functions/shared/client-writer.js
 ```
 
 ### ❌ DON'T

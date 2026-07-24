@@ -89,6 +89,44 @@ function calcServiceHoursUsedFromStages(stages) {
  * functions/services/index.js addHoursPackageToStage (adding a package,
  * where "newPackages" = the array AFTER the push and "oldStage" is the
  * pre-push snapshot) — the single place this rule lives; do not hand-copy it.
+ *
+ * ⚠️ FUTURE-REPAIR HAZARD (recorded 2026-07-23, deliberately NOT fixed —
+ * unreachable today, see below): the orphan computed here is DERIVED
+ * (`max(0, oldHoursUsed − Σpackages)`), not a value stamped anywhere. That is
+ * only correct as long as nothing ever writes `pkg.hoursUsed` from an
+ * authoritative ledger replay that ALSO includes the orphan's own minutes.
+ *
+ * If a future repair (the deferred "DRIFT-3" reconciliation work item) sets
+ * `pkg.hoursUsed` to the sum of the entry minutes actually logged against
+ * that package — including the entry whose hours are the orphan — WITHOUT
+ * also resetting `stage.hoursUsed` in the SAME write, this function will
+ * double-count that entry's hours forever:
+ *
+ *   Worked numbers (the measured client 2025366/stage_a shape): stage
+ *   hoursUsed=67.58, one package hoursUsed=65.58, orphan=2 (computed here as
+ *   67.58−65.58). A ledger-replay repair that correctly attributes the
+ *   orphan's 2h into the package makes Σpackages=67.58. But if
+ *   stage.hoursUsed was NOT reset in that same write, it is still 67.58 —
+ *   and the NEXT call into this function computes orphan = max(0, 67.58 −
+ *   67.58) = 0 this one time, BUT any repair that runs package-by-package
+ *   (updating the package before the stage total is known to the caller) or
+ *   any read of a stale `oldStage.hoursUsed` snapshot mid-repair reproduces
+ *   `2 + 67.58 = 69.58` against a true total of 67.58 — a 2-hour over-bill.
+ *
+ * REQUIREMENT for that future repair: any repair that replays package hours
+ * from the ledger MUST reset `stage.hoursUsed` to the SAME replayed total in
+ * the SAME write (so the next orphan computation here reads
+ * oldStage.hoursUsed already equal to Σpackages, giving orphan=0) — never
+ * write `pkg.hoursUsed` from the ledger while leaving `stage.hoursUsed`
+ * unreset, or the offset computed in this function becomes a PERMANENT
+ * inflation that compounds with every subsequent package-backed deduction.
+ *
+ * Unreachable today (verified 2026-07-23): `shared/package-repair-core.js:376`
+ * returns `{skip:true, reason:'not_hours'}` for anything that is not a plain
+ * hours service (excludes legal_procedure stages entirely), and
+ * `scheduled/index.js:470` marks legal_procedure stage orphans
+ * DETECTION-ONLY — no repair write path exists yet. This comment is the
+ * tripwire for whoever builds one.
  */
 function recomputeStageHoursUsedPreservingOrphan(oldStage, newPackages) {
   const oldPackagesHoursUsed = round2(

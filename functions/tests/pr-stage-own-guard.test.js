@@ -17,6 +17,17 @@
  * Harness mirrors tests/add-hours-package-to-stage-canonical-helper.test.js
  * (same mocks) so this file exercises the REAL addHoursPackageToStage code,
  * not a re-implementation.
+ *
+ * TEST-STRENGTH SUMMARY (corrected 2026-07-23, second review round):
+ * Weak (pass against both pre- and post-change code — non-regression /
+ * ordering checks, prove nothing about the fix itself): Test 3, Test 5,
+ * Test 8. Test 4-hourly was ALSO weak until this correction (its only
+ * assertion compared the code's output against the very helper the code
+ * calls, calcServiceHoursUsedFromStages — tautological, passes even if the
+ * helper is wrong) and is now a real test via a hand-derived hard-coded
+ * literal (see the comment at that assertion). Every other test (1, 2,
+ * 4-fixed, 6, 7) genuinely fails against pre-change code — verified by
+ * stashing each fix in turn and re-running.
  */
 
 const mockTransaction = {
@@ -305,13 +316,26 @@ describe('Test 4 — service-level hoursUsed matches calcServiceHoursUsedFromSta
     const [, , payload] = mockHelper.mock.calls[0];
     const updatedLp = payload.services.find(s => s.id === 'lp1');
 
-    // This assertion is the FIX 2 regression guard: pre-change code computed
-    // a plain Σ(stage.hoursUsed) which, in the hourly-only case, happens to
+    // WEAK test (2026-07-23 review correction): pre-change code computed a
+    // plain Σ(stage.hoursUsed) which, in this all-hourly fixture, happens to
     // equal the pricing-aware sum too (no fixed stages present) — so this
-    // specific assertion does NOT fail pre-change for an all-hourly
-    // procedure. It DOES prove the two implementations (services/index.js
-    // and src/modules/aggregation) now literally cannot drift, because one
-    // calls the other.
+    // case does NOT fail pre-change. It still proves the two implementations
+    // (services/index.js and src/modules/aggregation) cannot silently drift,
+    // since one calls the other.
+    //
+    // Hard-coded anchor (2026-07-23 fix — this line alone was tautological:
+    // comparing the code's output against the very helper the code calls
+    // passes even if the helper itself is wrong). Derived by hand from the
+    // fixture: stage_a starts hoursUsed=3 with ONE package at hoursUsed=3
+    // (orphan=0 — no stage-only surplus). Adding a 20h package pushes an
+    // EMPTY package (hoursUsed=0), so Σpackages stays 3 → orphan-preserving
+    // recompute gives stage_a.hoursUsed = 0 + 3 = 3 (unchanged — only
+    // totalHours/hoursRemaining grow). stage_b is untouched (hoursUsed=1).
+    // Service-level Σ = calcStageEffectiveHoursUsed(stage_a) + (stage_b) =
+    // 3 + 1 = 4 (both hourly, so each is just stage.hoursUsed).
+    expect(updatedLp.hoursUsed).toBe(4);
+    // Kept alongside the hard literal: proves the two implementations agree
+    // on THIS input, not just that the number happens to be right.
     expect(updatedLp.hoursUsed).toBe(calcServiceHoursUsedFromStages(updatedLp.stages));
   });
 
