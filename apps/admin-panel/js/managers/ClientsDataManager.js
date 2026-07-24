@@ -25,6 +25,14 @@
             this.budgetTasks = [];
             this.employees = [];
 
+            // PR-REPORT-SSOT (2026-07-23): visibility flags for a failed
+            // timesheet/budget-tasks load. A failed load leaves the array empty
+            // and used to produce no error anywhere - every entry-derived number
+            // (e.g. stage "used hours" in ClientReportModal) then silently read 0
+            // as if it were genuinely zero. See loadTimesheetEntries/loadBudgetTasks.
+            this.timesheetLoadFailed = false;
+            this.budgetTasksLoadFailed = false;
+
             // Filters
             this.searchTerm = '';
             this.statusFilter = 'all';
@@ -332,13 +340,29 @@
                     id: doc.id,
                     ...doc.data()
                 }));
+                this.timesheetLoadFailed = false;
 
                 console.log(`✅ Loaded ${this.timesheetEntries.length} timesheet entries`);
 
                 return { success: true, entries: this.timesheetEntries };
 
             } catch (error) {
+                // PR-REPORT-SSOT (2026-07-23): this used to fail silently - the caller
+                // (loadAllData) never checked this result, this.timesheetEntries stayed
+                // [], and every screen rendered as if there were genuinely zero hours.
+                // Record the failure, log loudly, and surface a non-auto-hiding Hebrew
+                // toast (mirrors the warnIfTruncated pattern below) - but never throw,
+                // so the rest of the admin panel keeps working.
                 console.error('❌ Error loading timesheet entries:', error);
+                this.timesheetLoadFailed = true;
+                if (typeof window !== 'undefined' && window.notify && typeof window.notify.show === 'function') {
+                    window.notify.show({
+                        type: 'error',
+                        title: 'טעינת שעתון נכשלה',
+                        message: 'טעינת רישומי השעתון נכשלה - נתוני השעות בכרטיסי השירות ובדוחות עלולים להיות שגויים. רענן את הדף או פנה לתמיכה הטכנית.',
+                        duration: 0
+                    });
+                }
                 return { success: false, error: error.message };
             }
         }
@@ -367,13 +391,26 @@
                     id: doc.id,
                     ...doc.data()
                 }));
+                this.budgetTasksLoadFailed = false;
 
                 console.log(`✅ Loaded ${this.budgetTasks.length} budget tasks`);
 
                 return { success: true, tasks: this.budgetTasks };
 
             } catch (error) {
+                // PR-REPORT-SSOT (2026-07-23): same silent-failure trap as
+                // loadTimesheetEntries above - record + log loudly + a non-auto-hiding
+                // toast, never throw (the rest of the admin panel must keep working).
                 console.error('❌ Error loading budget tasks:', error);
+                this.budgetTasksLoadFailed = true;
+                if (typeof window !== 'undefined' && window.notify && typeof window.notify.show === 'function') {
+                    window.notify.show({
+                        type: 'error',
+                        title: 'טעינת משימות נכשלה',
+                        message: 'טעינת נתוני התקציב נכשלה - נתוני חריגות ומעקב תקציב עלולים להיות שגויים. רענן את הדף או פנה לתמיכה הטכנית.',
+                        duration: 0
+                    });
+                }
                 return { success: false, error: error.message };
             }
         }

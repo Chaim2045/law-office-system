@@ -368,32 +368,19 @@ return;
                                 const totalHours = stage.totalHours || stage.hours || 0;
                                 const isCurrentStage = client.currentStage === stage.id;
 
-                                // ✅ Calculate used hours from timesheet entries
-                                let usedMinutes = 0;
-                                if (window.ClientsDataManager) {
-                                    const timesheetEntries = window.ClientsDataManager.getClientTimesheetEntries(client.fullName);
-                                    timesheetEntries.forEach(entry => {
-                                        // Match by stage ID or stage name
-                                        const entryStage = entry.serviceId || entry.stageName;
-                                        const entryDuration = entry.minutes || entry.duration || entry.hours || 0;
-
-                                        if (entryStage === stage.id || entryStage === displayName) {
-                                            if (typeof entryDuration === 'number') {
-                                                usedMinutes += entryDuration;
-                                            } else if (entry.hours) {
-                                                usedMinutes += (entry.hours * 60);
-                                            }
-                                        }
-                                    });
-                                }
-
-                                const usedHours = (usedMinutes / 60).toFixed(1);
-                                const remainingHours = (totalHours - parseFloat(usedHours)).toFixed(1); // 🔥 Allow negative for overage
+                                // PR-REPORT-SSOT (2026-07-23): read the stored aggregate directly,
+                                // mirroring functions/src/modules/aggregation/index.js (~line 170):
+                                // fixed-price stages maintain totalHoursWorked; hourly stages maintain
+                                // hoursUsed. The prior client-side timesheet recompute (removed) read 0
+                                // silently whenever that array failed to load or an entry lacked
+                                // serviceId - see ClientsDataManager.loadTimesheetEntries / warnIfTruncated.
+                                const usedHours = (stage.pricingType === 'fixed'
+                                    ? (stage.totalHoursWorked || 0)
+                                    : (stage.hoursUsed || 0)).toFixed(1);
 
                                 servicesMap.set(stage.id, {
                                     displayName: displayName,
                                     totalHours: totalHours,
-                                    remainingHours: remainingHours,
                                     usedHours: usedHours,
                                     type: 'legal_procedure',
                                     stage: stage.id,
@@ -408,7 +395,6 @@ return;
                                     name: displayName,
                                     totalHours: totalHours,
                                     usedHours: usedHours,
-                                    remainingHours: remainingHours,
                                     status: stage.status,
                                     isCurrentStage: isCurrentStage
                                 });
