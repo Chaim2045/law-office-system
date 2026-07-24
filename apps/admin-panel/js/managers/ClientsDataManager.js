@@ -309,14 +309,18 @@
                 console.log('📥 Loading timesheet entries...');
 
                 // Load all timesheet entries (we'll filter by client later)
-                // Cap raised 5000 -> 20000 (2026-07-22): measured 4,962/5,000 in PROD,
-                // growing ~64 entries / 3 days (~21/day) -> the old cap would have been
-                // crossed within days. 20,000 leaves ~15,000 entries of headroom, which
-                // at the observed growth rate is ~2 years before this needs revisiting.
-                // This is NOT a fix for the underlying issue (an unbounded client-side
-                // download) - it buys time. The real fix is per-client querying
-                // (tracked separately, out of scope here).
-                const timesheetLimit = 20000;
+                // Cap raised 5000 -> 10000 (2026-07-23): measured ~4,983/5,000 in PROD,
+                // growing ~21/day -> the old cap would have been crossed within days.
+                // 10,000 is Firestore's HARD MAXIMUM for a single query's limit() -
+                // a value above it (the earlier 20,000) makes the query THROW
+                // ("Limit value in the structured query is over the maximum value of
+                // 10000"), which silently emptied timesheetEntries and broke every
+                // client report. 10,000 leaves ~5,000 entries of headroom (~8 months
+                // at the observed rate). This is NOT a fix for the underlying issue
+                // (an unbounded client-side download) - it buys time, and the ceiling
+                // is now Firestore's own wall. The real fix is per-client / paginated
+                // querying (tracked separately, out of scope here).
+                const timesheetLimit = 10000;
                 const snapshot = await this.db.collection('timesheet_entries')
                     .orderBy('date', 'desc')
                     .limit(timesheetLimit)
@@ -347,11 +351,12 @@
             try {
                 console.log('📥 Loading budget tasks...');
 
-                // Cap raised 5000 -> 20000 (2026-07-22), same rationale as
-                // loadTimesheetEntries above - budget_tasks is far from its cap today
-                // (704) but carries the identical silent-truncation trap. Kept in sync
-                // for consistency; see warnIfTruncated for the loudness guard.
-                const budgetTasksLimit = 20000;
+                // Cap set to 10000 (2026-07-23), same rationale as loadTimesheetEntries
+                // above - 10,000 is Firestore's HARD MAXIMUM for a single query limit();
+                // the earlier 20,000 threw and broke the load. budget_tasks is far from
+                // its cap today (~704) but carries the identical trap. Kept in sync for
+                // consistency; see warnIfTruncated for the loudness guard.
+                const budgetTasksLimit = 10000;
                 const snapshot = await this.db.collection('budget_tasks')
                     .limit(budgetTasksLimit)
                     .get();
