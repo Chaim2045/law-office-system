@@ -25,6 +25,14 @@
             this.budgetTasks = [];
             this.employees = [];
 
+            // PR-REPORT-SSOT (2026-07-23): visibility flags for a failed
+            // timesheet/budget-tasks load. A failed load leaves the array empty
+            // and used to produce no error anywhere - every entry-derived number
+            // (e.g. stage "used hours" in ClientReportModal) then silently read 0
+            // as if it were genuinely zero. See loadTimesheetEntries/loadBudgetTasks.
+            this.timesheetLoadFailed = false;
+            this.budgetTasksLoadFailed = false;
+
             // Filters
             this.searchTerm = '';
             this.statusFilter = 'all';
@@ -309,14 +317,15 @@
                 console.log('📥 Loading timesheet entries...');
 
                 // Load all timesheet entries (we'll filter by client later)
-                // Cap raised 5000 -> 20000 (2026-07-22): measured 4,962/5,000 in PROD,
-                // growing ~64 entries / 3 days (~21/day) -> the old cap would have been
-                // crossed within days. 20,000 leaves ~15,000 entries of headroom, which
-                // at the observed growth rate is ~2 years before this needs revisiting.
-                // This is NOT a fix for the underlying issue (an unbounded client-side
-                // download) - it buys time. The real fix is per-client querying
-                // (tracked separately, out of scope here).
-                const timesheetLimit = 20000;
+                // Cap = 10000, Firestore's HARD MAXIMUM for a single query limit().
+                // (The earlier 20000 EXCEEDED it and made the query THROW
+                // "Limit value in the structured query is over the maximum value of
+                // 10000", silently emptying timesheetEntries and breaking every report -
+                // see the fix on production-stable.) ~4,983/5,000 measured in PROD, so
+                // 10,000 still leaves headroom. NOT a fix for the underlying unbounded
+                // client-side download - the real fix is per-client / paginated querying
+                // (tracked separately, out of scope here); 10,000 is Firestore's wall.
+                const timesheetLimit = 10000;
                 const snapshot = await this.db.collection('timesheet_entries')
                     .orderBy('date', 'desc')
                     .limit(timesheetLimit)
@@ -328,13 +337,29 @@
                     id: doc.id,
                     ...doc.data()
                 }));
+                this.timesheetLoadFailed = false;
 
                 console.log(`✅ Loaded ${this.timesheetEntries.length} timesheet entries`);
 
                 return { success: true, entries: this.timesheetEntries };
 
             } catch (error) {
+                // PR-REPORT-SSOT (2026-07-23): this used to fail silently - the caller
+                // (loadAllData) never checked this result, this.timesheetEntries stayed
+                // [], and every screen rendered as if there were genuinely zero hours.
+                // Record the failure, log loudly, and surface a non-auto-hiding Hebrew
+                // toast (mirrors the warnIfTruncated pattern below) - but never throw,
+                // so the rest of the admin panel keeps working.
                 console.error('❌ Error loading timesheet entries:', error);
+                this.timesheetLoadFailed = true;
+                if (typeof window !== 'undefined' && window.notify && typeof window.notify.show === 'function') {
+                    window.notify.show({
+                        type: 'error',
+                        title: 'טעינת שעתון נכשלה',
+                        message: 'טעינת רישומי השעתון נכשלה - נתוני השעות בכרטיסי השירות ובדוחות עלולים להיות שגויים. רענן את הדף או פנה לתמיכה הטכנית.',
+                        duration: 0
+                    });
+                }
                 return { success: false, error: error.message };
             }
         }
@@ -347,11 +372,11 @@
             try {
                 console.log('📥 Loading budget tasks...');
 
-                // Cap raised 5000 -> 20000 (2026-07-22), same rationale as
-                // loadTimesheetEntries above - budget_tasks is far from its cap today
-                // (704) but carries the identical silent-truncation trap. Kept in sync
-                // for consistency; see warnIfTruncated for the loudness guard.
-                const budgetTasksLimit = 20000;
+                // Cap = 10000, Firestore's HARD MAXIMUM (same as loadTimesheetEntries;
+                // the earlier 20000 threw and broke the load). budget_tasks is far from
+                // its cap today (~704) but carries the identical trap. Kept in sync for
+                // consistency; see warnIfTruncated for the loudness guard.
+                const budgetTasksLimit = 10000;
                 const snapshot = await this.db.collection('budget_tasks')
                     .limit(budgetTasksLimit)
                     .get();
@@ -362,13 +387,26 @@
                     id: doc.id,
                     ...doc.data()
                 }));
+                this.budgetTasksLoadFailed = false;
 
                 console.log(`✅ Loaded ${this.budgetTasks.length} budget tasks`);
 
                 return { success: true, tasks: this.budgetTasks };
 
             } catch (error) {
+                // PR-REPORT-SSOT (2026-07-23): same silent-failure trap as
+                // loadTimesheetEntries above - record + log loudly + a non-auto-hiding
+                // toast, never throw (the rest of the admin panel must keep working).
                 console.error('❌ Error loading budget tasks:', error);
+                this.budgetTasksLoadFailed = true;
+                if (typeof window !== 'undefined' && window.notify && typeof window.notify.show === 'function') {
+                    window.notify.show({
+                        type: 'error',
+                        title: 'טעינת משימות נכשלה',
+                        message: 'טעינת נתוני התקציב נכשלה - נתוני חריגות ומעקב תקציב עלולים להיות שגויים. רענן את הדף או פנה לתמיכה הטכנית.',
+                        duration: 0
+                    });
+                }
                 return { success: false, error: error.message };
             }
         }
