@@ -235,9 +235,10 @@ describe('partial scan', () => {
     expect(doc.status).toBe('PARTIAL');
     expect(doc.clientsScanErrored).toBe(1);
     expect(doc.clientsScanChecked).toBe(1);
-    // FIX2: at least one client completed the scan phase → the 2 per-client
-    // checks DID run (for c2), plus the 6 unconditional checks = 8.
-    expect(doc.checksExecuted).toBe(8);
+    // FIX2: at least one client completed the scan phase → the 3 per-client
+    // checks DID run (for c2) — hours-comparison, Check 7, and (PR-IG-C2) the
+    // stage-invariants detector — plus the 6 unconditional checks = 9.
+    expect(doc.checksExecuted).toBe(9);
     // FIX5
     expect(doc.clientsScanErroredIds).toEqual(['c1']);
   });
@@ -304,9 +305,10 @@ describe('census fields', () => {
     expect(doc.clientsScanChecked + doc.clientsScanErrored + doc.clientsSkippedConfig + doc.clientsEmptySkipped)
       .toBe(doc.clientsTotal);
     // FIX2: exact value, not just ">0" — the old assertion couldn't have
-    // caught checksRun:8 being wrong. clientsScanChecked=1 (>0) → +2, plus the
-    // 6 unconditional checks = 8.
-    expect(doc.checksExecuted).toBe(8);
+    // caught checksRun:8 being wrong. clientsScanChecked=1 (>0) → +3
+    // (PR-IG-C2: 3 per-client check mechanisms now), plus the 6 unconditional
+    // checks = 9.
+    expect(doc.checksExecuted).toBe(9);
     expect(doc.checksExecuted).toBeLessThanOrEqual(_test.MAX_POSSIBLE_CHECKS);
     // FIX5: errored client id is present, bounded, no names.
     expect(doc.clientsScanErroredIds).toEqual(['c_err']);
@@ -382,9 +384,10 @@ describe('total failure', () => {
 
     const doc = lastHealthCheck();
     expect(doc.status).toBe('ERROR');
-    // clientsScanChecked > 0 → the per-client phase (+2) ran; Checks 1-6 never
-    // reached completion → checksExecuted reflects only the +2, not 8.
-    expect(doc.checksExecuted).toBe(2);
+    // clientsScanChecked > 0 → the per-client phase (+3, PR-IG-C2) ran;
+    // Checks 1-6 never reached completion → checksExecuted reflects only the
+    // +3, not 9.
+    expect(doc.checksExecuted).toBe(3);
     expect(doc.clientsScanChecked).toBe(1);
   });
 });

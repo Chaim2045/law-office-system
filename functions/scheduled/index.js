@@ -14,6 +14,10 @@ const { _recomputeTotalHours } = require('../shared/client-writer');
 // centralized so the outbox trigger + any future consumer (PR-IG-B) import
 // rather than re-declare the PASS/FAIL/PARTIAL/ERROR literals.
 const { HEALTH_CHECK_STATUS } = require('../shared/health-check-status');
+// PR-IG-C2 (2026-07-26): pure semantic detector (PR-IG-C1) wired in DETECT-ONLY
+// mode — see the `stageInvariants` census field below. Findings are kept
+// strictly OUT of `discrepancies[]` / `status` (see call site + write site).
+const { detectStageInvariants } = require('../shared/stage-invariants');
 
 const db = admin.firestore();
 
@@ -531,7 +535,14 @@ const MAX_ERRORED_CLIENT_IDS = 200;
 // make truthful. `checksExecuted` below is a real counter, incremented only
 // as each check MECHANISM actually completes this run. `MAX_POSSIBLE_CHECKS`
 // is documentation only — it is never written to a result document.
-const MAX_POSSIBLE_CHECKS = 8;
+//
+// PR-IG-C2 (2026-07-26): 8 → 9. The per-client stage-invariants detector call
+// (detectStageInvariants, DETECT-ONLY — see call site below) is a 3rd
+// per-client check mechanism, alongside the per-service hours-comparison and
+// Check 7 package invariants. Its findings never enter `discrepancies[]` and
+// never affect `status`, but it IS a real check that runs and is counted here
+// so `checksExecuted` stays truthful about what actually executed.
+const MAX_POSSIBLE_CHECKS = 9;
 
 const dailyInvariantCheck = onSchedule({
   schedule: '0 6 * * *',
@@ -593,6 +604,13 @@ const dailyInvariantCheck = onSchedule({
   // PR-IG-A1-FIX2: see MAX_POSSIBLE_CHECKS above.
   let checksExecuted = 0;
 
+  // PR-IG-C2 (2026-07-26): run-level accumulators for the stage-invariants
+  // detector (DETECT-ONLY — see call site + write site below). Kept STRICTLY
+  // separate from `discrepancies` — never merged into it.
+  const stageInvariantDiscrepancies = [];
+  let stageInvariantUnresolved = 0;
+  let stageInvariantSkippedDates = 0;
+
   try {
     console.log('🔍 Starting daily invariant check...');
 
@@ -631,6 +649,10 @@ const dailyInvariantCheck = onSchedule({
         const packageMinutes = {};
         const orphanMinutesByService = {};
         const orphanMinutesByStage = {}; // OWN-0(d): orphan minutes keyed by stageId (legal_procedure)
+        // PR-IG-C2: materialize the raw entries array ONCE per client, from
+        // the SAME already-read `timesheetSnapshot` — no new Firestore query.
+        // Fed to detectStageInvariants below (DETECT-ONLY).
+        const clientEntries = timesheetSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         timesheetSnapshot.forEach(doc => {
           const entry = doc.data();
           const effectiveServiceId = entry.parentServiceId || entry.serviceId;
@@ -682,6 +704,20 @@ const dailyInvariantCheck = onSchedule({
           discrepancies.push({ ...d, clientId, clientName });
         }
 
+        // ── PR-IG-C2: stage-invariants detector (DETECT-ONLY) ──
+        // Pure/synchronous (functions/shared/stage-invariants.js). Runs inside
+        // this per-client try, so any throw is already contained (caught
+        // below → clientsScanErrored++ → PARTIAL, never a crash). Findings
+        // are accumulated into the run-level `stageInvariant*` variables
+        // ONLY — they are NEVER merged into `discrepancies` and NEVER affect
+        // `status` (see the write site further down).
+        const stageResult = detectStageInvariants(clientData, clientEntries);
+        if (stageResult && Array.isArray(stageResult.discrepancies)) {
+          for (const d of stageResult.discrepancies) stageInvariantDiscrepancies.push(d);
+          stageInvariantUnresolved += stageResult.unresolvedCount || 0;
+          stageInvariantSkippedDates += stageResult.skippedUnparseableDates || 0;
+        }
+
         clientsScanChecked += 1;
       } catch (clientError) {
         // PR-IG-A1: this used to be swallowed with no counter — a run where every
@@ -703,8 +739,21 @@ const dailyInvariantCheck = onSchedule({
     // invariants above ran (for at least one client) only if the per-client
     // scan phase actually reached at least one client successfully. If every
     // client errored, neither mechanism executed even once this run.
+    // PR-IG-C2: +=3, not +=2 — the stage-invariants detector call is a 3rd
+    // per-client check mechanism (see MAX_POSSIBLE_CHECKS above).
     if (clientsScanChecked > 0) {
-      checksExecuted += 2;
+      checksExecuted += 3;
+    }
+
+    // PR-IG-C2: detect-only visibility — ids/counts only (no PII), so the
+    // stage-invariants signal is visible in Cloud Logging without opening
+    // Firestore, even though it never touches `discrepancies`/`status`.
+    if (stageInvariantDiscrepancies.length > 0) {
+      console.warn('STAGE_INVARIANTS_DETECTED', {
+        discrepanciesCount: stageInvariantDiscrepancies.length,
+        unresolvedCount: stageInvariantUnresolved,
+        skippedUnparseableDates: stageInvariantSkippedDates
+      });
     }
 
     // Check 1: tasks without serviceId
@@ -920,6 +969,19 @@ const dailyInvariantCheck = onSchedule({
       // count always travels in discrepanciesCount above.
       discrepancies: discrepancies.slice(0, MAX_EMBEDDED_DISCREPANCIES),
       ...census,
+      // PR-IG-C2: SEPARATE field — stage-invariant findings NEVER enter
+      // `discrepancies[]` above and NEVER affect `status`. This keeps the
+      // outbox trigger + the WhatsApp bot (which key off `discrepancies[]`
+      // and the vocabulary in `message`) completely untouched. Enforcement
+      // + the coordinated bot change are a later PR.
+      stageInvariants: {
+        discrepancies: stageInvariantDiscrepancies.slice(0, MAX_EMBEDDED_DISCREPANCIES),
+        discrepanciesCount: stageInvariantDiscrepancies.length,
+        unresolvedCount: stageInvariantUnresolved,
+        skippedUnparseableDates: stageInvariantSkippedDates,
+        mode: 'detect_only',
+        schemaVersion: 1
+      },
       message
     });
 
