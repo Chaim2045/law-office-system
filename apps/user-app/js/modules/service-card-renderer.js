@@ -145,14 +145,19 @@ window.calculateHoursUsed = calculateHoursUsed;
     if (type === 'hours') {
       // תוכנית שעות
       iconClass = 'fa-briefcase';
-      title = 'תוכנית שעות';
-      subtitle = service.name;
 
-      // חישוב שעות
+      // חישוב שעות (computed before the title so the no-name fallback below can use it)
       const totalHours = window.calculateTotalHours ? window.calculateTotalHours(service) : (service.totalHours || 0);
       const hoursUsed = window.calculateHoursUsed ? window.calculateHoursUsed(service) : 0;
       const hoursRemaining = window.calculateRemainingHours ? window.calculateRemainingHours(service) : 0;
       const progressPercent = totalHours > 0 ? Math.round((hoursUsed / totalHours) * 100) : 0;
+
+      // ✅ Wrong-service-prevention spec §4.1: the card title MUST be the service's
+      // real name — never the generic constant, or two hours services on the same
+      // client render identical, indistinguishable cards. Fallback (no name) uses a
+      // distinguishing descriptor, never a bare shared constant.
+      title = service.name || `שירות שעות · נותרו ${hoursRemaining.toFixed(1)} ש'`;
+      subtitle = 'תוכנית שעות';
 
       statsHtml = `
         <div style="margin-top: 12px;">
