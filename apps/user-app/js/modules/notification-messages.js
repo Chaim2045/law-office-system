@@ -65,10 +65,11 @@ class NotificationMessages {
 
     // Success messages
     success: {
-      created: (clientName, taskDescription, estimatedMinutes) =>
-        '✅ המשימה נוספה בהצלחה\n\n' +
+      // ✅ Wrong-service-prevention spec §4.5/§5: names the SERVICE, not just the
+      // client — a wrong-service pick must never produce a correct-looking success.
+      created: (clientName, taskDescription, estimatedMinutes, serviceName) =>
+        `המשימה נפתחה על שירות "${serviceName || 'שנבחר'}" של ${clientName}.\n\n` +
         `📋 ${taskDescription}\n` +
-        `👤 ${clientName}\n` +
         `⏱️ תקציב: ${estimatedMinutes || '---'} דקות\n\n` +
         '🎯 המשימה פעילה - אפשר להתחיל לעבוד מיד',
       completed: (clientName) =>

@@ -400,6 +400,13 @@
               בחר שירות
               ${this.options.required ? '<span style="color: #ef4444;">*</span>' : ''}
             </label>
+            <div id="${this.containerId}_serviceHint" style="
+              display: none;
+              font-size: 12px;
+              color: #64748b;
+              margin-top: 4px;
+              text-align: right;
+            "></div>
             <div id="${this.containerId}_servicesCards" style="
               display: grid;
               grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -1139,6 +1146,20 @@ return;
       // סה"כ שירותים/שלבים פעילים (כולל fixed)
       const totalActive = activeServices.length + allActiveStages.length + activeFixedServices.length;
 
+      // ✅ Wrong-service-prevention spec §4.6: when the client has ≥2 services the
+      // choice is genuinely ambiguous (no auto-select) — show a persistent, low-contrast
+      // hint in the reading path so the user notices there IS a choice to make.
+      const serviceHint = document.getElementById(`${this.containerId}_serviceHint`);
+      if (serviceHint) {
+        if (!isLegacyCase && totalActive >= 2) {
+          serviceHint.textContent = 'ללקוח הזה יש כמה שירותים — בחר את זה שהעבודה שייכת אליו.';
+          serviceHint.style.display = 'block';
+        } else {
+          serviceHint.textContent = '';
+          serviceHint.style.display = 'none';
+        }
+      }
+
       if (isLegacyCase) {
         // תיק ישן - בחירה אוטומטית
         this.selectService(caseItem.id, 'hours');
@@ -1273,6 +1294,13 @@ return;
       if (!servicesCards) {
 return;
 }
+
+      // ✅ once a service is selected the multi-service hint (§4.6) no longer applies —
+      // the persistent banner below takes over as the recognition cue (§4.2)
+      const serviceHint = document.getElementById(`${this.containerId}_serviceHint`);
+      if (serviceHint) {
+        serviceHint.style.display = 'none';
+      }
 
       // ✅ אם hideServiceCards מופעל - אל תציג את הכרטיסייה
       if (this.options.hideServiceCards) {
@@ -1449,6 +1477,18 @@ return;
       // 🏷️ מספר תיק - Removed (redundant in selected state)
       const caseNumberBadge = ''; // ✅ FIXED: Don't show case number badge when service is selected
 
+      // ✅ Wrong-service-prevention spec §4.2: persistent "רושם על: [שירות]" banner —
+      // always visible while a service is selected, reading the LIVE hidden-field
+      // values (getSelectedValues, the same values that will be submitted) so the
+      // user never has to remember what they picked (recognition-over-recall).
+      const bannerValues = this.getSelectedValues();
+      const bannerStageName = type === 'legal_procedure'
+        ? (window.SystemConstantsHelpers?.getStageName?.(serviceData.id) || serviceData.name || '')
+        : null;
+      const bannerText = bannerStageName
+        ? `רושם על: ${bannerValues.serviceName || ''} · שלב ${bannerStageName}`
+        : `רושם על: ${bannerValues.serviceName || ''}`;
+
       // תצוגה נקייה - Tech Minimalist selected state
       servicesCards.innerHTML = `
         <div style="
@@ -1463,9 +1503,10 @@ return;
             color: #10b981;
             font-weight: 600;
             font-size: 14px;
+            text-align: right;
           ">
             <i class="fas fa-check-circle"></i>
-            <span>שירות נבחר:</span>
+            <span>${this.escapeHtml(bannerText)}</span>
           </div>
 
           <div style="

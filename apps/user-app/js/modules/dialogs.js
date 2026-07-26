@@ -168,6 +168,29 @@ function showAdvancedTimeDialog(taskId, manager) {
         הוספת זמן למשימה
       </div>
       <div class="popup-content">
+        ${task.serviceName ? `
+        <!-- ✅ Wrong-service-prevention spec §4.2: persistent "רושם שעות על" banner —
+             always visible while this popup is open, so a task opened on the wrong
+             service is visible every time hours are logged to it, not just at
+             task-open. Reads task.serviceName (stamped at task creation). -->
+        <div style="
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 14px;
+          margin-bottom: 16px;
+          background: #eff6ff;
+          border: 1px solid #bfdbfe;
+          border-radius: 8px;
+          color: #1d4ed8;
+          font-weight: 600;
+          font-size: 13px;
+          text-align: right;
+        ">
+          <i class="fas fa-briefcase"></i>
+          <span>רושם שעות על: ${window.safeText(task.serviceName)}</span>
+        </div>
+        ` : ''}
         <form id="advancedTimeForm">
           <div class="form-group">
             <label for="workDate">

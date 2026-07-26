@@ -1055,6 +1055,48 @@ class LawOfficeManager {
     }
   }
 
+  /**
+   * Wrong-service-prevention spec §4.3/§4.4: count how many services/stages are
+   * currently active on a client's case doc. Mirrors the exact-one-vs-ambiguous
+   * logic in ClientCaseSelector.renderServiceCards (client-case-selector.js) so
+   * the task-open confirmation (§4.4) fires under the SAME condition that skipped
+   * auto-selection — never a duplicated, drifting count.
+   * @param {object} caseData - the case/client doc (selectorValues.caseData)
+   * @returns {number} total active services (hours + fixed + legal_procedure stages)
+   */
+  _countActiveServicesOnClient(caseData) {
+    if (!caseData) {
+return 0;
+}
+    const services = caseData.services || [];
+    const legacyStages = caseData.stages || [];
+
+    // Legacy case (no services array) = a single implicit service, same as the
+    // isLegacyCase auto-select branch in renderServiceCards.
+    if (services.length === 0 && legacyStages.length === 0) {
+      return 1;
+    }
+
+    let count = 0;
+    services.forEach((service) => {
+      const status = service.status || 'active';
+      if (status !== 'active') {
+        return;
+      }
+      if (service.type === 'hours' || service.type === 'fixed') {
+        count += 1;
+      } else if (service.type === 'legal_procedure' && Array.isArray(service.stages)) {
+        count += service.stages.filter((s) => s.status === 'active').length;
+      }
+    });
+
+    if (caseData.procedureType === 'legal_procedure' && legacyStages.length > 0) {
+      count += legacyStages.filter((s) => s.status === 'active').length;
+    }
+
+    return count;
+  }
+
   async addBudgetTask() {
     // ✅ Prevent race conditions - block if operation already in progress
     if (this.isTaskOperationInProgress) {
@@ -1118,6 +1160,30 @@ class LawOfficeManager {
       this.showNotification('חובה לבחור סניף מטפל', 'error');
       return;
     }
+
+      // ✅ Wrong-service-prevention spec §4.4: ONE confirmation, at task-open submit
+      // only — never on routine hour-logging (addTimeToTask) — naming the specific
+      // service. Fires ONLY when the client has ≥2 services (where a wrong pick is
+      // actually possible); a single-service client already auto-selected, so the
+      // §4.2 banner alone is enough and a confirmation here would be pure noise
+      // (NN/g confirmation-fatigue).
+      const activeServiceCount = this._countActiveServicesOnClient(selectorValues.caseData);
+      if (activeServiceCount >= 2) {
+        const serviceLabel = selectorValues.serviceName || 'השירות שנבחר';
+        if (typeof window.showConfirm === 'function') {
+          const confirmedService = await window.showConfirm({
+            title: 'לפתוח משימה על השירות הזה?',
+            message: `המשימה תיפתח על שירות "${serviceLabel}" של ${selectorValues.clientName}. כל השעות שתרשום על המשימה ייכנסו לשירות הזה.`,
+            confirmText: `כן, פתח על "${serviceLabel}"`,
+            cancelText: 'חזרה לבחירה'
+          });
+          if (!confirmedService) {
+            return;
+          }
+        } else if (typeof Logger !== 'undefined' && Logger.warn) {
+          Logger.warn('showConfirm unavailable — skipping wrong-service confirmation dialog');
+        }
+      }
 
       // ✅ NEW: Use ActionFlowManager for consistent UX with NotificationMessages
       const msgs = window.NotificationMessages.tasks;
@@ -1207,7 +1273,9 @@ class LawOfficeManager {
         onSuccess: () => {
           // ✅ הצג דיאלוג אישור עם כפתור "הבנתי"
           if (window.NotificationSystem && window.NotificationSystem.alert) {
-            const alertMessage = msgs.success.created(selectorValues.clientName, description, estimatedMinutes);
+            const alertMessage = msgs.success.created(
+              selectorValues.clientName, description, estimatedMinutes, selectorValues.serviceName
+            );
             window.NotificationSystem.alert(
               alertMessage,
               () => {
