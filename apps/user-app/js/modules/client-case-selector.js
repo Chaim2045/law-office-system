@@ -1313,14 +1313,20 @@ return;
 
       if (type === 'hours') {
         iconClass = 'fa-briefcase';
-        title = 'תוכנית שעות';
-        subtitle = serviceData.name;
 
-        // ✅ Calculate from packages (Single Source of Truth)
+        // ✅ Calculate from packages (Single Source of Truth) — moved above the
+        // title so the no-name fallback (below) can use hoursRemaining.
         const totalHours = window.calculateTotalHours ? window.calculateTotalHours(serviceData) : (serviceData.totalHours || 90);
         const hoursUsed = window.calculateHoursUsed ? window.calculateHoursUsed(serviceData) : 0;
         const hoursRemaining = window.calculateRemainingHours ? window.calculateRemainingHours(serviceData) : 0;
         const progressPercent = totalHours > 0 ? Math.round((hoursUsed / totalHours) * 100) : 0;
+
+        // ✅ Wrong-service-prevention spec §4.1 (adversarial-review Finding 2,
+        // 2026-07-26): the post-selection card title must stay the real service
+        // name the user just confirmed — never fall back to the generic constant,
+        // same fallback rule as service-card-renderer.js's multi-card view.
+        title = serviceData.name || `שירות שעות · נותרו ${hoursRemaining.toFixed(1)} ש'`;
+        subtitle = 'תוכנית שעות';
 
         statsHtml = `
           <div style="margin-top: 12px;">
@@ -1485,17 +1491,19 @@ return;
       const bannerStageName = type === 'legal_procedure'
         ? (window.SystemConstantsHelpers?.getStageName?.(serviceData.id) || serviceData.name || '')
         : null;
-      const bannerText = bannerStageName
-        ? `רושם על: ${bannerValues.serviceName || ''} · שלב ${bannerStageName}`
-        : `רושם על: ${bannerValues.serviceName || ''}`;
-
-      // תצוגה נקייה - Tech Minimalist selected state
-      servicesCards.innerHTML = `
-        <div style="
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        ">
+      // Adversarial-review Finding 4 (2026-07-26): never render a dangling
+      // "רושם על: " label with no value. Resolve a name from getSelectedValues()
+      // first (the SSOT for what will be submitted), falling back to serviceData
+      // itself; if BOTH are empty, suppress the whole banner — matching how
+      // dialogs.js:~169 already suppresses its banner when task.serviceName is absent.
+      const resolvedServiceName = bannerValues.serviceName || (serviceData && serviceData.name) || '';
+      const bannerText = resolvedServiceName
+        ? (bannerStageName
+          ? `רושם על: ${resolvedServiceName} · שלב ${bannerStageName}`
+          : `רושם על: ${resolvedServiceName}`)
+        : '';
+      const bannerHtml = bannerText
+        ? `
           <div style="
             display: flex;
             align-items: center;
@@ -1508,6 +1516,17 @@ return;
             <i class="fas fa-check-circle"></i>
             <span>${this.escapeHtml(bannerText)}</span>
           </div>
+        `
+        : '';
+
+      // תצוגה נקייה - Tech Minimalist selected state
+      servicesCards.innerHTML = `
+        <div style="
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        ">
+          ${bannerHtml}
 
           <div style="
             padding: 15px;

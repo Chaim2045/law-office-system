@@ -39,6 +39,11 @@ import { buildErrorFromResult } from './modules/error-utils.js';
 // toast once per crossing at the canonical 85% / 100% thresholds (pure helper,
 // pinned to the admin budget-status.js by a drift-guard test).
 import { detectBudgetCrossing } from './modules/budget-crossing.js';
+// Wrong-service-prevention spec §4.3/§4.4: pure, testable helper deciding whether
+// a client has 1 (auto-select) or ≥2 (task-open confirmation must fire) active
+// services. Extracted so the billing-critical gating logic has direct test
+// coverage (tests/unit/user-app/service-count.test.ts).
+import { countSelectableServices } from './modules/service-count.js';
 
 // PR-1 (duplicate-timesheet fix): per-submission idempotency key + offline guard
 // for addTimeToTask. Pure helpers (unit-tested in tests/unit/user-app).
@@ -1061,40 +1066,17 @@ class LawOfficeManager {
    * logic in ClientCaseSelector.renderServiceCards (client-case-selector.js) so
    * the task-open confirmation (§4.4) fires under the SAME condition that skipped
    * auto-selection — never a duplicated, drifting count.
+   *
+   * Thin delegator: the actual (pure, unit-tested) logic lives in
+   * `countSelectableServices` (./modules/service-count.js) — extracted so this
+   * billing-critical gating decision is reachable from a test, per the adversarial
+   * review of aaf6006 (Finding 1). Kept as a method (not inlined at the call
+   * site) so the call in `addBudgetTask` below stays unchanged.
    * @param {object} caseData - the case/client doc (selectorValues.caseData)
    * @returns {number} total active services (hours + fixed + legal_procedure stages)
    */
   _countActiveServicesOnClient(caseData) {
-    if (!caseData) {
-return 0;
-}
-    const services = caseData.services || [];
-    const legacyStages = caseData.stages || [];
-
-    // Legacy case (no services array) = a single implicit service, same as the
-    // isLegacyCase auto-select branch in renderServiceCards.
-    if (services.length === 0 && legacyStages.length === 0) {
-      return 1;
-    }
-
-    let count = 0;
-    services.forEach((service) => {
-      const status = service.status || 'active';
-      if (status !== 'active') {
-        return;
-      }
-      if (service.type === 'hours' || service.type === 'fixed') {
-        count += 1;
-      } else if (service.type === 'legal_procedure' && Array.isArray(service.stages)) {
-        count += service.stages.filter((s) => s.status === 'active').length;
-      }
-    });
-
-    if (caseData.procedureType === 'legal_procedure' && legacyStages.length > 0) {
-      count += legacyStages.filter((s) => s.status === 'active').length;
-    }
-
-    return count;
+    return countSelectableServices(caseData);
   }
 
   async addBudgetTask() {
