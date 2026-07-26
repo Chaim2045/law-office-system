@@ -1459,6 +1459,15 @@ return; // user cancelled
         }
 
         async _editPackagePurchaseDate(serviceId, packageId, currentDate) {
+            // Capture the client id NOW, while the management modal is guaranteed open.
+            // Opening this ModalManager sub-dialog can trigger the parent modal's Esc/backdrop
+            // close handler (which nulls this.currentClient), so reading it at submit time throws.
+            const clientId = this.currentClient?.id;
+            if (!clientId) {
+                this.showNotification('לא ניתן לזהות את הלקוח. פתח מחדש את כרטיס הלקוח ונסה שוב.', 'warning');
+                return;
+            }
+
             let initialValue = '';
             if (currentDate) {
                 try {
@@ -1523,7 +1532,7 @@ dateInput.focus();
 
                             const updateFn = window.firebaseFunctions.httpsCallable('updatePackagePurchaseDate');
                             const result = await updateFn({
-                                clientId: this.currentClient.id,
+                                clientId: clientId,
                                 serviceId: serviceId,
                                 packageId: packageId,
                                 purchaseDate: val
@@ -1533,15 +1542,23 @@ dateInput.focus();
                                 throw new Error(result.data.message || 'שגיאה בעדכון תאריך');
                             }
 
-                            const localService = this.currentClient.services.find(s => s.id === serviceId);
-                            if (localService) {
-                                const localPkg = (localService.packages || []).find(p => p.id === packageId);
-                                if (localPkg) {
-                                    localPkg.purchaseDate = result.data.purchaseDate;
+                            // If the parent modal is still open on the same client, update the
+                            // in-memory copy so the card reflects the new date immediately.
+                            if (this.currentClient && this.currentClient.id === clientId) {
+                                const localService = this.currentClient.services.find(s => s.id === serviceId);
+                                if (localService) {
+                                    const localPkg = (localService.packages || []).find(p => p.id === packageId);
+                                    if (localPkg) {
+                                        localPkg.purchaseDate = result.data.purchaseDate;
+                                    }
                                 }
+                                this.renderServices();
+                            } else if (window.ClientsDataManager && typeof window.ClientsDataManager.loadClients === 'function') {
+                                // Parent modal was closed (e.g. Esc dismissed the native date picker) —
+                                // refresh the list so the persisted date isn't left invisible.
+                                await window.ClientsDataManager.loadClients();
                             }
 
-                            this.renderServices();
                             this.hideLoading();
                             this.showNotification('תאריך רכישה עודכן בהצלחה', 'success');
 
@@ -1568,6 +1585,14 @@ dateInput.focus();
         }
 
         async renewServiceHours(service) {
+            // Capture the client id NOW (see _editPackagePurchaseDate): opening the ModalManager
+            // sub-dialog can trigger the parent modal's Esc/backdrop close → this.currentClient=null.
+            const clientId = this.currentClient?.id;
+            if (!clientId) {
+                this.showNotification('לא ניתן לזהות את הלקוח. פתח מחדש את כרטיס הלקוח ונסה שוב.', 'warning');
+                return;
+            }
+
             const serviceName = window.escapeHtml ? window.escapeHtml(service.serviceName || '') : (service.serviceName || '');
 
             const modalId = window.ModalManager.create({
@@ -1629,7 +1654,7 @@ hoursInput.focus();
 
                     if (submitBtn) {
                         submitBtn.addEventListener('click', () => {
-                            this._submitRenewHours(modalId, service);
+                            this._submitRenewHours(modalId, service, clientId);
                         });
                     }
 
@@ -1637,14 +1662,14 @@ hoursInput.focus();
                     if (form) {
                         form.addEventListener('submit', (e) => {
                             e.preventDefault();
-                            this._submitRenewHours(modalId, service);
+                            this._submitRenewHours(modalId, service, clientId);
                         });
                     }
                 }
             });
         }
 
-        async _submitRenewHours(modalId, service) {
+        async _submitRenewHours(modalId, service, clientId) {
             const modal = window.ModalManager.getElement(modalId);
             if (!modal) {
 return;
@@ -1669,7 +1694,7 @@ return;
                 this.showLoading('מוסיף שעות...');
 
                 const payload = {
-                    clientId: this.currentClient.id,
+                    clientId: clientId,
                     serviceId: service.id,
                     hours: hours
                 };
@@ -1687,18 +1712,21 @@ return;
                     throw new Error(result.data.message || 'שגיאה בהוספת שעות');
                 }
 
-                const localService = this.currentClient.services.find(s => s.id === service.id);
-                if (localService) {
-                    localService.totalHours = result.data.service.totalHours;
-                    localService.hoursRemaining = result.data.service.hoursRemaining;
-                    if (!localService.packages) {
-                        localService.packages = [];
+                // Only touch the in-memory copy if the parent modal is still open on this client
+                // (opening the sub-dialog can Esc/backdrop-close it → this.currentClient=null).
+                if (this.currentClient && this.currentClient.id === clientId) {
+                    const localService = this.currentClient.services.find(s => s.id === service.id);
+                    if (localService) {
+                        localService.totalHours = result.data.service.totalHours;
+                        localService.hoursRemaining = result.data.service.hoursRemaining;
+                        if (!localService.packages) {
+                            localService.packages = [];
+                        }
+                        localService.packages.push(result.data.package);
                     }
-                    localService.packages.push(result.data.package);
+                    this.renderServices();
+                    this.renderClientInfo();
                 }
-
-                this.renderServices();
-                this.renderClientInfo();
                 this.hideLoading();
                 this.showNotification(`נוספו ${hours} שעות בהצלחה`, 'success');
 
