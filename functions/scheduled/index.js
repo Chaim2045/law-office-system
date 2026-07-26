@@ -713,7 +713,13 @@ const dailyInvariantCheck = onSchedule({
         // `status` (see the write site further down).
         const stageResult = detectStageInvariants(clientData, clientEntries);
         if (stageResult && Array.isArray(stageResult.discrepancies)) {
-          for (const d of stageResult.discrepancies) stageInvariantDiscrepancies.push(d);
+          // Adversarial-review FIX 1 (MAJOR): attach clientId ONLY — never
+          // clientName (this new path stays PII-clean; the repo is PUBLIC) —
+          // so a finding in the written stageInvariants.discrepancies array
+          // can actually be located to a client. Mirrors the sibling pushes
+          // above (`discrepancies.push({ ...d, clientId, clientName })`),
+          // minus clientName by design.
+          for (const d of stageResult.discrepancies) stageInvariantDiscrepancies.push({ ...d, clientId });
           stageInvariantUnresolved += stageResult.unresolvedCount || 0;
           stageInvariantSkippedDates += stageResult.skippedUnparseableDates || 0;
         }
@@ -937,7 +943,7 @@ const dailyInvariantCheck = onSchedule({
       // PR-IG-A1-FIX5: capped id list — see MAX_ERRORED_CLIENT_IDS above.
       clientsScanErroredIds: clientsScanErroredIds.slice(0, MAX_ERRORED_CLIENT_IDS),
       // PR-IG-A1-FIX2: real executed-check counter, replaces the old lying
-      // `checksRun: CHECKS_RUN` constant. Max possible this run = MAX_POSSIBLE_CHECKS (8).
+      // `checksRun: CHECKS_RUN` constant. Max possible this run = MAX_POSSIBLE_CHECKS (9).
       checksExecuted,
       entriesRead,
       durationMs

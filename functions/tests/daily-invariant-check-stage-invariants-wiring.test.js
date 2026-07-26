@@ -192,6 +192,16 @@ describe('stage-invariants wiring — detect-only separation (THE load-bearing t
       stageId: 'stage_a'
     });
 
+    // (1b) Adversarial-review FIX 1 (MAJOR, clientId-actionability): every
+    // stage-invariant finding MUST carry the clientId it belongs to (else the
+    // written array cannot be located to a client) — but MUST NOT carry
+    // clientName (PII guard; this new path stays PII-clean, the repo is
+    // PUBLIC). Locks the fix so it can't silently regress.
+    for (const d of doc.stageInvariants.discrepancies) {
+      expect(d.clientId).toBe('c_lp');
+      expect(d).not.toHaveProperty('clientName');
+    }
+
     // (2) THE LOAD-BEARING ASSERTION: the SAME finding does NOT appear in
     // discrepancies[], and does NOT change status — a run that is otherwise
     // clean stays PASS despite a stage finding.
