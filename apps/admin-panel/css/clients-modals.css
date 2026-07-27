@@ -57,6 +57,18 @@
 }
 
 /*
+ * ModalManager sub-dialog overlay — MUST sit ABOVE this page's #clientManagementModal (.modal, z-index 10200).
+ * components.css defines .modal-overlay at z-index 9999 (correct on every other page). On clients.html the
+ * ClientManagementModal IS a 10200 overlay, so a ModalManager dialog opened FROM it (renewServiceHours /
+ * _editPackagePurchaseDate — "חדש שעות" + the purchase-date pencil) rendered BEHIND it.
+ * This override is scoped: clients-modals.css loads ONLY on clients.html and AFTER components.css, so it
+ * wins here and touches no other page. 10300 = above 10200, below .quick-message-dialog (10500).
+ */
+.modal-overlay {
+    z-index: 10300;
+}
+
+/*
  * Modal Content Container
  * =======================
  * Centered content box that floats above the blurred overlay
