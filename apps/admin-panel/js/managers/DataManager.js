@@ -140,7 +140,6 @@
                         isOnline: userData.isOnline || false,       // ✅ NEW: Online status
                         phoneNumber: userData.phoneNumber || '',
                         phone: userData.phone || '',  // WhatsApp Bot field
-                        whatsappEnabled: userData.whatsappEnabled || false,  // WhatsApp Bot toggle
                         displayName: userData.displayName || userData.username || doc.id.split('@')[0],
                         photoURL: userData.photoURL || null,
                         dailyHoursTarget: userData.dailyHoursTarget || null,  // Daily hours target for work quota
