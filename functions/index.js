@@ -49,13 +49,6 @@ const reconciliationModule = require('./reconciliation');
 exports.setReconciliationMode = reconciliationModule.setReconciliationMode;
 exports.runReconciliationNow = reconciliationModule.runReconciliationNow;
 
-// WhatsApp Functions (imported from ./whatsapp)
-const whatsapp = require('./whatsapp');
-exports.sendBroadcastMessage = whatsapp.sendBroadcastMessage;
-exports.sendWhatsAppApprovalNotification = whatsapp.sendWhatsAppApprovalNotification;
-exports.whatsappWebhook = whatsapp.whatsappWebhook;
-exports.onApprovalCreated = whatsapp.onApprovalCreated;
-
 // Metrics Functions (imported from ./metrics)
 const metrics = require('./metrics');
 exports.getUserMetrics = metrics.getUserMetrics;

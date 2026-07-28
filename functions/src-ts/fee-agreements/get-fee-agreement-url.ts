@@ -4,7 +4,7 @@
  * Replaces the world-readable `file.makePublic()` + permanent public URL pattern
  * for signed fee-agreement PDFs (client full name, ת"ז, signatures, financial
  * terms — חיסיון עו"ד-לקוח + PII under חוק הגנת הפרטיות). The old upload paths
- * (functions/fee-agreements/index.js, functions/src/whatsapp-bot/WhatsAppBot.js)
+ * (functions/fee-agreements/index.js)
  * called `makePublic()`, which writes an object-level `allUsers:READER` ACL — that
  * ACL is read via the GCS JSON/XML API and BYPASSES Firebase Storage rules, so the
  * intended `allow read: if isAdmin()` (storage.rules) was a dead letter and every
@@ -158,7 +158,7 @@ export async function getFeeAgreementUrlHandler(
     match && typeof match.storagePath === 'string' ? match.storagePath : '';
   const found = storagePath.length > 0;
   // Confused-deputy pin: the only shape any legitimate uploader writes (admin CF
-  // functions/fee-agreements/index.js:98 + WhatsApp CF WhatsAppBot.js:1882).
+  // functions/fee-agreements/index.js:98).
   const expectedPrefix = `${entity}/${entityId}/agreements/`;
 
   // ─── (4) Non-PII access audit — PRECONDITION for disclosure (fail-secure) ──
