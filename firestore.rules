@@ -320,26 +320,14 @@ service cloud.firestore {
       allow write: if false; // Only through Cloud Functions
     }
 
-    // ✅ Sessions: Admin dashboard tracking (authenticated admins only)
-    // TODO: Replace with Realtime DB Presence in the future
-    match /sessions/{sessionId} {
-      allow read, write: if isAuthenticated();
-    }
-
-    // ✅ Function Monitor Logs: System monitoring data
-    // Read: All authenticated users (for analytics dashboard)
-    // Write: Authenticated users (client-side monitor auto-saves)
+    // 🔒 Function Monitor Logs: locked CF-only — POC retired (PR-S1).
+    // The unwired client POC exposed function stack traces to any authenticated
+    // user. No client reader/writer remains; if monitoring is ever revived it
+    // writes via the Admin SDK (which bypasses rules). Same lockdown class as
+    // employee_costs. (`sessions` presence moved to Realtime DB; the phantom
+    // `function_monitor_errors` block was removed — both fall to default-deny.)
     match /function_monitor_logs/{logId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
-    }
-
-    // ✅ Function Monitor Errors: Critical error tracking
-    // Read: All authenticated users
-    // Write: Authenticated users (automatic error reporting)
-    match /function_monitor_errors/{errorId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read, write: if false; // CF-only — POC retired (PR-S1)
     }
 
     // ✅ Messages: Admin-to-user messaging system

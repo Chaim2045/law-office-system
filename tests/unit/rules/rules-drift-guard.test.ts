@@ -159,5 +159,17 @@ describe('Rules drift-guard — production vs test ruleset', () => {
   it('replies subcollection is absent from firestore.rules (H.8.0 PR4)', () => {
     expect(prodSource).not.toContain('match /replies/');
   });
+
+  // PR-S1 — monitor-rules tightening: prove the two retired over-broad blocks
+  // were removed from the PRODUCTION rules file (they fall to default-deny now).
+  // `sessions` was an orphan (presence migrated to Realtime DB); it never had a
+  // mirror. `function_monitor_errors` was a phantom (no code path anywhere).
+  it('sessions match block is absent from firestore.rules (PR-S1)', () => {
+    expect(prodSource).not.toContain('match /sessions/');
+  });
+
+  it('function_monitor_errors match block is absent from firestore.rules (PR-S1)', () => {
+    expect(prodSource).not.toContain('match /function_monitor_errors/');
+  });
 });
 
