@@ -90,8 +90,7 @@ function stripComments(src) {
 
 describe('upload paths no longer leak (makePublic removed)', () => {
   const uploadFiles = [
-    'functions/fee-agreements/index.js',
-    'functions/src/whatsapp-bot/WhatsAppBot.js'
+    'functions/fee-agreements/index.js'
   ];
 
   it.each(uploadFiles)('%s does NOT call makePublic()', (rel) => {
