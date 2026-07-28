@@ -25,6 +25,19 @@
 |-------|------|----------------|----------|-----|-----------|--------|
 | 2026-07-28 | פירוק משטח WhatsApp/Twilio (צף באימות-האבטחה; 2 "קריטיים" התפוגגו: Twilio מחוק, 0 סיסמאות cleartext ב-probe) | אבטחה → גל-3א | 3 סוכני מיפוי read-only → אימות יריב → checkpoint scope → 2 PRים (frontend→backend), grader PASS + devils-advocate GO בשניהם | #474, #475 | `functions:delete` ×4 — ידי חיים; אומת (`functions:list`=ריק) | ✅ הושלם |
 
+### יומן ביצוע גל-3 (execution log — כל PR מתחזק את הטבלה הזו כחלק מה-diff שלו, §9.4)
+
+| תת-גל | PR | מה | reviews | סטטוס |
+|-------|-----|-----|---------|-------|
+| 3א | #477 (S1) | tighten monitor rules — מחק sessions+function_monitor_errors, נעל function_monitor_logs→`if false` | devils=GO · grader=PASS_W | ✅ מוזג+פרוד (`firebase deploy --only firestore:rules`) |
+| 3א | #478 (S2) | מחיקת מודול-הסיסמאות המת (`employees-manager.js`) — סוגר חוט הסיסמאות | grader=PASS | ✅ מוזג |
+| 3א | #479 (S3) | פירוק 3 מודולי `function-monitor*.js` (1436 ש') | grader=PASS | ✅ מוזג |
+| 3א | S4 (זה) | A4-1: מחיקת DEBUG_EMAILS מ-WorkloadCalculator (159 ש', היגיינת-PII, אפס שינוי-התנהגות) + יומן-הביצוע הזה + §14 | grader=? | 🟢 בעבודה |
+
+**נותר בגל-3א (follow-ups, tracked):** A4-2 (scrub `devtools/**` + `add-employee-phones.js` כולל @gmail אישי + `scripts/backup-*` — שיפוט פר-קובץ, dead-vs-ops) · A4-3 (איחוד 4 עותקי `ADMIN_EMAILS`→config לא-מחויב) · A4-4 (retire auth שכבה-2 email-fallback — **התנהגותי → devils-advocate**).
+
+**Backlog doc-drift (→ גל-3ד):** `SYSTEM_MAP.md`, `SYSTEM_STATUS.md`, `docs/FUNCTION_MONITOR_README.md`, `docs/ANALYTICS_DASHBOARD_GUIDE.md`, `.claude/WHATSAPP-PDF-UPLOAD-FEATURE.md` — מזכירים פיצ'רים שפורקו (WhatsApp/Twilio, function-monitor POC).
+
 ### ספירות
 
 - **קבצי קוד dead-candidate מאומתים (CONFIRMED):** ~50 קבצים/ארטיפקטים ב-9 אשכולות.
