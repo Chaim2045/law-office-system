@@ -399,12 +399,6 @@ return '-';
                             <i class="fas fa-edit"></i>
                             <span>ערוך</span>
                         </button>
-                        ${user.whatsappEnabled && user.phone ? `
-                        <button class="action-item whatsapp-action" data-action="whatsapp" data-user-email="${user.email}" data-user-name="${user.name || user.email}">
-                            <i class="fab fa-whatsapp"></i>
-                            <span>שלח הודעת WhatsApp</span>
-                        </button>
-                        ` : ''}
                         <button class="action-item" data-action="block" data-user-email="${user.email}">
                             <i class="fas fa-ban"></i>
                             <span>${user.status === window.ADMIN_PANEL_CONSTANTS.USER_STATUS.BLOCKED ? 'הסר חסימה' : 'חסום'}</span>

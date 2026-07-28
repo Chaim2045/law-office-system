@@ -5,15 +5,16 @@
  * 5-entity `& < > " '`) and routed the 6 string-replace escapers to it. PR2 routes
  * the remaining 16 LIVE duplicated escapers — 14 "temp-div" copies
  * (`div.textContent = x; return div.innerHTML;` → 3 entities only) + 2 inline-map
- * 5-entity copies (ReportGenerator, WhatsAppMessageDialog) — by replacing each
+ * 5-entity copies (ReportGenerator) — by replacing each
  * escaper BODY with `return window.escapeHtml(<param>);` (call-sites unchanged).
+ * (The WhatsAppMessageDialog escaper was removed with the WhatsApp retirement.)
  *
  * This is a SOURCE-LEVEL guard (the repo's AST-guard precedent — rules-drift-guard,
  * PR-SEC-2 migration guards). The 16 escapers live on heavyweight UI managers that
  * self-instantiate at load (Firebase/DOM deps), so a per-manager behavioral test is
  * impractical for all 16 — the END-TO-END behavioral proof is covered by
- * escape-html.test.ts (the SSOT, 8 tests) + report-generator-escaping.test.ts +
- * whatsapp-message-dialog-escaping.test.ts (two routed managers, exercised live).
+ * escape-html.test.ts (the SSOT, 8 tests) + report-generator-escaping.test.ts
+ * (the routed manager, exercised live).
  *
  * ─── What this catches ───────────────────────────────────────────────────────
  *   ✅ A routed escaper that was NOT actually delegated (still has its old body).
@@ -72,13 +73,12 @@ const ROUTED: ReadonlyArray<readonly [string, string, string]> = [
   ['js/ui/UserDetailsModal.js', 'escapeHtml(text) {', 'text'],
   ['js/ui/UsersTable.js', 'escapeHtml(text) {', 'text'],
   ['js/ui/ClientsTable.js', 'escapeHtml(text) {', 'text'],
-  ['js/managers/WhatsAppMessageDialog.js', 'function escapeHtml(text) {', 'text'],
   ['js/managers/ReportGenerator.js', 'escapeHtml(text) {', 'text']
 ];
 
 describe('escapeHtml PR2 — every routed escaper delegates to the SSOT', () => {
-  it('routes all 14 escapers (and the count is exactly 14)', () => {
-    expect(ROUTED).toHaveLength(14);
+  it('routes all 13 escapers (and the count is exactly 13)', () => {
+    expect(ROUTED).toHaveLength(13);
   });
 
   for (const [file, sig, param] of ROUTED) {
@@ -125,7 +125,7 @@ describe('escapeHtml PR2 — load-order invariant (escape-html.js before EVERY r
   const PAGE_CONSUMERS: ReadonlyArray<readonly [string, readonly string[]]> = [
     ['index.html', [
       'js/ui/UsersTable.js', 'js/ui/UserDetailsModal.js', 'js/ui/DeleteDataSidePanel.js',
-      'js/managers/WhatsAppMessageDialog.js', 'js/ui/UserAlertsPanel.js',
+      'js/ui/UserAlertsPanel.js',
       'js/ui/TaskApprovalSidePanel.js', 'js/managers/ReportGenerator.js'
     ]],
     ['system-announcements.html', ['js/ui/AnnouncementCard.js', 'js/ui/ReadStatusModal.js']],

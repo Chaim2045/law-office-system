@@ -1455,115 +1455,12 @@ select.form-input,
   }
 }
 
-/* ========== TOGGLE SWITCH (WhatsApp) ========== */
-
-.toggle-switch-wrapper {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 48px;
-  height: 26px;
-}
-
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.toggle-slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--gray-300);
-  transition: 0.3s;
-  border-radius: 26px;
-}
-
-.toggle-slider::before {
-  position: absolute;
-  content: "";
-  height: 20px;
-  width: 20px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: 0.3s;
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
-}
-
-.toggle-switch input:checked + .toggle-slider {
-  background-color: #25D366; /* WhatsApp green */
-}
-
-.toggle-switch input:checked + .toggle-slider::before {
-  transform: translateX(22px);
-}
-
-.toggle-switch input:focus + .toggle-slider {
-  box-shadow: 0 0 0 3px rgb(37 211 102 / 20%);
-}
-
 .toggle-label {
   font-size: var(--text-sm);
   color: var(--gray-600);
   font-weight: 500;
 }
 
-
-/* ═══════════════════════════════════════════════════════════════
-   📢 BROADCAST SECTION STYLES
-   ═══════════════════════════════════════════════════════════════ */
-
-.broadcast-section {
-  margin-top: var(--space-8);
-}
-
-.broadcast-container {
-  background: white;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  padding: var(--space-6);
-  box-shadow: var(--shadow-md);
-}
-
-.broadcast-header {
-  margin-bottom: var(--space-6);
-  padding-bottom: var(--space-4);
-  border-bottom: 2px solid var(--gray-100);
-}
-
-.broadcast-header h2 {
-  font-size: var(--text-2xl);
-  font-weight: var(--font-bold);
-  color: var(--gray-900);
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-2);
-}
-
-.broadcast-header h2 i {
-  color: #25D366;
-}
-
-.broadcast-subtitle {
-  color: var(--gray-600);
-  font-size: var(--text-sm);
-}
-
-.broadcast-section > div {
-  margin-bottom: var(--space-6);
-}
 
 .section-title {
   font-size: var(--text-lg);
@@ -1687,10 +1584,6 @@ select.form-input,
   opacity: 0.5;
 }
 
-.employee-item.no-whatsapp {
-  opacity: 0.6;
-}
-
 .employee-checkbox {
   display: flex;
   align-items: center;
@@ -1754,13 +1647,6 @@ select.form-input,
 }
 
 /* Actions */
-.broadcast-actions {
-  display: flex;
-  justify-content: center;
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--gray-200);
-}
-
 .btn-lg {
   padding: var(--space-3) var(--space-8);
   font-size: var(--text-lg);
@@ -1928,157 +1814,6 @@ select.form-input,
   font-size: var(--text-base);
 }
 
-
-
-/* ═══════════════════════════════════════════════════════════════
-   💬 WHATSAPP MESSAGE DIALOG STYLES
-   ═══════════════════════════════════════════════════════════════ */
-
-/* WhatsApp Modal - Override for immediate visibility */
-#whatsappMessageModal.modal-overlay {
-  opacity: 1 !important;
-  visibility: visible !important;
-}
-
-/* WhatsApp Modal Icon Styling */
-.whatsapp-message-modal .modal-icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-lg);
-  color: white;
-  font-size: 24px;
-}
-
-/* Template Selection */
-.whatsapp-message-modal .template-selection {
-  margin-bottom: var(--space-4);
-}
-
-.whatsapp-message-modal .field-label {
-  display: block;
-  font-weight: var(--font-semibold);
-  color: var(--gray-700);
-  margin-bottom: var(--space-3);
-  font-size: var(--text-base);
-}
-
-.whatsapp-message-modal .template-buttons {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-3);
-}
-
-.whatsapp-message-modal .template-btn {
-  background: white;
-  border: 2px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.whatsapp-message-modal .template-btn:hover {
-  border-color: #25D366;
-  background: rgb(37 211 102 / 3%);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.whatsapp-message-modal .template-btn.active {
-  border-color: #25D366;
-  background: rgb(37 211 102 / 8%);
-  box-shadow: 0 0 0 3px rgb(37 211 102 / 10%);
-}
-
-.whatsapp-message-modal .template-icon {
-  font-size: 32px;
-  display: block;
-  line-height: 1;
-}
-
-.whatsapp-message-modal .template-name {
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  color: var(--gray-700);
-  line-height: 1.4;
-}
-
-/* Custom Message Field */
-.whatsapp-message-modal .custom-message-field {
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--gray-200);
-}
-
-.whatsapp-message-modal .message-textarea {
-  width: 100%;
-  min-height: 120px;
-  padding: var(--space-3);
-  border: 2px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  font-family: inherit;
-  font-size: var(--text-base);
-  resize: vertical;
-  transition: all 0.2s ease;
-  line-height: 1.6;
-}
-
-.whatsapp-message-modal .message-textarea:focus {
-  outline: none;
-  border-color: #25D366;
-  box-shadow: 0 0 0 3px rgb(37 211 102 / 10%);
-}
-
-.whatsapp-message-modal .field-hint {
-  margin-top: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--gray-600);
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-/* WhatsApp Button Styling */
-.whatsapp-message-modal .btn-primary {
-  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-  border-color: #25D366;
-}
-
-.whatsapp-message-modal .btn-primary:hover {
-  background: linear-gradient(135deg, #20BE5C 0%, #0F7A6A 100%);
-  border-color: #20BE5C;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgb(37 211 102 / 30%);
-}
-
-.whatsapp-message-modal .btn-primary:disabled {
-  background: var(--gray-300);
-  border-color: var(--gray-300);
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-/* WhatsApp Action Button in Table */
-.whatsapp-action {
-  color: #25D366 !important;
-}
-
-.whatsapp-action i {
-  color: #25D366;
-}
-
-.whatsapp-action:hover {
-  background: rgb(37 211 102 / 10%) !important;
-}
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
