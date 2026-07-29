@@ -33,9 +33,12 @@
 | 3א | #478 (S2) | מחיקת מודול-הסיסמאות המת (`employees-manager.js`) — סוגר חוט הסיסמאות | grader=PASS | ✅ מוזג |
 | 3א | #479 (S3) | פירוק 3 מודולי `function-monitor*.js` (1436 ש') | grader=PASS | ✅ מוזג |
 | 3א | #480 (S4) | A4-1: מחיקת DEBUG_EMAILS מ-WorkloadCalculator (159 ש', היגיינת-PII, אפס שינוי-התנהגות) + יומן-הביצוע הזה + §14 | grader=PASS | ✅ מוזג |
-| 3א | A4-2 (זה) | untrack+gitignore של 162 קבצי-PII לא-נטענים (`devtools/` 157 + `add-employee-phones.js` כולל @gmail + 4 one-offs ב-`scripts/`) — נשארים על הדיסק, נעלמים מ-GitHub הציבורי; **החלטת חיים: untrack (לא delete); History=להשאיר** | grader=? | 🟢 בעבודה |
+| 3א | #481 (A4-2) | untrack+gitignore של 162 קבצי-PII לא-נטענים (`devtools/` 157 + `add-employee-phones.js` כולל @gmail + 4 one-offs ב-`scripts/`) — נשארים על הדיסק, נעלמים מ-GitHub הציבורי; **החלטת חיים: untrack (לא delete); History=להשאיר** | grader=PASS | ✅ מוזג |
+| 3ב | DB-1 (זה) | מחיקת 8 קבצי-admin מתים: 4 עמודים יתומים (tasks/timesheet/debug-firebase-init/feature-flags) + case-number-generator.js + 3 CSS (שומר את תאום task-approval-dialog החי) | grader=? | 🟢 בעבודה |
 
-**נותר בגל-3א (follow-ups, tracked):** A4-3 (איחוד 4 עותקי `ADMIN_EMAILS`→config לא-מחויב) · A4-4 (retire auth שכבה-2 email-fallback — **התנהגותי → devils-advocate**).
+**נותר בגל-3א (follow-ups, tracked — נדחו בהחלטת חיים לטובת 3ב):** A4-3 (איחוד 4 עותקי `ADMIN_EMAILS`→config לא-מחויב) · A4-4 (retire auth שכבה-2 email-fallback — **התנהגותי → devils-advocate**).
+
+**גל-3ב (dead-code) — פירוק מאושר (4 PRs):** DB-1 (admin, זה) · DB-2 (user-app: chatbot+VA-מודולרי+גלובלים+scratch ~28) · DB-3 (dist כפול, שומר `dist/js/`) · DB-4 (SMSManagement+הטסט שלו). **אשכול messaging/errors נדחה למסלול H.8.0** (rules-last + devils-advocate, כולל reference רדום ב-UserAlertsPanel.js).
 
 **Backlog doc-drift (→ גל-3ד):** `SYSTEM_MAP.md`, `SYSTEM_STATUS.md`, `docs/FUNCTION_MONITOR_README.md`, `docs/ANALYTICS_DASHBOARD_GUIDE.md`, `.claude/WHATSAPP-PDF-UPLOAD-FEATURE.md` — מזכירים פיצ'רים שפורקו (WhatsApp/Twilio, function-monitor POC).
 
