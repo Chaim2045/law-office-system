@@ -1,6 +1,6 @@
 /**
- * System Constants — User App Adapter (IIFE → window)
- * =====================================================
+ * System Constants — Adapter (IIFE → window)
+ * ==========================================
  *
  * Canonical source: shared/system-constants.js
  * Sync verified by: tests/sync-constants.test.js

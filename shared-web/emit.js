@@ -49,6 +49,30 @@ const MODULES = [
   {
     subpath: 'modules/idle-timeout-manager.js',
     expectedGlobal: 'IdleTimeoutManager'
+  },
+  // PR-SHARE-2 — W1 trivial pairs (2-6). Pairs 2-5 adopted byte-identical from
+  // the already-identical prod copies; system-constants adopted after a
+  // display-invisible header-comment normalization (drops the app-name from the
+  // banner) so it emits byte-identical into BOTH apps.
+  {
+    subpath: 'modules/work-hours-calculator.js',
+    expectedGlobal: 'WorkHoursCalculator'
+  },
+  {
+    subpath: 'shared/business-rules-adapter.js',
+    expectedGlobal: 'BUSINESS_RULES'
+  },
+  {
+    subpath: 'shared/holidays-cache.js',
+    expectedGlobal: 'WORK_HOURS_HOLIDAYS_MAP'
+  },
+  {
+    subpath: 'shared/work-hours-constants.js',
+    expectedGlobal: 'WORK_HOURS_CONSTANTS'
+  },
+  {
+    subpath: 'core/system-constants.js',
+    expectedGlobal: 'SYSTEM_CONSTANTS'
   }
 ];
 
