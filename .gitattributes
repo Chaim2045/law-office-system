@@ -1,0 +1,9 @@
+# Shared-code mechanism (PR-SHARE-1) — pin LF so the content-hash cache-bust
+# token computed by shared-web/emit.js is OS-deterministic. Without this, a
+# Windows working tree (core.autocrlf=true) would check these out as CRLF, whose
+# hash differs from the LF bytes git/CI(Linux)/Netlify store and serve — breaking
+# the drift-guard's token==content-hash invariant. Scoped to these paths only
+# (no repo-wide rule) to avoid churning the rest of the repo's line endings.
+shared-web/** text eol=lf
+apps/admin-panel/js/modules/idle-timeout-manager.js text eol=lf
+apps/user-app/js/modules/idle-timeout-manager.js text eol=lf
