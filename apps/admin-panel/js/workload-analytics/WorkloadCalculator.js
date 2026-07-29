@@ -197,36 +197,6 @@
         calculateWorkload(employee, tasks, timesheetEntries) {
             const now = new Date();
 
-            // 🐛 DEBUG: Helper for targeted debug logging
-            const DEBUG_EMAILS = new Set([
-                'marva@ghlawoffice.co.il',
-                'uzi@ghlawoffice.co.il'
-            ]);
-            const shouldDebug = (email) => DEBUG_EMAILS.has(String(email || '').toLowerCase());
-
-            // 🐛 DEBUG: Log inputs for targeted employees only
-            if (shouldDebug(employee.email) && tasks.length > 0 && !window._workloadDebugLogged) {
-                console.log('🐛 [WORKLOAD DEBUG] Employee:', employee.email);
-                console.log('🐛 [WORKLOAD DEBUG] Total tasks received:', tasks.length);
-                console.log('🐛 [WORKLOAD DEBUG] Timesheet entries count:', timesheetEntries.length);
-
-                // 🐛 [TASK DEBUG] - First task only, minimal output
-                const t = tasks[0];
-                if (t) {
-                    console.log('🐛 [TASK DEBUG]', {
-                        employee: employee.email,
-                        status: t.status,
-                        estimatedMinutes: t.estimatedMinutes,
-                        actualMinutes: t.actualMinutes,
-                        remainingMinutes: (t.estimatedMinutes || 0) - (t.actualMinutes || 0),
-                        deadlineType: typeof t.deadline,
-                        deadlineKeys: t.deadline && typeof t.deadline === 'object' ? Object.keys(t.deadline) : null
-                    });
-                }
-
-                window._workloadDebugLogged = true; // Log only once
-            }
-
             // ═══ חלק 1: מדדים בסיסיים ═══
             const basicMetrics = this.calculateBasicMetrics(tasks);
 
@@ -299,19 +269,6 @@
                 employee.dailyHoursTarget || this.DEFAULT_DAILY_HOURS,
                 urgencyMetrics
             );
-
-            // 🐛 DEBUG: Log final workload scores for targeted employees only
-            if (shouldDebug(employee.email) && tasks.length > 0 && !window._workloadScoreDebugLogged) {
-                console.log('🐛 [WORKLOAD SCORE DEBUG]');
-                console.log('  workloadScore:', workloadScore.score);
-                console.log('  workloadLevel:', workloadScore.level);
-                console.log('  maxDailyLoad:', dailyLoadAnalysis.maxDailyLoad);
-                console.log('  dailyBreakdown.peakDayLoad:', dailyBreakdown.peakDayLoad);
-                console.log('  dailyBreakdown.peakMultiplier:', dailyBreakdown.peakMultiplier);
-                console.log('  dataConfidence:', dataConfidence);
-                console.log('  managerRisk:', managerRisk);
-                window._workloadScoreDebugLogged = true;
-            }
 
             return {
                 // Metadata
@@ -402,10 +359,6 @@
         calculateCapacityMetrics(employee, timesheetEntries, now) {
             const dailyTarget = employee.dailyHoursTarget || this.DEFAULT_DAILY_HOURS;
 
-            // 🐛 DEBUG: Helper for targeted debug logging
-            const DEBUG_EMAILS = new Set(['marva@ghlawoffice.co.il', 'uzi@ghlawoffice.co.il']);
-            const shouldDebug = (email) => DEBUG_EMAILS.has(String(email || '').toLowerCase());
-
             // שעות היום
             const todayStr = this.dateToString(now);
             const todayEntries = timesheetEntries.filter(e => e.date === todayStr);
@@ -449,15 +402,6 @@
             const reportingConsistency = workDaysPassed > 0
                 ? Math.min(100, this.roundTo((uniqueDatesReported / workDaysPassed) * 100, 1))
                 : 0;
-
-            // 🐛 DEBUG: Log reporting consistency calculation for targeted employees only
-            if (shouldDebug(employee.email) && !window._reportingDebugLogged) {
-                console.log('🐛 [REPORTING CONSISTENCY DEBUG]');
-                console.log('  uniqueDatesReported:', uniqueDatesReported);
-                console.log('  workDaysPassed:', workDaysPassed);
-                console.log('  reportingConsistency:', reportingConsistency);
-                window._reportingDebugLogged = true;
-            }
 
             return {
                 dailyHoursTarget: this.roundTo(dailyTarget, 2),
@@ -587,23 +531,6 @@ return;
         calculateWorkloadScore(basicMetrics, capacityMetrics, urgencyMetrics, employee) {
             const dailyTarget = employee.dailyHoursTarget || this.DEFAULT_DAILY_HOURS;
 
-            // 🐛 DEBUG: Helper for targeted debug logging
-            const DEBUG_EMAILS = new Set(['marva@ghlawoffice.co.il', 'uzi@ghlawoffice.co.il']);
-            const shouldDebug = (email) => DEBUG_EMAILS.has(String(email || '').toLowerCase());
-
-            // 🐛 DEBUG: Log inputs for targeted employees only
-            if (shouldDebug(employee.email) && !window._workloadScoreInputsLogged) {
-                console.log('🐛 [WORKLOAD SCORE INPUTS]');
-                console.log('  activeTasksCount:', basicMetrics.activeTasksCount);
-                console.log('  totalBacklogHours:', basicMetrics.totalBacklogHours);
-                console.log('  urgencyScore:', urgencyMetrics.urgencyScore);
-                console.log('  overdueTasksCount:', urgencyMetrics.overdueTasksCount);
-                console.log('  tasksWithin3days:', urgencyMetrics.tasksWithin3days);
-                console.log('  monthlyUtilization:', capacityMetrics.monthlyUtilization);
-                console.log('  weights:', this.WEIGHTS);
-                window._workloadScoreInputsLogged = true;
-            }
-
             // נרמול backlog (7 ימי עבודה = 100%)
             // 🔧 FIX v5.0: מניעת NaN
             const maxBacklogHours = dailyTarget * this.constants.WORK_HOURS.MAX_BACKLOG_DAYS;
@@ -627,16 +554,6 @@ return;
                 ? 0
                 : Math.min(100, capacityMetrics.monthlyUtilization);
 
-            // 🐛 DEBUG: Log normalized components for targeted employees only
-            if (shouldDebug(employee.email) && !window._workloadScoreNormalizedLogged) {
-                console.log('🐛 [WORKLOAD SCORE NORMALIZED]');
-                console.log('  normalizedBacklog:', normalizedBacklog);
-                console.log('  normalizedUrgency:', normalizedUrgency);
-                console.log('  normalizedTaskCount:', normalizedTaskCount);
-                console.log('  normalizedCapacity:', normalizedCapacity);
-                window._workloadScoreNormalizedLogged = true;
-            }
-
             // חישוב משוקלל
             // 🔧 FIX v5.3: Explicit component validation + NaN prevention
             const backlogComponent = (normalizedBacklog || 0) * this.WEIGHTS.backlog;
@@ -653,36 +570,6 @@ return;
                 score = 0;
             } else if (score > 100) {
                 score = 100; // Cap at 100
-            }
-
-            // 🔧 FIX v5.3: Sanity check - if there's workload but score is 0, warn
-            const hasWorkload = basicMetrics.totalBacklogHours > 0 ||
-                               basicMetrics.activeTasksCount > 0 ||
-                               urgencyMetrics.urgencyScore > 0;
-            if (hasWorkload && score === 0 && shouldDebug(employee.email)) {
-                console.warn('⚠️ WorkloadCalculator: Workload exists but score is 0. Check weights:', this.WEIGHTS);
-            }
-
-            // 🐛 DEBUG: Log final score calculation for targeted employees only
-            if (shouldDebug(employee.email) && !window._workloadScoreFinalLogged) {
-                console.log('🐛 [WORKLOAD SCORE FINAL]');
-                console.log('  rawScore (before rounding):', rawScore);
-                console.log('  score (after rounding):', score);
-                console.log('  component breakdown:', {
-                    backlogComponent: backlogComponent.toFixed(2),
-                    urgencyComponent: urgencyComponent.toFixed(2),
-                    taskCountComponent: taskCountComponent.toFixed(2),
-                    capacityComponent: capacityComponent.toFixed(2),
-                    sum: rawScore.toFixed(2)
-                });
-                console.log('  weights used:', {
-                    backlog: this.WEIGHTS.backlog,
-                    urgency: this.WEIGHTS.urgency,
-                    taskCount: this.WEIGHTS.taskCount,
-                    capacity: this.WEIGHTS.capacity,
-                    sum: (this.WEIGHTS.backlog + this.WEIGHTS.urgency + this.WEIGHTS.taskCount + this.WEIGHTS.capacity).toFixed(3)
-                });
-                window._workloadScoreFinalLogged = true;
             }
 
             // קביעת רמת עומס
@@ -1107,10 +994,6 @@ return;
         calculateDailyLoadAnalysis(tasks, employee, now) {
             const dailyTarget = employee.dailyHoursTarget || this.DEFAULT_DAILY_HOURS;
 
-            // 🐛 DEBUG: Helper for targeted debug logging
-            const DEBUG_EMAILS = new Set(['marva@ghlawoffice.co.il', 'uzi@ghlawoffice.co.il']);
-            const shouldDebug = (email) => DEBUG_EMAILS.has(String(email || '').toLowerCase());
-
             // חישוב עומס יומי נדרש
             const dailyLoads = this.calculateDailyTaskLoad(tasks, now);
 
@@ -1140,16 +1023,6 @@ return;
                     : null  // Return null if no tasks, UI will show "—"
             };
 
-            // 🐛 DEBUG: Log coverage calculation for targeted employees only
-            if (shouldDebug(employee.email) && !window._coverageDebugLogged) {
-                console.log('🐛 [COVERAGE DEBUG]');
-                console.log('  dailyLoads keys:', Object.keys(dailyLoads).length);
-                console.log('  totalRequiredNext5:', totalRequiredNext5);
-                console.log('  availableHours:', availability.totalAvailableHours);
-                console.log('  coverageRatio:', next5DaysCoverage.coverageRatio);
-                window._coverageDebugLogged = true;
-            }
-
             return {
                 ...capacityAnalysis,
                 ...availability,
@@ -1166,10 +1039,6 @@ return;
          */
         calculateDailyTaskBreakdown(tasks, employee, now) {
             const dailyTarget = employee.dailyHoursTarget || this.DEFAULT_DAILY_HOURS;
-
-            // 🐛 DEBUG: Helper for targeted debug logging
-            const DEBUG_EMAILS = new Set(['marva@ghlawoffice.co.il', 'uzi@ghlawoffice.co.il']);
-            const shouldDebug = (email) => DEBUG_EMAILS.has(String(email || '').toLowerCase());
 
             const dailyLoads = {}; // { 'YYYY-MM-DD': totalHours }
             const tasksByDay = {}; // { 'YYYY-MM-DD': [{ task, hoursForThisDay }] }
@@ -1284,34 +1153,6 @@ tasksByDay[dateKey] = [];
             const peakMultiplier = dailyTarget > 0
                 ? this.roundTo(peakDayLoad / dailyTarget, 2)
                 : 0;
-
-            // 🐛 DEBUG: Log peak day calculation for targeted employees only
-            if (shouldDebug(employee.email) && !window._peakDebugLogged) {
-                console.log('🐛 [PEAK DAY DEBUG]');
-                console.log('  dailyLoads keys count:', Object.keys(dailyLoads).length);
-                console.log('  peakDay:', peakDay);
-                console.log('  peakDayLoad:', peakDayLoad);
-                console.log('  dailyTarget:', dailyTarget);
-                console.log('  peakMultiplier:', peakMultiplier);
-                console.log('  dailyLoads sample:', Object.entries(dailyLoads).slice(0, 3));
-
-                // 🐛 DEBUG: Peak day details
-                if (peakDay) {
-                    const peakDayDate = new Date(peakDay);
-                    const peakDayOfWeek = peakDayDate.getDay(); // 0=Sunday, 6=Saturday
-                    const isWorkDay = this.workHoursCalculator
-                        ? this.workHoursCalculator.isWorkDay(peakDayDate)
-                        : null;
-                    console.log('  peakDay string:', peakDay);
-                    console.log('  peakDay.getDay():', peakDayOfWeek, ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][peakDayOfWeek]);
-                    console.log('  workHoursCalculator.isWorkDay(peakDay):', isWorkDay);
-                }
-
-                // PR-G.3.11: removed debug log comparing dateToString vs
-                // .toISOString().slice(0,10). The bug it documented is now
-                // covered by the repo-wide ESLint rule; debug no longer needed.
-                window._peakDebugLogged = true;
-            }
 
             return {
                 dailyLoads,           // { '2026-01-02': 19.0, ... }
