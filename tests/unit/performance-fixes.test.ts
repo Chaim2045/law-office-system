@@ -638,11 +638,17 @@ describe('index.html — cache-bust hash updated', () => {
     expect(html).not.toContain('?v=a1b2c3d');
   });
 
-  it('all CSS/JS links have a consistent hash', () => {
-    const hashes = [...html.matchAll(/\?v=([a-zA-Z0-9_-]+)/g)].map(m => m[1]);
+  it('all non-shared CSS/JS links have a consistent hash', () => {
+    const hashes = [...html.matchAll(/\?v=([a-zA-Z0-9_-]+)/g)]
+      .map(m => m[1])
+      // shared-web emitted modules carry a content-hash token (sh-<hash>) that is
+      // intentionally independent of the app-wide cache-bust value — see
+      // docs/PLAN-SHARED-CODE-MECHANISM.md §1.6 + shared-web/README.md. The emit
+      // owns those tokens; update-cache-busting.js owns all the rest.
+      .filter(h => !h.startsWith('sh-'));
     expect(hashes.length).toBeGreaterThan(0);
     const uniqueHashes = [...new Set(hashes)];
-    // All hashes should be the same (single cache-bust value)
+    // All non-shared hashes should be the same (single cache-bust value)
     expect(uniqueHashes).toHaveLength(1);
   });
 });

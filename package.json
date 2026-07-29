@@ -9,6 +9,8 @@
     "preview": "vite preview",
     "type-check": "npx tsc --noEmit",
     "cache-bust": "node update-cache-busting.js",
+    "emit:shared": "node shared-web/emit.js",
+    "verify:shared": "node shared-web/emit.js --check",
     "compile-ts": "npx tsc",
     "compile:watch": "tsc --watch",
     "clean": "rm -rf apps/user-app/dist",
