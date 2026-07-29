@@ -126,17 +126,26 @@ describe('shared-web emit — emitted copy defines its global without throwing',
         const committedPath = path.join(repoRoot, app.jsRoot, mod.subpath);
         const source = fs.readFileSync(committedPath, 'utf8');
 
-        // The IIFE writes onto `window` and calls `Logger.log(...)` at load time.
-        // Provide a fake window plus a no-op Logger so the module executes in a
-        // Node context exactly as the template's Function-harness does.
+        // Each module is an IIFE / class-def that writes its global onto `window`
+        // at load time. Provide a fake window plus load-time-global fakes so the
+        // module executes in a Node context exactly as the template harness does:
+        //   - `Logger` — idle-timeout-manager calls Logger.log(...) at load.
+        //   - `setTimeout` — holidays-cache schedules async pollers at load; a
+        //     no-op prevents them firing during the test (the global it defines
+        //     is set synchronously before any timer would run anyway).
+        // `console` is a genuine Node global (system-constants logs at load) and
+        // is intentionally NOT shadowed.
         const fakeWindow: Record<string, unknown> = {};
         const fakeLogger = { log: () => {}, error: () => {}, warn: () => {}, info: () => {} };
-        const runner = new Function('window', 'Logger', source);
-        expect(() => runner(fakeWindow, fakeLogger)).not.toThrow();
+        const noopSetTimeout = () => 0;
+        const runner = new Function('window', 'Logger', 'setTimeout', source);
+        expect(() => runner(fakeWindow, fakeLogger, noopSetTimeout)).not.toThrow();
+        // Modules define different global TYPES (function classes, Maps, frozen
+        // objects), so assert the global is DEFINED — not that it is a function.
         expect(
-          typeof fakeWindow[mod.expectedGlobal],
+          typeof fakeWindow[mod.expectedGlobal] !== 'undefined',
           `${app.name} copy of ${mod.subpath} must define window.${mod.expectedGlobal}`
-        ).toBe('function');
+        ).toBe(true);
       });
     }
   }

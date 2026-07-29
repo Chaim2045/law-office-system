@@ -1212,7 +1212,7 @@
     <!-- ===== 🔇 Production Logger - MUST BE FIRST ===== -->
     <!-- מערכת לוגים מרכזית - מצב ייצור (מינימום לוגים) -->
     <script src="js/modules/logger.js?v=esc5fix"></script>
-    <script src="js/core/system-constants.js?v=esc5fix"></script>
+    <script src="js/core/system-constants.js?v=sh-98d1260c"></script>
     <script src="js/core/config-loader.js?v=esc5fix"></script>
 
     <!-- ===== ⚡ Lazy Loader - Dynamic Script Loading ===== -->
@@ -1348,13 +1348,13 @@
     <!-- Loaded as module by main.js -->
 
     <!-- PR-G.2: shared work-hours constants — must load BEFORE work-hours-calculator + daily-meter -->
-    <script src="js/shared/work-hours-constants.js?v=esc5fix"></script>
+    <script src="js/shared/work-hours-constants.js?v=sh-678f4641"></script>
     <!-- PR-G.3.1: holidays cache — subscribes to system_holidays/{year} on boot.
          Must load AFTER firebase init + work-hours-constants + BEFORE work-hours-calculator -->
-    <script src="js/shared/holidays-cache.js?v=esc5fix"></script>
+    <script src="js/shared/holidays-cache.js?v=sh-d959438f"></script>
 
     <!-- Work Hours Calculator - Smart Calendar System -->
-    <script defer src="js/modules/work-hours-calculator.js?v=esc5fix"></script>
+    <script defer src="js/modules/work-hours-calculator.js?v=sh-6b56b509"></script>
 
     <!-- ===== KNOWLEDGE BASE 1.0.0 - מרכז עזרה וידע ===== -->
     <!-- ⚡ KB scripts lazy-loaded on first help click (see authentication.js showApp) -->

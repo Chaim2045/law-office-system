@@ -7,3 +7,15 @@
 shared-web/** text eol=lf
 apps/admin-panel/js/modules/idle-timeout-manager.js text eol=lf
 apps/user-app/js/modules/idle-timeout-manager.js text eol=lf
+# PR-SHARE-2 — W1 trivial pairs (2-6): pin the emitted copies to LF so the
+# content-hash token is OS-deterministic (same reason as idle-timeout above).
+apps/admin-panel/js/modules/work-hours-calculator.js text eol=lf
+apps/user-app/js/modules/work-hours-calculator.js text eol=lf
+apps/admin-panel/js/shared/business-rules-adapter.js text eol=lf
+apps/user-app/js/shared/business-rules-adapter.js text eol=lf
+apps/admin-panel/js/shared/holidays-cache.js text eol=lf
+apps/user-app/js/shared/holidays-cache.js text eol=lf
+apps/admin-panel/js/shared/work-hours-constants.js text eol=lf
+apps/user-app/js/shared/work-hours-constants.js text eol=lf
+apps/admin-panel/js/core/system-constants.js text eol=lf
+apps/user-app/js/core/system-constants.js text eol=lf

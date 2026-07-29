@@ -222,7 +222,7 @@
 
     <!-- ===== Core Scripts ===== -->
     <script defer src="js/core/firebase.js?v=qw3fix"></script>
-    <script defer src="js/core/system-constants.js?v=e02c45c"></script>
+    <script defer src="js/core/system-constants.js?v=sh-98d1260c"></script>
     <script defer src="js/core/config-loader.js?v=e02c45c"></script>
     <!-- ✅ Load dependencies BEFORE auth.js -->
     <script defer src="js/modules/logger.js?v=e02c45c"></script>
@@ -250,10 +250,10 @@
 
     <!-- ===== Phase 3: User Management Logic ===== -->
     <!-- PR-G.2: shared work-hours constants — must load BEFORE consumers (UserForm, UserDetailsModal) -->
-    <script defer src="js/shared/work-hours-constants.js?v=e02c45c"></script>
+    <script defer src="js/shared/work-hours-constants.js?v=sh-678f4641"></script>
     <!-- PR-G.3.1: holidays cache — subscribes to system_holidays/{year} on boot.
          Must load AFTER firebase init + work-hours-constants + BEFORE consumers -->
-    <script defer src="js/shared/holidays-cache.js?v=e02c45c"></script>
+    <script defer src="js/shared/holidays-cache.js?v=sh-d959438f"></script>
     <script defer src="js/managers/AuditLogger.js?v=e02c45c"></script>
     <script defer src="js/ui/Modals.js?v=e02c45c"></script>
     <script defer src="js/ui/Notifications.js?v=e02c45c"></script>
