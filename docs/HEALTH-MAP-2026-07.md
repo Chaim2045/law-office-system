@@ -35,7 +35,8 @@
 | 3א | #480 (S4) | A4-1: מחיקת DEBUG_EMAILS מ-WorkloadCalculator (159 ש', היגיינת-PII, אפס שינוי-התנהגות) + יומן-הביצוע הזה + §14 | grader=PASS | ✅ מוזג |
 | 3א | #481 (A4-2) | untrack+gitignore של 162 קבצי-PII לא-נטענים (`devtools/` 157 + `add-employee-phones.js` כולל @gmail + 4 one-offs ב-`scripts/`) — נשארים על הדיסק, נעלמים מ-GitHub הציבורי; **החלטת חיים: untrack (לא delete); History=להשאיר** | grader=PASS | ✅ מוזג |
 | 3ב | #482 (DB-1) | מחיקת 8 קבצי-admin מתים: 4 עמודים יתומים (tasks/timesheet/debug-firebase-init/feature-flags) + case-number-generator.js + 3 CSS (שומר את תאום task-approval-dialog החי) | grader=PASS | ✅ מוזג |
-| 3ב | DB-2 (זה) | מחיקת 28 קבצי user-app מתים: chatbot/ (10) + VA-מודולרי (6) + VA-ישן + virtual-assistant.css + 6 גלובלים (statistics-calculator/pagination-manager/notification-bridge/flatpickr-wrapper/reports/system-diagnostics) + 4 scratch. שומר `-complete.js`/`pagination.js`/`dist/js/` | grader=? | 🟢 בעבודה |
+| 3ב | #483 (DB-2) | מחיקת 28 קבצי user-app מתים: chatbot/ (10) + VA-מודולרי (6) + VA-ישן + virtual-assistant.css + 6 גלובלים (statistics-calculator/pagination-manager/notification-bridge/flatpickr-wrapper/reports/system-diagnostics) + 4 scratch. שומר `-complete.js`/`pagination.js`/`dist/js/` | grader=PASS_W | ✅ מוזג |
+| 3ב | DB-3 (זה) | מחיקת ה-build הכפול תחת `apps/user-app/dist/` (21 קבצים): `dist/apps/**` + `dist/types/**` (פלט tsc מקונן כפול, outDir שגוי) + `dist/index.html` + `dist/assets/**` (build ישן של Vite). **שומר `dist/js/**`** (פלט tsc החי, נטען ב-index.html:1229-1230). 0 refs חיים לכל 4 היעדים | grader=? | 🟢 בעבודה |
 
 **נותר בגל-3א (follow-ups, tracked — נדחו בהחלטת חיים לטובת 3ב):** A4-3 (איחוד 4 עותקי `ADMIN_EMAILS`→config לא-מחויב) · A4-4 (retire auth שכבה-2 email-fallback — **התנהגותי → devils-advocate**).
 
