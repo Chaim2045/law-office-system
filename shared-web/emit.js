@@ -96,6 +96,19 @@ const MODULES = [
   {
     subpath: 'modules/logger.js',
     expectedGlobal: 'Logger'
+  },
+  // PR-SHARE-6 — W3 parameterized pair (service-card-renderer, HIGHEST stakes).
+  // The canonical carries an APP_CONTEXT sentinel; SHOW_FINANCIALS=(APP_CONTEXT===
+  // 'admin') is the §7.6 confidentiality flag — fail-secure default-deny. The
+  // admin copy renders the fixed-price financials (price + hours-worked +
+  // entries); the user copy renders ONLY the "שירות קבוע" badge (no ₪, no price,
+  // no hours, no entries). Because the injected literal differs per target, the
+  // admin and user emitted copies have DIFFERENT bytes → DIFFERENT tokens. The
+  // drift-guard's confidentiality check renders a fixed-price fixture through the
+  // USER copy and asserts the output has zero financials.
+  {
+    subpath: 'modules/service-card-renderer.js',
+    expectedGlobal: 'renderServiceCard'
   }
 ];
 
