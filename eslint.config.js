@@ -354,5 +354,68 @@ export default [
       'comma-dangle': ['error', 'never'],
       'no-trailing-spaces': 'error'
     }
+  },
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // גל-3ה TS-1 (A′ in-place): functions/shared/ts/**/*.ts is hand-migrated TS
+  // SOURCE that compiles IN PLACE to functions/shared/*.js (via
+  // functions/shared/tsconfig.json), NOT into functions/lib/ via src-ts.
+  // `commonIgnores` excludes all of functions/ from the generic **/*.ts block,
+  // and the src-ts block only opts in functions/src-ts/** — so this location has
+  // NO TS parser and ESLint would parse it as plain JS (parse error on `: type`).
+  // This block gives it the SAME TS parser + strict rules as src-ts. Non-type-
+  // aware (no parserOptions.project): the safe-tier shims are pure/sync so the
+  // type-aware promise rules are moot, and it avoids coupling the ESLint project
+  // to the in-place build tsconfig. (Generated `.js` lints via the functions JS
+  // block; generated `.d.ts` is ignored via commonIgnores '**/*.d.ts'.)
+  // ───────────────────────────────────────────────────────────────────────────
+  {
+    files: ['functions/shared/ts/**/*.ts'],
+    languageOptions: {
+      parser: tsparser,
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: 'module'
+      },
+      globals: {
+        process: 'readonly',
+        require: 'readonly',
+        module: 'readonly',
+        exports: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        Buffer: 'readonly',
+        console: 'readonly'
+      }
+    },
+    plugins: {
+      '@typescript-eslint': tseslint,
+      'import': importPlugin
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_'
+      }],
+      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      // console.* forbidden — but this IS the logger shim location, so callers
+      // still route through it; the rule guards against accidental console use.
+      'no-restricted-syntax': ['error',
+        {
+          selector: "CallExpression[callee.object.name='console']",
+          message: 'Use the logger shim, not console.* — structured logging is required (PR-META-6).'
+        }
+      ],
+      'import/no-duplicates': 'error',
+      'no-debugger': 'error',
+      'prefer-const': 'error',
+      'no-var': 'error',
+      'eqeqeq': ['error', 'always'],
+      'semi': ['error', 'always'],
+      'quotes': ['error', 'single', { avoidEscape: true }],
+      'comma-dangle': ['error', 'never'],
+      'no-trailing-spaces': 'error'
+    }
   }
 ];
