@@ -453,6 +453,175 @@ describe('shared-web emit — parameterized canonical DEFAULT literal is fail-se
   }
 });
 
+// ── check 8: service-card-renderer H4 CONFIDENTIALITY + H2/H3 behavior ────────
+// PR-SHARE-6, the highest-stakes pair. The §7.6 confidentiality invariant is the
+// headline: the USER emitted copy MUST NEVER render price/cost/hours-worked/entries
+// for a fixed-price service; the ADMIN copy MUST. Both emitted copies contain the
+// full source (the financial block is GATED behind SHOW_FINANCIALS, not stripped —
+// like logger's prod-override), so only the RUNTIME render can prove the split.
+// Also asserts H2 (all-inactive packages → 0 in BOTH) and H3 (title uses
+// service.name when present, in BOTH).
+describe('shared-web emit — service-card-renderer confidentiality (H4) + behavior (H2/H3)', () => {
+  const cardMod = emit.MODULES.find((m) => m.subpath === 'modules/service-card-renderer.js');
+
+  it('service-card-renderer is registered', () => {
+    expect(cardMod, 'modules/service-card-renderer.js must be a registered MODULE').toBeTruthy();
+  });
+
+  if (!cardMod) {
+return;
+}
+
+  // Load an emitted copy against a fake window and return its window.renderServiceCard.
+  // The module IIFE reads window.escapeHtml (absent → its inline 5-entity fallback),
+  // window.calculate* (defined by the module itself), and calls Logger.log(...) at
+  // load — so a fake Logger is provided, mirroring check-3's harness.
+  function loadRenderer(app: App): (
+    service: Record<string, unknown>,
+    type: string,
+    pricingType?: string,
+    caseItem?: unknown,
+    options?: unknown
+  ) => string {
+    const committedPath = path.join(repoRoot, app.jsRoot, cardMod!.subpath);
+    const source = fs.readFileSync(committedPath, 'utf8');
+    const win: Record<string, unknown> = {};
+    const fakeLogger = { log: () => {}, error: () => {}, warn: () => {}, info: () => {} };
+    // service-card-renderer also console.log's inside the legal_procedure/hourly
+    // branch; the fixtures below never hit it, but keep a genuine console.
+    new Function('window', 'Logger', source)(win, fakeLogger);
+    return win.renderServiceCard as ReturnType<typeof loadRenderer>;
+  }
+
+  const adminApp = emit.APPS.find((a) => a.name === 'admin-panel')!;
+  const userApp = emit.APPS.find((a) => a.name === 'user-app')!;
+
+  // A fixed-price service with real financials: price + minutes-worked + entries.
+  const fixedPriceFixture = {
+    id: 'svc-fixed-1',
+    name: 'שירות ייעוץ',
+    description: 'תיאור השירות',
+    fixedPrice: 5000,
+    work: { totalMinutesWorked: 150, entriesCount: 4 }
+  };
+
+  // The financial tokens that must NEVER appear in the STAFF (user) fixed-price render.
+  const FINANCIAL_TOKENS = ['₪', 'פיקס', 'שעות עבודה', 'רשומות'];
+
+  it('CRUX — USER fixed-price render leaks NO financials (no ₪, פיקס, שעות עבודה, רשומות, no price)', () => {
+    const render = loadRenderer(userApp);
+    const html = render(fixedPriceFixture, 'fixed');
+    for (const token of FINANCIAL_TOKENS) {
+      expect(
+        html.includes(token),
+        `USER fixed-price render must NOT contain "${token}" — §7.6 confidentiality leak`
+      ).toBe(false);
+    }
+    // The numeric price must not appear in any form (5000 / 5,000).
+    expect(html.includes('5000'), 'USER render must not contain raw price 5000').toBe(false);
+    expect(html.includes('5,000'), 'USER render must not contain formatted price 5,000').toBe(false);
+    // Positive: it DOES render the staff badge + the staff-safe icon.
+    expect(html.includes('שירות קבוע'), 'USER render shows the "שירות קבוע" badge').toBe(true);
+    expect(html.includes('fa-file-contract'), 'USER render uses the staff icon fa-file-contract').toBe(true);
+  });
+
+  it('ADMIN fixed-price render DOES show financials (₪ + formatted price + hours + entries)', () => {
+    const render = loadRenderer(adminApp);
+    const html = render(fixedPriceFixture, 'fixed');
+    expect(html.includes('₪'), 'ADMIN render contains ₪').toBe(true);
+    expect(html.includes('5,000'), 'ADMIN render contains the formatted price 5,000').toBe(true);
+    expect(html.includes('פיקס'), 'ADMIN render contains "פיקס"').toBe(true);
+    expect(html.includes('שעות עבודה'), 'ADMIN render contains "שעות עבודה"').toBe(true);
+    expect(html.includes('רשומות'), 'ADMIN render contains "רשומות"').toBe(true);
+    expect(html.includes('fa-shekel-sign'), 'ADMIN render uses the shekel icon').toBe(true);
+  });
+
+  it('SHOW_FINANCIALS is default-deny — the fixed-price STAFF (else) branch of the USER source has NO financial tokens', () => {
+    // The user copy CONTAINS the financial block text (it is GATED behind
+    // SHOW_FINANCIALS, not stripped — like logger's prod-override), so a whole-file
+    // grep for "₪"/"פיקס" would legitimately match (the admin block source + the
+    // separate legal_procedure "מחיר פיקס" branch + this file's own header comment).
+    // The meaningful source-level invariant is narrower: the fixed-price STAFF
+    // branch — everything from the `} else {` that opens it onward — must contain
+    // NONE of the fixed-price financial tokens. Combined with the runtime render
+    // assertions above (USER output has zero financials), this proves the tokens
+    // live only inside the admin SHOW_FINANCIALS branch, never the staff path.
+    const userSource = fs.readFileSync(
+      path.join(repoRoot, userApp.jsRoot, cardMod.subpath),
+      'utf8'
+    );
+    const gateIdx = userSource.indexOf('if (SHOW_FINANCIALS) {');
+    expect(gateIdx, 'user source has the SHOW_FINANCIALS gate').toBeGreaterThan(-1);
+    // The staff (else) branch begins at the `} else {` AFTER the gate.
+    const elseIdx = userSource.indexOf('} else {', gateIdx);
+    expect(elseIdx, 'user source has the staff else-branch').toBeGreaterThan(gateIdx);
+    // From the staff branch onward — no ₪, no price, no hours-worked, no entries.
+    // (₪ and 'פיקס' and 'שעות עבודה'/'רשומות' only exist above this point.)
+    const staffBranch = userSource.slice(elseIdx);
+    for (const token of ['₪', 'פיקס', 'שעות עבודה', 'רשומות']) {
+      expect(
+        staffBranch.includes(token),
+        `"${token}" must NOT appear in/after the fixed-price staff else-branch of the user source`
+      ).toBe(false);
+    }
+    // And the price interpolation (Number(service.fixedPrice)) is gated too.
+    expect(
+      staffBranch.includes('fixedPrice'),
+      'the fixed-price staff branch must not reference service.fixedPrice'
+    ).toBe(false);
+  });
+
+  it('H2 — all-inactive packages → remaining-hours 0 in BOTH emits (never the service-level residual)', () => {
+    // Asserts the renderer's LOCAL calculateRemainingHours returns 0 for an
+    // all-inactive-packages service — this is the live path in the ADMIN panel.
+    // In the user-app this function is SHADOWED by core-utils.js/calculators.js
+    // (which keeps the service-level fallback), so H2 is functionally inert
+    // there — this test covers the renderer's local behavior, not the
+    // user-app's live remaining-hours calculation.
+    const allInactive = {
+      id: 'svc-hours-1',
+      packages: [{ status: 'inactive', hoursRemaining: 42, hours: 100, hoursUsed: 58 }],
+      hoursRemaining: 42
+    };
+    for (const app of [adminApp, userApp]) {
+      const render = loadRenderer(app);
+      const html = render(allInactive, 'hours');
+      // No-name fallback title: "שירות שעות · נותרו 0.0 ש'" → proves remaining=0.
+      // (The trailing apostrophe is escaped to &#39; at the sink, so match on the
+      // number, not the quote char.)
+      expect(
+        html.includes('נותרו 0.0'),
+        `${app.name}: all-inactive packages must yield remaining-hours 0 (got a non-zero title)`
+      ).toBe(true);
+      expect(
+        html.includes('נותרו 42'),
+        `${app.name}: must NOT fall back to the service-level residual (42)`
+      ).toBe(false);
+    }
+  });
+
+  it('H3 — hours-service title uses service.name when present, in BOTH emits', () => {
+    const named = {
+      id: 'svc-hours-2',
+      name: 'ייעוץ חודשי',
+      packages: [{ status: 'active', hoursRemaining: 10, hours: 20, hoursUsed: 10 }]
+    };
+    for (const app of [adminApp, userApp]) {
+      const render = loadRenderer(app);
+      const html = render(named, 'hours');
+      expect(
+        html.includes('ייעוץ חודשי'),
+        `${app.name}: hours-service title must use service.name`
+      ).toBe(true);
+      // The generic constant must NOT be the title (it is the subtitle here).
+      expect(
+        html.includes('שירות שעות · נותרו'),
+        `${app.name}: named service must NOT use the no-name fallback title`
+      ).toBe(false);
+    }
+  });
+});
+
 // ── umbrella: the emit's own --check logic reports zero drift ─────────────────
 describe('shared-web emit — checkAgainstCommitted() reports no drift', () => {
   it('verify:shared logic finds no byte or token mismatches', () => {
