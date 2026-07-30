@@ -71,6 +71,7 @@ The registry is the `MODULES` array in `emit.js`. Currently:
 - `shared/work-hours-constants.js` (defines `window.WORK_HOURS_CONSTANTS`)
 - `core/system-constants.js` (defines `window.SYSTEM_CONSTANTS`)
 - `core/config-loader.js` (defines `window.SystemConfigLoader`) — **parameterized**
+- `modules/logger.js` (defines `window.Logger`) — **parameterized**
 
 ## Per-app parameterization (`APP_CONTEXT`)
 

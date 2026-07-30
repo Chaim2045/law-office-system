@@ -85,6 +85,17 @@ const MODULES = [
   {
     subpath: 'core/config-loader.js',
     expectedGlobal: 'SystemConfigLoader'
+  },
+  // PR-SHARE-4 — W2 parameterized pair. The canonical carries an APP_CONTEXT
+  // sentinel; the USER superset appends a "PROD Console Override" block (silences
+  // console.log/info/debug in prod + window.enableDebug()/disableDebug() doors)
+  // gated behind `APP_CONTEXT === 'user' && loggerInstance.isProduction`. The
+  // admin copy gates it OFF → admin never silences console.log (today's behavior
+  // preserved). Like config-loader, the injected literal differs per target, so
+  // the admin and user emitted copies have DIFFERENT bytes and DIFFERENT tokens.
+  {
+    subpath: 'modules/logger.js',
+    expectedGlobal: 'Logger'
   }
 ];
 
