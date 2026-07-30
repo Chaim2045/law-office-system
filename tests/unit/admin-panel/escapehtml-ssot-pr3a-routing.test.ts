@@ -47,7 +47,13 @@ describe('escapeHtml PR3a — dead case-form-validator.js deleted + unreferenced
 describe('escapeHtml PR3a — service-card-renderer routed to the SSOT', () => {
   it('aliases escapeHtml to window.escapeHtml and drops the dead window.safeText fallback', () => {
     const src = read('js/modules/service-card-renderer.js');
-    expect(src).toContain('const escapeHtml = window.escapeHtml;');
+    // PR-SHARE-6 unified this module (shared-web canonical, emit-per-target) and made
+    // H1 escaping `const escapeHtml = window.escapeHtml || <inline 5-entity fallback>`:
+    // admin still routes to the SSOT window.escapeHtml (defined; the `||` fallback is
+    // dead in admin), while the user-app copy — which has no escape-html.js — uses the
+    // inline 5-entity fallback. Assert the SSOT routing (prefix, tolerating the `||`)
+    // and that the dead window.safeText fallback is gone.
+    expect(src).toContain('const escapeHtml = window.escapeHtml');
     expect(src, 'dead window.safeText fallback expression must be removed').not.toContain('window.safeText ||');
   });
 
