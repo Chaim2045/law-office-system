@@ -20,10 +20,17 @@
     "declaration": true,
     "declarationMap": false,
     "sourceMap": false,
-    "removeComments": false
+    "removeComments": false,
+    // Pin LF so the committed emit is byte-deterministic on ANY host (tsc's
+    // default newLine is platform-dependent → CRLF on Windows). This makes the
+    // CI build-drift guard self-defending: it no longer relies on .gitattributes
+    // renormalization to keep the committed shared/*.{js,d.ts} matching a fresh
+    // compile. Folded from the TS-2 devils-advocate pass (2026-07-30).
+    "newLine": "lf"
   },
   "include": [
-    "ts/logger.ts"
+    "ts/logger.ts",
+    "ts/claim-writer.ts"
   ],
   "exclude": [
     "node_modules",

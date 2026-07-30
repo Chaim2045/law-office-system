@@ -43,3 +43,8 @@ functions/shared/logger.js text eol=lf
 functions/shared/logger.d.ts text eol=lf
 functions/shared/ts/logger.ts text eol=lf
 functions/shared/tsconfig.json text eol=lf
+
+# גל-3ה TS-2: claim-writer JS→TS migration — pin generated + source to LF
+functions/shared/claim-writer.js text eol=lf
+functions/shared/claim-writer.d.ts text eol=lf
+functions/shared/ts/claim-writer.ts text eol=lf

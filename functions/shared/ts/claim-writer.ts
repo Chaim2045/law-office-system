@@ -1,4 +1,3 @@
-"use strict";
 /**
  * claim-writer.ts — read-merge-write primitives for Auth custom-claim role edits
  * ─────────────────────────────────────────────────────────────────────────────
@@ -30,29 +29,30 @@
  *
  * Public-repo safety: pure data transform, no logging, no PII, no network.
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.mergeRoleClaim = mergeRoleClaim;
-exports.removeRoleClaim = removeRoleClaim;
+
+export type ClaimMap = Record<string, unknown>;
+
 /**
  * Read-merge-write a role grant: keep every existing claim field, set `role`.
  * @param existingClaims - the user's current customClaims (may be null/undefined)
  * @param role - the role to set (e.g. 'admin', 'partner')
  * @returns the next claims object to write
  */
-function mergeRoleClaim(existingClaims, role) {
-    if (typeof role !== 'string' || role.length === 0) {
-        throw new Error('mergeRoleClaim: role must be a non-empty string');
-    }
-    return { ...(existingClaims || {}), role };
+export function mergeRoleClaim(existingClaims: ClaimMap | null | undefined, role: string): ClaimMap {
+  if (typeof role !== 'string' || role.length === 0) {
+    throw new Error('mergeRoleClaim: role must be a non-empty string');
+  }
+  return { ...(existingClaims || {}), role };
 }
+
 /**
  * Read-merge-write a role removal (targeted field delete): drop ONLY the `role`
  * key, preserve every other claim field. Replaces the legacy blanket-`{}` revoke.
  * @param existingClaims - the user's current customClaims (may be null/undefined)
  * @returns the next claims object to write (role-free)
  */
-function removeRoleClaim(existingClaims) {
-    const next = { ...(existingClaims || {}) };
-    delete next.role;
-    return next;
+export function removeRoleClaim(existingClaims: ClaimMap | null | undefined): ClaimMap {
+  const next: ClaimMap = { ...(existingClaims || {}) };
+  delete next.role;
+  return next;
 }
