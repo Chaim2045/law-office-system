@@ -30,7 +30,8 @@
   },
   "include": [
     "ts/logger.ts",
-    "ts/claim-writer.ts"
+    "ts/claim-writer.ts",
+    "ts/validators.ts"
   ],
   "exclude": [
     "node_modules",

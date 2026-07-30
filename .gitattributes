@@ -48,3 +48,8 @@ functions/shared/tsconfig.json text eol=lf
 functions/shared/claim-writer.js text eol=lf
 functions/shared/claim-writer.d.ts text eol=lf
 functions/shared/ts/claim-writer.ts text eol=lf
+
+# גל-3ה TS-3: validators JS→TS migration — pin generated + source to LF
+functions/shared/validators.js text eol=lf
+functions/shared/validators.d.ts text eol=lf
+functions/shared/ts/validators.ts text eol=lf

@@ -1,4 +1,3 @@
-"use strict";
 /**
  * validators.ts — input-validation utilities (כלי בדיקת קלט)
  * ─────────────────────────────────────────────────────────────────────────────
@@ -24,12 +23,6 @@
  * Public-repo safety: no PII, no secrets. getDescriptionLimit reads a config
  * doc but NEVER logs its value (pinned by client-idnumber-pii-guard.test.js).
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.sanitizeString = sanitizeString;
-exports.isValidIsraeliPhone = isValidIsraeliPhone;
-exports.isValidEmail = isValidEmail;
-exports.isValidIsraeliId = isValidIsraeliId;
-exports.getDescriptionLimit = getDescriptionLimit;
 /**
  * ניקוי HTML (מניעת XSS)
  *
@@ -38,36 +31,15 @@ exports.getDescriptionLimit = getDescriptionLimit;
  *
  * Note: Frontend צריך להשתמש ב-safeText() או textContent בdisplay
  */
-function sanitizeString(str) {
-    if (typeof str !== 'string') {
-        return str;
-    }
-    return str
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-    // Removed: .replace(/"/g, '&quot;') - causes data corruption
-    // Removed: .replace(/'/g, '&#x27;') - causes data corruption
-    // Removed: .replace(/\//g, '&#x2F;') - not an XSS risk
-}
+export declare function sanitizeString(str: unknown): unknown;
 /**
  * אימות מספר טלפון ישראלי
  */
-function isValidIsraeliPhone(phone) {
-    if (!phone) {
-        return true;
-    } // אופציונלי
-    const cleanPhone = phone.replace(/[-\s]/g, '');
-    return /^0(5[0-9]|[2-4]|[7-9])\d{7}$/.test(cleanPhone);
-}
+export declare function isValidIsraeliPhone(phone?: string | null): boolean;
 /**
  * אימות אימייל
  */
-function isValidEmail(email) {
-    if (!email) {
-        return true;
-    } // אופציונלי
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+export declare function isValidEmail(email?: string | null): boolean;
 /**
  * אימות תעודת זהות ישראלית — ספרת ביקורת לפי האלגוריתם הרשמי.
  *
@@ -83,28 +55,7 @@ function isValidEmail(email) {
  * @param id מחרוזת ספרות (ללא מקפים/רווחים; מתבצע trim).
  * @returns true אם ת"ז תקינה, אחרת false.
  */
-function isValidIsraeliId(id) {
-    if (typeof id !== 'string') {
-        return false;
-    }
-    const digits = id.trim();
-    if (!/^\d{1,9}$/.test(digits)) {
-        return false;
-    }
-    const padded = digits.padStart(9, '0');
-    if (padded === '000000000') {
-        return false;
-    } // לא ת"ז אמיתית
-    let sum = 0;
-    for (let i = 0; i < 9; i++) {
-        let inc = Number(padded[i]) * ((i % 2) + 1); // משקלים 1,2,1,2,...
-        if (inc > 9) {
-            inc -= 9;
-        }
-        sum += inc;
-    }
-    return sum % 10 === 0;
-}
+export declare function isValidIsraeliId(id: unknown): boolean;
 /**
  * שליפת מגבלת תווים לתיאור מתוך system_config (Firestore).
  * Fallback ל-SYSTEM_CONSTANTS אם אין config.
@@ -112,22 +63,4 @@ function isValidIsraeliId(id) {
  * @param field
  * @returns
  */
-async function getDescriptionLimit(field) {
-    const { SYSTEM_CONSTANTS } = require('./constants');
-    const keyMap = {
-        taskDescription: 'TASK_DESCRIPTION',
-        timesheetDescription: 'TIMESHEET_DESCRIPTION'
-    };
-    const fallback = SYSTEM_CONSTANTS.DESCRIPTION_LIMITS[keyMap[field]] || 50;
-    try {
-        const admin = require('firebase-admin');
-        const doc = await admin.firestore().collection('_system').doc('system_config').get();
-        if (doc.exists && doc.data().descriptionLimits && doc.data().descriptionLimits[field]) {
-            return doc.data().descriptionLimits[field];
-        }
-    }
-    catch {
-        // Firestore unavailable — use fallback
-    }
-    return fallback;
-}
+export declare function getDescriptionLimit(field: 'taskDescription' | 'timesheetDescription'): Promise<number>;
