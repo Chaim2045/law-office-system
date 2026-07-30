@@ -35,6 +35,13 @@ describe('claim-writer.mergeRoleClaim', () => {
   it('rejects an empty / non-string role', () => {
     expect(() => mergeRoleClaim({}, '')).toThrow();
     expect(() => mergeRoleClaim({}, undefined)).toThrow();
+    // Non-string roles must fail-closed too — pins the `typeof role !== 'string'`
+    // branch so a future guard "simplification" to `role.length === 0` (which
+    // would let mergeRoleClaim({}, 123) write a numeric role claim to Auth)
+    // fails this test. Folded from the TS-2 devils-advocate pass (2026-07-30).
+    expect(() => mergeRoleClaim({}, 123)).toThrow();
+    expect(() => mergeRoleClaim({}, null)).toThrow();
+    expect(() => mergeRoleClaim({}, {})).toThrow();
   });
 });
 
