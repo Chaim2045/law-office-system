@@ -16,6 +16,17 @@
 > removed: the admin copy was retired in H.4 PR-a (#376) and the user-app
 > `components/task-approval-system/` folder was deleted in H.4 PR-b. Model A (smart
 > budget meter) replaced the approval gate — see `docs/MASTER_PLAN.md` §8.6.
+>
+> **Correction (cleanup גל-3ד, 2026-07-30):** the **WhatsApp / Twilio surface is GONE.**
+> `functions/whatsapp/index.js` and its 4 CFs — `whatsappWebhook`, `sendBroadcastMessage`,
+> `sendWhatsAppApprovalNotification`, `onApprovalCreated` (listed in §1/§2 below) — were
+> deleted and removed from prod in PR #474 (frontend) + #475 (backend). The
+> `function_monitor_*` POC (its `function-monitor*.js` modules + the
+> `function-monitor-analytics.html` dashboard, referenced below) was likewise retired
+> (S1 #477 locked `function_monitor_logs` → `if false`; S3 #479 deleted the modules).
+> The collections `whatsapp_approval_notifications` / `whatsapp_bot_interactions` /
+> `function_monitor_logs` have no live reader/writer. Treat every WhatsApp/Twilio and
+> function-monitor row below as HISTORICAL.
 
 ---
 
