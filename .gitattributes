@@ -36,3 +36,10 @@ apps/user-app/js/modules/logger.js text eol=lf
 # SHOW_FINANCIALS-gated fixed-price branch → different tokens by design.)
 apps/admin-panel/js/modules/service-card-renderer.js text eol=lf
 apps/user-app/js/modules/service-card-renderer.js text eol=lf
+
+# גל-3ה TS-1: logger JS→TS migration — pin generated + source to LF
+# (tsc emits LF; without this a Windows checkout would flip the committed output)
+functions/shared/logger.js text eol=lf
+functions/shared/logger.d.ts text eol=lf
+functions/shared/ts/logger.ts text eol=lf
+functions/shared/tsconfig.json text eol=lf

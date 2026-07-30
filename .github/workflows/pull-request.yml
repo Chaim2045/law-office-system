@@ -208,6 +208,23 @@ jobs:
             echo "⏭️  Skipped — no .ts files in functions/src-ts/ yet."
           fi
 
+      # גל-3ה TS-1 (A′ in-place): the safe-tier TS migrations commit their COMPILED
+      # output (functions/shared/logger.js + .d.ts, etc.) — the deploy ships committed
+      # files with no build hook. Guard that the committed output equals a fresh build,
+      # so an edit to shared/ts/*.ts that forgets to rebuild+commit fails CI instead of
+      # silently shipping stale output. Covers every current + future shared/ TS module.
+      - name: 🔒 shared/ TS build-drift guard (גל-3ה)
+        run: |
+          if [ -f functions/shared/tsconfig.json ]; then
+            echo "Rebuilding functions/shared/*.ts and comparing to committed output..."
+            cd functions && npm ci --prefer-offline --no-audit && npx tsc --project shared/tsconfig.json && cd ..
+            git diff --exit-code -- 'functions/shared/*.js' 'functions/shared/*.d.ts' \
+              || { echo "::error::Committed functions/shared compiled output is STALE. Run 'cd functions && npm run build:ts' and commit the regenerated .js/.d.ts."; exit 1; }
+            echo "✅ shared/ committed output matches a fresh build."
+          else
+            echo "⏭️  Skipped — no functions/shared/tsconfig.json yet."
+          fi
+
       - name: ✅ TypeScript Validation Passed
         run: echo "✅ All TypeScript files compiled successfully!"
 

@@ -14,8 +14,8 @@
     "test:coverage": "jest --coverage",
     "test:ts": "jest --selectProjects src-ts --verbose",
     "test:legacy": "jest --selectProjects legacy-js --verbose",
-    "build:ts": "tsc --project src-ts/tsconfig.json",
-    "typecheck:ts": "tsc --project src-ts/tsconfig.json --noEmit"
+    "build:ts": "tsc --project shared/tsconfig.json && tsc --project src-ts/tsconfig.json",
+    "typecheck:ts": "tsc --project shared/tsconfig.json --noEmit && tsc --project src-ts/tsconfig.json --noEmit"
   },
   "engines": {
     "node": "20"

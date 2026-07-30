@@ -46,27 +46,46 @@
  * - LEGACY code (existing console.* calls): NO mass rewrite. Refactor
  *   opportunistically when touching a file for another reason.
  */
+
+import * as ffLogger from 'firebase-functions/logger';
+
 export type LogFields = Record<string, unknown>;
+
 /**
  * Structured info-level log.
  * @param action - dot.separated.event_name (snake_case)
  * @param fields - structured fields; avoid PII (see file header)
  */
-export declare function info(action: string, fields?: LogFields): void;
+export function info(action: string, fields: LogFields = {}): void {
+  ffLogger.info(action, fields);
+}
+
 /** Structured warning. Use for recoverable issues / unexpected-but-handled state. */
-export declare function warn(action: string, fields?: LogFields): void;
+export function warn(action: string, fields: LogFields = {}): void {
+  ffLogger.warn(action, fields);
+}
+
 /**
  * Structured error. Use for failures requiring investigation.
  * NEVER pass raw user-facing errors — strip PII before logging.
  */
-export declare function error(action: string, fields?: LogFields): void;
+export function error(action: string, fields: LogFields = {}): void {
+  ffLogger.error(action, fields);
+}
+
 /**
  * Debug-level — typically filtered out in production by Cloud Logging
  * sampling. Safe to leave in code; do not rely on it for monitoring.
  */
-export declare function debug(action: string, fields?: LogFields): void;
+export function debug(action: string, fields: LogFields = {}): void {
+  ffLogger.debug(action, fields);
+}
+
 /**
  * Raw `firebase-functions/logger` — escape hatch for advanced cases that need
  * direct severity setters. Use sparingly.
  */
-export declare const _raw: unknown;
+// Explicitly typed `unknown` (NOT the inferred namespace type) so the GENERATED
+// `.d.ts` is deterministic across environments — matches the old hand-written
+// contract and never varies with whether firebase-functions types resolve.
+export const _raw: unknown = ffLogger;
