@@ -148,6 +148,21 @@
 
 ---
 
+## 6. מסמכי פיצ'רים שפורקו (2026-07-30, PR-DOCS-3, גל-3ד)
+
+מסמכים שתיארו פיצ'ר **שנמחק לגמרי מהקוד** — שום דבר שהם מתעדים לא קיים עוד.
+הועברו לכאן (לא באנר) כי אין מה לתקן — הפיצ'ר איננו.
+
+| מסמך | פיצ'ר | למה מת |
+|---|---|---|
+| `FUNCTION_MONITOR_README.md` | POC ניטור-פונקציות (dashboard בתוך-האפליקציה, `FunctionMonitorHelper`, `function_monitor_logs`) | המודולים נמחקו (S3 #479); הכלל ננעל `if false` (S1 #477). 0 קוד קיים. |
+| `ANALYTICS_DASHBOARD_GUIDE.md` | `function-monitor-analytics.html` — dashboard עצמאי מעל `function_monitor_logs` | אותו POC מת; קובץ ה-HTML לא קיים ברפו. |
+| `WHATSAPP-PDF-UPLOAD-FEATURE.md` | העלאת-PDF דרך WhatsApp (Twilio → Storage → `feeAgreements[]`) | בנוי כולו על `whatsappWebhook`+Twilio שנמחקו (#474/#475). |
+
+**קרא במקום:** `SYSTEM_MAP.md` + `SYSTEM_STATUS.md` (קיבלו באנרי-תיקון המסמנים את שורות ה-WhatsApp/function-monitor כהיסטוריות) · `docs/MASTER_PLAN.md` §14 (רשומת פירוק WhatsApp/Twilio).
+
+---
+
 ## מה **לא** הועבר לכאן, ולמה
 
 - **`docs/architecture/TIME-TRACKING-FLOW.md`** — נשאר במקומו. כל מנגנון שהוא מתאר אומת מול
