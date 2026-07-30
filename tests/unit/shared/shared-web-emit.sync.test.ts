@@ -163,7 +163,12 @@ describe('shared-web emit — emitted copy defines its global without throwing',
         //     is set synchronously before any timer would run anyway).
         // `console` is a genuine Node global (system-constants logs at load) and
         // is intentionally NOT shadowed.
-        const fakeWindow: Record<string, unknown> = {};
+        // `location` is provided because modules/logger.js reads
+        // `window.location.hostname` in its constructor (env auto-detect); a bare
+        // {} would throw before the module defines its global. hostname is a
+        // non-prod value so the user copy's prod console-override stays dormant
+        // here (its user-only + prod-only behavior is asserted in check 7).
+        const fakeWindow: Record<string, unknown> = { location: { hostname: 'localhost' } };
         const fakeLogger = { log: () => {}, error: () => {}, warn: () => {}, info: () => {} };
         const noopSetTimeout = () => 0;
         const runner = new Function('window', 'Logger', 'setTimeout', source);
@@ -258,6 +263,90 @@ return;
     // get/getVersion are additive (present but dormant/uncalled in the user app).
     expect(typeof loader.get, 'user get() present but dormant').toBe('function');
     expect(typeof loader.getVersion, 'user getVersion() present but dormant').toBe('function');
+  });
+});
+
+// ── check 7: logger PROD console-override is USER-only (per-target behavior) ──
+// logger is the second parameterized module (PR-SHARE-4). The USER copy appends a
+// "PROD Console Override" that, in production, silences console.log/info/debug and
+// installs window.enableDebug()/disableDebug(); the ADMIN copy gates it OFF so it
+// NEVER silences console.log (preserves today's admin behavior). Both emitted
+// copies CONTAIN the block text (it is gated, not stripped) — so a raw marker/byte
+// check cannot distinguish them; only the RUNTIME behavior can. Load each copy
+// against a fake PRODUCTION window and assert the app-context-gated surface.
+describe('shared-web emit — logger PROD console-override is user-only (per target)', () => {
+  const loggerMod = emit.MODULES.find((m) => m.subpath === 'modules/logger.js');
+
+  it('logger is registered', () => {
+    expect(loggerMod, 'modules/logger.js must be a registered MODULE').toBeTruthy();
+  });
+
+  if (!loggerMod) {
+return;
+}
+
+  // Load an emitted logger copy against a fake PRODUCTION window. The user copy
+  // REPLACES the genuine console.log/info/debug globally when it runs the prod
+  // override, so save/restore them around the load. Returns whether the copy
+  // installed the override (console.log got replaced) + the populated window.
+  function loadLoggerInProd(app: App): { win: Record<string, unknown>; overrodeConsole: boolean } {
+    const committedPath = path.join(repoRoot, app.jsRoot, loggerMod!.subpath);
+    const source = fs.readFileSync(committedPath, 'utf8');
+    // A production hostname → isProduction === true in SecureLogger's constructor.
+    const win: Record<string, unknown> = { location: { hostname: 'app.netlify.app' } };
+    const origLog = console.log;
+    const origInfo = console.info;
+    const origDebug = console.debug;
+    let overrodeConsole = false;
+    try {
+      const runner = new Function('window', source);
+      runner(win);
+      // If the copy installed the prod override, console.log is no longer origLog.
+      overrodeConsole = console.log !== origLog;
+    } finally {
+      (console as unknown as { log: unknown }).log = origLog;
+      (console as unknown as { info: unknown }).info = origInfo;
+      (console as unknown as { debug: unknown }).debug = origDebug;
+    }
+    return { win, overrodeConsole };
+  }
+
+  it('admin copy: NO prod console-override — console untouched, no debug doors', () => {
+    const admin = emit.APPS.find((a) => a.name === 'admin-panel')!;
+    const { win, overrodeConsole } = loadLoggerInProd(admin);
+    // The crux: admin must NOT silence console.log in prod (behavior regression).
+    expect(overrodeConsole, 'admin copy must NOT replace console.log in production').toBe(false);
+    expect(typeof win.enableDebug, 'admin copy must NOT install window.enableDebug').toBe('undefined');
+    expect(typeof win.disableDebug, 'admin copy must NOT install window.disableDebug').toBe('undefined');
+    // Sanity: it still defines the logger global.
+    expect(typeof win.Logger, 'admin copy defines window.Logger').toBe('object');
+  });
+
+  it('user copy: prod console-override PRESENT + gated on isProduction — debug doors installed', () => {
+    const user = emit.APPS.find((a) => a.name === 'user-app')!;
+    const { win, overrodeConsole } = loadLoggerInProd(user);
+    // The user copy silences console.log/info/debug in prod and installs the doors.
+    expect(overrodeConsole, 'user copy must silence console.log in production').toBe(true);
+    expect(typeof win.enableDebug, 'user copy installs window.enableDebug in prod').toBe('function');
+    expect(typeof win.disableDebug, 'user copy installs window.disableDebug in prod').toBe('function');
+    expect(typeof win.Logger, 'user copy defines window.Logger').toBe('object');
+  });
+
+  it('user copy: override is GATED on isProduction — dormant in a non-prod env', () => {
+    // Same user copy, but a non-prod hostname → the double guard
+    // (APP_CONTEXT==='user' && isProduction) is false → no override, no doors.
+    const user = emit.APPS.find((a) => a.name === 'user-app')!;
+    const committedPath = path.join(repoRoot, user.jsRoot, loggerMod!.subpath);
+    const source = fs.readFileSync(committedPath, 'utf8');
+    const win: Record<string, unknown> = { location: { hostname: 'localhost' } };
+    const origLog = console.log;
+    try {
+      new Function('window', source)(win);
+      expect(console.log !== origLog, 'user copy must NOT silence console.log outside production').toBe(false);
+    } finally {
+      (console as unknown as { log: unknown }).log = origLog;
+    }
+    expect(typeof win.enableDebug, 'user copy installs no debug door outside prod').toBe('undefined');
   });
 });
 
