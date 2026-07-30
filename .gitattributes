@@ -19,3 +19,8 @@ apps/admin-panel/js/shared/work-hours-constants.js text eol=lf
 apps/user-app/js/shared/work-hours-constants.js text eol=lf
 apps/admin-panel/js/core/system-constants.js text eol=lf
 apps/user-app/js/core/system-constants.js text eol=lf
+# PR-SHARE-3 — W2 parameterized pair (config-loader): pin the emitted copies to
+# LF so the per-target content-hash tokens are OS-deterministic. (admin and user
+# copies differ by the injected APP_CONTEXT literal → different tokens by design.)
+apps/admin-panel/js/core/config-loader.js text eol=lf
+apps/user-app/js/core/config-loader.js text eol=lf

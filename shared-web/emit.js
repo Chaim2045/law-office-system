@@ -73,13 +73,26 @@ const MODULES = [
   {
     subpath: 'core/system-constants.js',
     expectedGlobal: 'SYSTEM_CONSTANTS'
+  },
+  // PR-SHARE-3 — W2 parameterized pair. The canonical carries an APP_CONTEXT
+  // sentinel (see injectAppContext) that emit.js stamps per target ('admin' vs
+  // 'user'). The admin superset (version tracking + get/getVersion + verbose
+  // logs) is gated behind `APP_CONTEXT === 'admin'`; the user copy is lean.
+  // Because the injected value differs per target, the admin and user emitted
+  // copies legitimately have DIFFERENT bytes and therefore DIFFERENT content-hash
+  // tokens — the emit computes tokens PER TARGET (unlike the byte-identical pairs
+  // above, whose two copies share one token).
+  {
+    subpath: 'core/config-loader.js',
+    expectedGlobal: 'SystemConfigLoader'
   }
 ];
 
-// The two publish-root app trees the canonical source emits into.
+// The two publish-root app trees the canonical source emits into. `context` is
+// the APP_CONTEXT literal injected into parameterized modules for that target.
 const APPS = [
-  { name: 'admin-panel', jsRoot: path.join('apps', 'admin-panel', 'js'), htmlRoot: path.join('apps', 'admin-panel') },
-  { name: 'user-app', jsRoot: path.join('apps', 'user-app', 'js'), htmlRoot: path.join('apps', 'user-app') }
+  { name: 'admin-panel', context: 'admin', jsRoot: path.join('apps', 'admin-panel', 'js'), htmlRoot: path.join('apps', 'admin-panel') },
+  { name: 'user-app', context: 'user', jsRoot: path.join('apps', 'user-app', 'js'), htmlRoot: path.join('apps', 'user-app') }
 ];
 
 // Directories never scanned for html (build output / deps / vcs).
@@ -107,6 +120,37 @@ function toLF(buffer) {
 /** Read the canonical bytes of a module, normalized to LF. */
 function readCanonical(mod) {
   return toLF(fs.readFileSync(canonicalPath(mod)));
+}
+
+/**
+ * Per-target APP_CONTEXT injection (PR-SHARE-3, docs/PLAN-SHARED-CODE-MECHANISM.md
+ * §2.1 Option A). The canonical of a parameterized module contains a sentinel:
+ *   const APP_CONTEXT = / *__APP_CONTEXT__* / 'user';
+ * This replaces the string literal following the sentinel with the target app's
+ * context ('admin' | 'user'). Deterministic and greppable.
+ *
+ * Modules WITHOUT the sentinel are returned unchanged (the regex does not match)
+ * → they emit byte-identical into both apps, exactly as before this PR.
+ */
+function injectAppContext(bytes, context) {
+  const src = bytes.toString('utf8');
+  // Anchor on the sentinel comment, then swap only the immediately-following
+  // 'admin'|'user' string literal. Single replacement (the sentinel is unique).
+  const re = /(\/\*__APP_CONTEXT__\*\/\s*)(['"])(?:admin|user)\2/;
+  if (!re.test(src)) {
+    return bytes;
+  }
+  return Buffer.from(src.replace(re, '$1$2' + context + '$2'), 'utf8');
+}
+
+/**
+ * The exact bytes emitted into a given app for a module: canonical (LF) with the
+ * app's APP_CONTEXT injected. For non-parameterized modules this equals the raw
+ * canonical bytes (same for both apps). This is the SINGLE source of the emitted
+ * bytes — both the writer and the drift-guard go through it.
+ */
+function emittedBytesFor(mod, app) {
+  return injectAppContext(readCanonical(mod), app.context);
 }
 
 /** Content-hash cache-bust token: sh-<first 8 hex chars of sha256(bytes)>. */
@@ -157,6 +201,11 @@ function collectHtmlFiles(absDir, acc) {
   return acc;
 }
 
+/** All html files under one app's html root (absolute paths). */
+function htmlFilesForApp(app) {
+  return collectHtmlFiles(path.join(REPO_ROOT, app.htmlRoot), []);
+}
+
 /** All html files across both apps (absolute paths). */
 function allHtmlFiles() {
   const files = [];
@@ -176,38 +225,51 @@ function allHtmlFiles() {
 function emitToApps() {
   const summary = { modules: [], htmlFilesRewritten: 0, tokenRewrites: 0 };
 
-  // 1) Write the byte-identical copies + compute tokens.
-  const tokenBySubpath = {};
+  // 1) Write the per-target copies + compute tokens PER APP (the injected
+  //    APP_CONTEXT can make admin/user bytes — and thus tokens — differ).
+  //    tokenByApp[app.name][subpath] = the content-hash token for that copy.
+  const tokenByApp = {};
+  const modTokens = {};
+  for (const app of APPS) {
+    tokenByApp[app.name] = {};
+  }
   for (const mod of MODULES) {
-    const bytes = readCanonical(mod);
-    const token = tokenFor(bytes);
-    tokenBySubpath[mod.subpath] = token;
-    const copies = [];
+    const perApp = {};
     for (const app of APPS) {
+      const bytes = emittedBytesFor(mod, app);
+      const token = tokenFor(bytes);
+      tokenByApp[app.name][mod.subpath] = token;
       const dest = path.join(REPO_ROOT, app.jsRoot, mod.subpath);
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, bytes);
-      copies.push(path.relative(REPO_ROOT, dest).split(path.sep).join('/'));
+      perApp[app.name] = {
+        token,
+        copy: path.relative(REPO_ROOT, dest).split(path.sep).join('/')
+      };
     }
-    summary.modules.push({ subpath: mod.subpath, token, copies });
+    modTokens[mod.subpath] = perApp;
+    summary.modules.push({ subpath: mod.subpath, perApp });
   }
 
-  // 2) Rewrite tokens on every referencing <script src> in every html page.
-  for (const htmlPath of allHtmlFiles()) {
-    const original = fs.readFileSync(htmlPath, 'utf8');
-    let content = original;
-    for (const mod of MODULES) {
-      const token = tokenBySubpath[mod.subpath];
-      const re = refRegExp(mod.subpath);
-      content = content.replace(re, (match, quote, src) => {
-        summary.tokenRewrites += 1;
-        return 'src=' + quote + src + '?v=' + token + quote;
-      });
-    }
-    // Only write when bytes actually changed (avoid touching untouched files).
-    if (content !== original) {
-      fs.writeFileSync(htmlPath, content, 'utf8');
-      summary.htmlFilesRewritten += 1;
+  // 2) Rewrite tokens on every referencing <script src> in every html page,
+  //    using THAT PAGE'S APP token for the module (per-target correctness).
+  for (const app of APPS) {
+    for (const htmlPath of htmlFilesForApp(app)) {
+      const original = fs.readFileSync(htmlPath, 'utf8');
+      let content = original;
+      for (const mod of MODULES) {
+        const token = tokenByApp[app.name][mod.subpath];
+        const re = refRegExp(mod.subpath);
+        content = content.replace(re, (match, quote, src) => {
+          summary.tokenRewrites += 1;
+          return 'src=' + quote + src + '?v=' + token + quote;
+        });
+      }
+      // Only write when bytes actually changed (avoid touching untouched files).
+      if (content !== original) {
+        fs.writeFileSync(htmlPath, content, 'utf8');
+        summary.htmlFilesRewritten += 1;
+      }
     }
   }
 
@@ -226,20 +288,26 @@ function checkAgainstCommitted() {
   const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'shared-web-check-'));
 
   try {
-    const expectedToken = {};
+    // Expected token is PER APP (parameterized modules differ per target).
+    // expectedTokenByApp[app.name][subpath] = content hash of that app's copy.
+    const expectedTokenByApp = {};
+    for (const app of APPS) {
+      expectedTokenByApp[app.name] = {};
+    }
+
     for (const mod of MODULES) {
-      const bytes = readCanonical(mod);
-      const token = tokenFor(bytes);
-      expectedToken[mod.subpath] = token;
-
-      // Emit into the temp dir (proves emit is reproducible), then byte-compare
-      // BOTH committed copies against the freshly-emitted bytes.
-      const tmpFile = path.join(tmpBase, mod.subpath);
-      fs.mkdirSync(path.dirname(tmpFile), { recursive: true });
-      fs.writeFileSync(tmpFile, bytes);
-      const emittedBytes = fs.readFileSync(tmpFile);
-
       for (const app of APPS) {
+        const bytes = emittedBytesFor(mod, app);
+        const token = tokenFor(bytes);
+        expectedTokenByApp[app.name][mod.subpath] = token;
+
+        // Emit into the temp dir (proves emit is reproducible), then byte-compare
+        // this app's committed copy against the freshly-emitted bytes.
+        const tmpFile = path.join(tmpBase, app.name, mod.subpath);
+        fs.mkdirSync(path.dirname(tmpFile), { recursive: true });
+        fs.writeFileSync(tmpFile, bytes);
+        const emittedBytes = fs.readFileSync(tmpFile);
+
         const committedPath = path.join(REPO_ROOT, app.jsRoot, mod.subpath);
         const rel = path.relative(REPO_ROOT, committedPath).split(path.sep).join('/');
         if (!fs.existsSync(committedPath)) {
@@ -256,25 +324,28 @@ function checkAgainstCommitted() {
       }
     }
 
-    // Token correctness: every referencing page's ?v= must equal the content hash.
-    for (const htmlPath of allHtmlFiles()) {
-      const content = fs.readFileSync(htmlPath, 'utf8');
-      const rel = path.relative(REPO_ROOT, htmlPath).split(path.sep).join('/');
-      for (const mod of MODULES) {
-        const token = expectedToken[mod.subpath];
-        // Find each reference and its token (or lack thereof).
-        const finder = new RegExp(
-          'src=(["\'])(' + escapeRegExp('js/' + mod.subpath.split(path.sep).join('/')) + ')(\\?v=([^"\']*))?\\1',
-          'g'
-        );
-        let m;
-        while ((m = finder.exec(content)) !== null) {
-          const presentToken = m[4]; // undefined if no ?v=
-          if (presentToken !== token) {
-            problems.push(
-              `TOKEN MISMATCH: ${rel} references ${mod.subpath} with ?v=${presentToken || '(none)'} ` +
-              `but content hash is ?v=${token}. Run \`npm run emit:shared\`.`
-            );
+    // Token correctness: every referencing page's ?v= must equal the content hash
+    // of THAT PAGE'S APP copy.
+    for (const app of APPS) {
+      for (const htmlPath of htmlFilesForApp(app)) {
+        const content = fs.readFileSync(htmlPath, 'utf8');
+        const rel = path.relative(REPO_ROOT, htmlPath).split(path.sep).join('/');
+        for (const mod of MODULES) {
+          const token = expectedTokenByApp[app.name][mod.subpath];
+          // Find each reference and its token (or lack thereof).
+          const finder = new RegExp(
+            'src=(["\'])(' + escapeRegExp('js/' + mod.subpath.split(path.sep).join('/')) + ')(\\?v=([^"\']*))?\\1',
+            'g'
+          );
+          let m;
+          while ((m = finder.exec(content)) !== null) {
+            const presentToken = m[4]; // undefined if no ?v=
+            if (presentToken !== token) {
+              problems.push(
+                `TOKEN MISMATCH: ${rel} references ${mod.subpath} with ?v=${presentToken || '(none)'} ` +
+                `but content hash is ?v=${token}. Run \`npm run emit:shared\`.`
+              );
+            }
           }
         }
       }
@@ -306,9 +377,10 @@ function main() {
   const summary = emitToApps();
   console.log('✅ emit:shared complete');
   for (const mod of summary.modules) {
-    console.log(`   • ${mod.subpath} → ?v=${mod.token}`);
-    for (const c of mod.copies) {
-      console.log(`       ${c}`);
+    console.log(`   • ${mod.subpath}`);
+    for (const app of APPS) {
+      const info = mod.perApp[app.name];
+      console.log(`       ${info.copy} → ?v=${info.token}`);
     }
   }
   console.log(`   html files rewritten: ${summary.htmlFilesRewritten}, token rewrites: ${summary.tokenRewrites}`);
@@ -325,8 +397,11 @@ module.exports = {
   REPO_ROOT,
   canonicalPath,
   readCanonical,
+  injectAppContext,
+  emittedBytesFor,
   tokenFor,
   refRegExp,
+  htmlFilesForApp,
   allHtmlFiles,
   emitToApps,
   checkAgainstCommitted

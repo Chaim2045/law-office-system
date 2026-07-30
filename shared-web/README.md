@@ -65,6 +65,38 @@ could not prevent — it only touches the two `index.html` files).
 The registry is the `MODULES` array in `emit.js`. Currently:
 
 - `modules/idle-timeout-manager.js` (defines `window.IdleTimeoutManager`)
+- `modules/work-hours-calculator.js` (defines `window.WorkHoursCalculator`)
+- `shared/business-rules-adapter.js` (defines `window.BUSINESS_RULES`)
+- `shared/holidays-cache.js` (defines `window.WORK_HOURS_HOLIDAYS_MAP`)
+- `shared/work-hours-constants.js` (defines `window.WORK_HOURS_CONSTANTS`)
+- `core/system-constants.js` (defines `window.SYSTEM_CONSTANTS`)
+- `core/config-loader.js` (defines `window.SystemConfigLoader`) — **parameterized**
+
+## Per-app parameterization (`APP_CONTEXT`)
+
+Most shared modules emit **byte-identical** into both apps. A few legitimately
+differ by app (e.g. `config-loader` — the admin panel tracks a config version and
+exposes `get()`/`getVersion()` + verbose logs that the user app does not need).
+
+These express the divergence from ONE canonical source via an **emit-injected
+constant**. The canonical carries a sentinel line:
+
+```js
+const APP_CONTEXT = /*__APP_CONTEXT__*/ 'user';
+```
+
+`emit.js` replaces the literal per target — `'admin'` when emitting into
+`apps/admin-panel/js/…`, `'user'` when emitting into `apps/user-app/js/…`.
+App-specific behavior is then gated behind `if (APP_CONTEXT === 'admin')` etc.
+The default value (`'user'`) is fail-lean: any value other than the exact
+`'admin'` literal keeps the admin-only surface OFF.
+
+**Consequence:** a parameterized module's two emitted copies have **different
+bytes** and therefore **different `?v=sh-…` tokens** (one per app). This is
+correct and expected — the emit computes tokens per target, and the drift-guard
+asserts the injected literal + the per-target token on each copy. Modules without
+the sentinel are unaffected: their two copies stay byte-identical with one shared
+token.
 
 `update-cache-busting.js` is left intact for all **non-shared** refs; the emit
 only owns the tokens of the modules it emits.

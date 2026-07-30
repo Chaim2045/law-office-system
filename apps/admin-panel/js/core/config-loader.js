@@ -1,8 +1,19 @@
 /**
- * System Config Loader — Admin Panel
- * ====================================
+ * System Config Loader — Shared (admin-panel + user-app)
+ * ======================================================
  * Loads system configuration from Firestore _system/system_config.
  * Falls back to static SYSTEM_CONSTANTS if Firestore is unavailable.
+ *
+ * SSOT: shared-web/src/core/config-loader.js — NEVER edit the emitted copies
+ * under apps/admin-panel/js/core/ or apps/user-app/js/core/. Edit HERE and run
+ * `npm run emit:shared` (see shared-web/README.md).
+ *
+ * Per-app parameterization via the emit-injected APP_CONTEXT constant:
+ *   'admin' → version tracking + verbose load logs + "ready" log (admin superset)
+ *   'user'  → lean loader (no version tracking, no load logs)
+ * get()/getVersion() are additive and present in both copies; only admin calls
+ * them today (apps/admin-panel/js/ui/SystemSettingsPage.js). They are dormant,
+ * never-called, side-effect-free in the user-app copy.
  *
  * Exports: window.SystemConfigLoader
  * After load: window.SYSTEM_CONFIG
@@ -12,11 +23,18 @@
 (function() {
   'use strict';
 
+  // APP_CONTEXT is injected per target by shared-web/emit.js:
+  //   'admin' when emitted into apps/admin-panel/js/…
+  //   'user'  when emitted into apps/user-app/js/…
+  // The sentinel comment below is the injection anchor. The default 'user' is a
+  // fail-lean value: anything other than the exact literal 'admin' keeps the
+  // admin-only surface OFF. See shared-web/README.md.
+  const APP_CONTEXT = /*__APP_CONTEXT__*/ 'admin';
+
   const SystemConfigLoader = {
     config: null,
     loaded: false,
     loading: false,
-    version: null,
 
     /**
      * Load config from Firestore with fallback to static constants.
@@ -70,13 +88,17 @@
       return db.collection('_system').doc('system_config').get()
         .then(function(doc) {
           if (!doc.exists) {
-            console.log('⚠️ No system_config in Firestore, using static defaults');
+            if (APP_CONTEXT === 'admin') {
+              console.log('⚠️ No system_config in Firestore, using static defaults');
+            }
             return window.SYSTEM_CONSTANTS;
           }
 
           const data = doc.data();
-          self.version = data._version || null;
-          console.log('✅ System config loaded from Firestore (v' + self.version + ')');
+          if (APP_CONTEXT === 'admin') {
+            self.version = data._version || null;
+            console.log('✅ System config loaded from Firestore (v' + self.version + ')');
+          }
           return data;
         });
     },
@@ -103,6 +125,12 @@
   };
 
   window.SystemConfigLoader = SystemConfigLoader;
-  console.log('✅ Config Loader ready');
+
+  // Admin-only surface: version-tracking init + the "ready" log. Gated so the
+  // user-app copy emits no extra console output and carries no `version` field.
+  if (APP_CONTEXT === 'admin') {
+    SystemConfigLoader.version = null;
+    console.log('✅ Config Loader ready');
+  }
 
 })();
