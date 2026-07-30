@@ -131,12 +131,32 @@
 
 ---
 
+## 5. איחוד-בכמות — דוחות ומדריכים היסטוריים (2026-07-30, PR-DOCS-2, גל-3ד)
+
+הקבוצות הבאות הועברו לכאן כ**רשומות מתוארכות** (לא מקורות-אמת מטעים — הן מתעדות
+*מה נעשה בתאריך מסוים*, לא את המערכת הנוכחית). אינן דורשות כותרת-תיקון פרטנית;
+נשמרות להיסטוריה בלבד. **קרא במקום:** `docs/HEALTH-MAP-2026-07.md` (מפת-הבריאות
+הנוכחית) · `CLAUDE.md` · `docs/MASTER_PLAN.md`.
+
+| קבוצה | מה | מיקום קודם |
+|---|---|---|
+| `analysis/` (14) | ניתוחי-מערכת ודוחות חד-פעמיים | `docs/analysis/` |
+| `fixes/` (7) | סיכומי תיקוני-באגים היסטוריים | `docs/fixes/` |
+| `case-creation/` (5) | תוכניות רפקטור case-creation + `LEGACY-BACKUP` | `.claude/CASE-CREATION-*`, `apps/user-app/components/add-task/LEGACY-BACKUP.md` |
+| מדריכי-הגירה + הסברים | EVENTBUS/ENTERPRISE_V2/REACT migration guides, QUICK-START(×2), SIMPLE_EXPLANATION, ASYNC-EXPLANATION, NEXT_STEPS, SERVER_CODE_ANALYSIS, SERVER_MIGRATION_MAP, מעבר-לצד-שרת, INSTRUCTIONS-UPDATE-DIALOG, ENTERPRISE_V2_GAPS | `docs/`, `docs/architecture/`, `.claude/` |
+| `sessions/` | לוג-סשן 2025-12-02 | `.claude/sessions/` |
+
+---
+
 ## מה **לא** הועבר לכאן, ולמה
 
 - **`docs/architecture/TIME-TRACKING-FLOW.md`** — נשאר במקומו. כל מנגנון שהוא מתאר אומת מול
   הקוד וקיים (`writeClientWithCanonicalAggregates` ב-10 קבצים; מצב `log_only` ב-
   `functions/triggers/timesheet-trigger.js:593`). מה שהתיישן הוא ההכרזה על "steady-state קנוני",
   ושני שמות אוספים שגויים. נוספה לו כותרת תיקון קדימה במקום ארכוב.
-- **מסמכי סיכום ותחקיר היסטוריים** (`docs/fixes/`, `docs/analysis/`, `devtools/docs/`,
-  דוחות "המיגרציה הושלמה") — אלה רשומות של מה שנעשה בתאריך מסוים, לא תיאורי מערכת.
-  הם לא מתחזים למקור אמת ולכן לא מטעים. הושארו במקומם.
+- **`devtools/docs/`** — רשומות תחקיר היסטוריות; לא מתחזות למקור-אמת. הושארו במקומן.
+
+> **עדכון 2026-07-30 (גל-3ד):** `docs/fixes/` ו-`docs/analysis/` **הועברו כעת** לכאן
+> (סעיף 5 למעלה) — במקור הושארו במקומם (2026-07-23), אך גל-3ד איחד את כל הארכיון
+> תחת `docs/archive/`. ההחלטה עודכנה במפורש (החלטת חיים, 2026-07-30) כדי שיהיה
+> **מיקום-ארכיון אחד** במקום שניים.
