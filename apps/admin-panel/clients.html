@@ -72,7 +72,7 @@
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/clients.css?v=20251127-HOURS-COMPACT">
-    <link rel="stylesheet" href="css/clients-modals.css?v=20260726-modaloverlay-zindex">
+    <link rel="stylesheet" href="css/clients-modals.css?v=20260802-u5b-manage-cutover">
     <link rel="stylesheet" href="css/report-service-cards.css?v=20251231-SOFT-MINIMAL">
     <link rel="stylesheet" href="css/service-status-management.css?v=20260118">
     <link rel="stylesheet" href="css/task-approval-side-panel.css">
@@ -427,60 +427,69 @@
                 </div>
 
                 <!-- Management panel — ALWAYS rendered (the overdraft + add-package injectors scan it) -->
+                <!-- U5b: master-detail — a rail (כללי + one row per service) drives a single detail panel. -->
                 <div id="cmManagePanel" class="cm-panel cm-panel--active" role="tabpanel" aria-labelledby="cmTabManage">
-
-                <!-- Active Services -->
-                <div class="management-section">
-                    <h3 class="management-section-title">
-                        <i class="fas fa-briefcase"></i>
-                        שירותים פעילים
-                    </h3>
-                    <div id="managementServicesList" class="management-services-list">
-                        <!-- Will be populated by JS -->
+                <div class="cm-split">
+                    <!-- Master: rail — "כללי" row + one buildRailRow per service (injected by renderServices) -->
+                    <div id="cmManageRail" class="cm-rail" role="tablist" aria-label="שירותי הלקוח" aria-orientation="vertical">
+                        <!-- Rail rows injected by JS -->
                     </div>
-                </div>
 
-                <!-- Fee Agreements Section -->
-                <div class="management-section">
-                    <h3 class="management-section-title">
-                        <i class="fas fa-file-contract"></i>
-                        הסכמי שכר טרחה
-                    </h3>
-                    <div id="feeAgreementsSection" class="fee-agreements-section">
-                        <!-- Hidden file input and trigger button -->
-                        <input type="file" id="feeAgreementInput" accept=".pdf,image/jpeg,image/png,image/webp" style="display: none;">
-                        <button type="button" id="uploadFeeAgreementBtn" style="display: none;"></button>
+                    <!-- Detail: general (fee-agreements + quick-actions) + the per-service cards -->
+                    <div class="cm-detail">
+                        <!-- "כללי · פרטי לקוח" — default selection -->
+                        <div id="cmGeneralDetail" class="cm-detail-panel cm-detail-panel--active" role="tabpanel" aria-label="כללי">
 
-                        <!-- Agreements List -->
-                        <div id="feeAgreementsList" class="fee-agreements-list">
+                            <!-- Fee Agreements Section -->
+                            <div class="management-section">
+                                <h3 class="management-section-title">
+                                    <i class="fas fa-file-contract"></i>
+                                    הסכמי שכר טרחה
+                                </h3>
+                                <div id="feeAgreementsSection" class="fee-agreements-section">
+                                    <!-- Hidden file input and trigger button -->
+                                    <input type="file" id="feeAgreementInput" accept=".pdf,image/jpeg,image/png,image/webp" style="display: none;">
+                                    <button type="button" id="uploadFeeAgreementBtn" style="display: none;"></button>
+
+                                    <!-- Agreements List -->
+                                    <div id="feeAgreementsList" class="fee-agreements-list">
+                                        <!-- Will be populated by JS -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Actions -->
+                            <div class="management-section">
+                                <h3 class="management-section-title">
+                                    <i class="fas fa-lightning-bolt"></i>
+                                    פעולות מהירות
+                                </h3>
+                                <div class="management-actions-grid">
+                                    <button class="management-action-btn" data-action="add-service">
+                                        <i class="fas fa-plus-circle"></i>
+                                        <span>הוסף שירות חדש</span>
+                                    </button>
+                                    <button class="management-action-btn" data-action="renew-hours">
+                                        <i class="fas fa-redo"></i>
+                                        <span>חדש חבילת שעות</span>
+                                    </button>
+                                    <button class="management-action-btn" data-action="change-status">
+                                        <i class="fas fa-exchange-alt"></i>
+                                        <span>שנה סטטוס</span>
+                                    </button>
+                                    <button class="management-action-btn danger" data-action="close-case">
+                                        <i class="fas fa-archive"></i>
+                                        <span>סגור תיק</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Per-service detail cards — ALL present (the overdraft + add-package injectors
+                             scan .management-services-list .management-service-card); one visible at a time -->
+                        <div id="managementServicesList" class="management-services-list" role="tabpanel" hidden>
                             <!-- Will be populated by JS -->
                         </div>
-                    </div>
-                </div>
-
-                <!-- Quick Actions -->
-                <div class="management-section">
-                    <h3 class="management-section-title">
-                        <i class="fas fa-lightning-bolt"></i>
-                        פעולות מהירות
-                    </h3>
-                    <div class="management-actions-grid">
-                        <button class="management-action-btn" data-action="add-service">
-                            <i class="fas fa-plus-circle"></i>
-                            <span>הוסף שירות חדש</span>
-                        </button>
-                        <button class="management-action-btn" data-action="renew-hours">
-                            <i class="fas fa-redo"></i>
-                            <span>חדש חבילת שעות</span>
-                        </button>
-                        <button class="management-action-btn" data-action="change-status">
-                            <i class="fas fa-exchange-alt"></i>
-                            <span>שנה סטטוס</span>
-                        </button>
-                        <button class="management-action-btn danger" data-action="close-case">
-                            <i class="fas fa-archive"></i>
-                            <span>סגור תיק</span>
-                        </button>
                     </div>
                 </div>
                 </div><!-- /#cmManagePanel -->
@@ -607,9 +616,9 @@
     <script defer src="js/ui/ReportPreview.js?v=20260802-u3"></script>
     <!-- ModalManager (window.ModalManager / window.ModalHelpers) — required by ClientManagementModal's renewServiceHours + _editPackagePurchaseDate dialogs. Was missing on clients.html only, breaking both. -->
     <script defer src="js/ui/Modals.js?v=20260726-modalmanager-fix"></script>
-    <script defer src="js/ui/ClientManagementModal.js?v=20260802-u4-report-tab"></script>
-    <script defer src="js/modules/ServiceCardModel.js?v=20260802-u4"></script>
-    <script defer src="js/ui/UnifiedServiceCard.js?v=20260802-u4"></script>
+    <script defer src="js/ui/ClientManagementModal.js?v=20260802-u5b-manage-cutover"></script>
+    <script defer src="js/modules/ServiceCardModel.js?v=20260802-u5b-manage-cutover"></script>
+    <script defer src="js/ui/UnifiedServiceCard.js?v=20260802-u5b-manage-cutover"></script>
     <script defer src="js/ui/ReportTab.js?v=20260802-u4"></script>
     <script defer src="js/ui/ClientsTable.js?v=20260621-escapehtml-pr2"></script>
 

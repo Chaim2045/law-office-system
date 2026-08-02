@@ -159,9 +159,21 @@ describe('U5a · injector-anchor selectors are present on the new card', () => {
   });
 });
 
-describe('U5a · dead code — NOT wired into the live panel yet (the U5b cutover does that)', () => {
-  it('ClientManagementModal still uses its own renderServiceCard, not buildManageDetail', () => {
-    expect(MGMT_SRC).toContain('renderServiceCard(service)');
-    expect(MGMT_SRC).not.toContain('buildManageDetail');
+describe('U5b · the live panel now renders via the unified renderer (master-detail cutover)', () => {
+  it('renderServices drives ServiceCardModel + UnifiedServiceCard (buildManageDetail/buildRailRow)', () => {
+    // The cutover wired the unified renderer into the live management panel.
+    expect(MGMT_SRC).toContain('ServiceCardModel');
+    expect(MGMT_SRC).toContain('buildManageDetail');
+    expect(MGMT_SRC).toContain('buildRailRow');
+    // The old accordion render path is no longer wired: renderServices no longer maps its
+    // OWN renderServiceCard into the list, and the accordion toggle listeners are gone.
+    expect(MGMT_SRC).not.toMatch(/services\.map\([^)]*this\.renderServiceCard/);
+    expect(MGMT_SRC).not.toContain('attachServiceToggleListeners');
+    // NOTE (U5b deviation, reported): the old renderServiceCard cluster (renderServiceCard,
+    // getServiceInfo, renderStages, getServiceActions, …) is retained as dead code — deleting
+    // it would break modal-unification-management-contracts.test.ts (source-pins those exact
+    // strings) and modal-unification-u1-stored-hoursused.test.ts (drives getServiceInfo at
+    // runtime), both outside this PR's editable file set. Removal + retargeting those pins is a
+    // follow-up. The equality describes above still prove parity because the old renderer remains.
   });
 });
