@@ -416,6 +416,19 @@
                     <!-- Will be populated by JS -->
                 </div>
 
+                <!-- Tab bar (PR-U4): ניהול | הפקת דוח -->
+                <div class="cm-tabs" role="tablist" aria-label="תצוגות כרטיס לקוח">
+                    <button type="button" class="cm-tab cm-tab--active" role="tab" id="cmTabManage" aria-selected="true" aria-controls="cmManagePanel" data-cm-tab="manage">
+                        <i class="fas fa-cog"></i> ניהול
+                    </button>
+                    <button type="button" class="cm-tab" role="tab" id="cmTabReport" aria-selected="false" aria-controls="cmReportPanel" data-cm-tab="report">
+                        <i class="fas fa-clock"></i> הפקת דוח
+                    </button>
+                </div>
+
+                <!-- Management panel — ALWAYS rendered (the overdraft + add-package injectors scan it) -->
+                <div id="cmManagePanel" class="cm-panel cm-panel--active" role="tabpanel" aria-labelledby="cmTabManage">
+
                 <!-- Active Services -->
                 <div class="management-section">
                     <h3 class="management-section-title">
@@ -470,6 +483,10 @@
                         </button>
                     </div>
                 </div>
+                </div><!-- /#cmManagePanel -->
+
+                <!-- Report panel (PR-U4): ReportTab renders here on first switch to the report tab -->
+                <div id="cmReportPanel" class="cm-panel" role="tabpanel" aria-labelledby="cmTabReport"></div>
             </div>
         </div>
     </div>
@@ -590,7 +607,10 @@
     <script defer src="js/ui/ReportPreview.js?v=20260802-u3"></script>
     <!-- ModalManager (window.ModalManager / window.ModalHelpers) — required by ClientManagementModal's renewServiceHours + _editPackagePurchaseDate dialogs. Was missing on clients.html only, breaking both. -->
     <script defer src="js/ui/Modals.js?v=20260726-modalmanager-fix"></script>
-    <script defer src="js/ui/ClientManagementModal.js?v=20260802-u1-stored-hoursused"></script>
+    <script defer src="js/ui/ClientManagementModal.js?v=20260802-u4-report-tab"></script>
+    <script defer src="js/modules/ServiceCardModel.js?v=20260802-u4"></script>
+    <script defer src="js/ui/UnifiedServiceCard.js?v=20260802-u4"></script>
+    <script defer src="js/ui/ReportTab.js?v=20260802-u4"></script>
     <script defer src="js/ui/ClientsTable.js?v=20260621-escapehtml-pr2"></script>
 
     <!-- ===== Shared Components ===== -->
