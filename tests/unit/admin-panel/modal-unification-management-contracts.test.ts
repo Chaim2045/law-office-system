@@ -27,10 +27,18 @@ const OVERDRAFT = read('js/features/ServiceOverdraftResolution.js');
 
 // ── ClientManagementModal — display + DOM contracts ──────────────────────────
 describe('U0 · ClientManagementModal — current display + DOM contracts', () => {
-  it('U1 target: hoursUsed is DERIVED as total − remaining today (getServiceInfo)', () => {
-    // The U1 change replaces this with the stored service.hoursUsed. Pinned so the
-    // "displayed number changes" behavioral shift is a declared, tested event.
-    expect(MGMT).toContain('const hoursUsed = totalHours - hoursRemaining;');
+  it('U1 (DONE): getServiceInfo reads the STORED service.hoursUsed as SSOT, legacy-fallback to total − remaining', () => {
+    // U1 flipped the management modal OFF the diverging `total − remaining` derivation
+    // onto the stored `hoursUsed` the client rollup (functions/shared/aggregates.js),
+    // the report modal, and the unified renderer already treat as canonical. Pinned so
+    // a later U-PR can't silently regress management back to the diverging derivation.
+    // Behavioral proof (drifted / legacy-absent / stored-0) lives in
+    // modal-unification-u1-stored-hoursused.test.ts.
+    // whitespace-tolerant so a line-wrap of the ternary doesn't defeat the pin.
+    expect(MGMT).toMatch(
+      /Number\.isFinite\(service\.hoursUsed\)\s*\?\s*service\.hoursUsed\s*:\s*\(totalHours - hoursRemaining\)/
+    );
+    expect(MGMT, 'the old diverging derivation must be gone').not.toContain('const hoursUsed = totalHours - hoursRemaining;');
   });
 
   it('DOM contract: each service renders `.management-service-card[data-service-id]` (ServiceOverdraftResolution injects here)', () => {
