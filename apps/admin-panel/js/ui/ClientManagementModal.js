@@ -509,7 +509,18 @@ return;
             if (service.type === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS) {
                 const totalHours = service.totalHours || 0;
                 const hoursRemaining = service.hoursRemaining || 0;
-                const hoursUsed = totalHours - hoursRemaining;
+                // U1 (modal unification): read the STORED hoursUsed as the SSOT — the same
+                // canonical field the client rollup (functions/shared/aggregates.js), the
+                // report modal (ClientReportModal), and the unified renderer
+                // (service-card-renderer) all consume. Every healthy write path stores
+                // hoursUsed alongside hoursRemaining = totalHours - hoursUsed, so this is a
+                // no-op for current data; it only diverges (correctly, toward the report)
+                // for a drifted/hand-edited doc. Fall back to the legacy total - remaining
+                // derivation only when a doc predates the stored field (Number.isFinite
+                // guards an absent/non-numeric value → no regression for legacy docs).
+                const hoursUsed = Number.isFinite(service.hoursUsed)
+                    ? service.hoursUsed
+                    : (totalHours - hoursRemaining);
                 const percentage = totalHours > 0 ? ((hoursUsed / totalHours) * 100).toFixed(0) : 0;
 
                 // Determine status class based on remaining hours
