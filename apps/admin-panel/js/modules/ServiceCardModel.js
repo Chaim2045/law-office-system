@@ -154,6 +154,16 @@
             hoursRemaining: resolved.hoursRemaining,
             overdraftResolved: service.overdraftResolved || null,
             packages: Array.isArray(service.packages) ? service.packages : [],
+            // U5 manage-mode fields — carried raw for UnifiedServiceCard mode 'manage-detail'
+            // (the report-select mode ignores them). overrideApprovedAt stays the raw Firestore
+            // Timestamp shape ({seconds}) the renderer reads.
+            startedAt: service.startedAt || null,
+            createdAt: service.createdAt || null,
+            fixedPrice: service.fixedPrice || 0,
+            overrideActive: !!service.overrideActive,
+            overrideApprovedAt: service.overrideApprovedAt || null,
+            overrideApprovedBy: service.overrideApprovedBy || '',
+            overrideNote: service.overrideNote || '',
             stages: stages
         };
     }
