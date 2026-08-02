@@ -106,6 +106,8 @@
 
             this.currentClient = client;
             this.dataManager = dataManager;
+            // U5b: each open starts on the "כללי" detail panel (master-detail selection).
+            this._selectedRail = 'general';
 
             // Render content. renderServices() + renderFeeAgreements() run on EVERY open —
             // even when opening straight to the report tab — because the overdraft +
@@ -410,17 +412,28 @@ return;
         }
 
         /**
-         * Render services list
-         * רינדור רשימת שירותים
+         * Render services (U5b master-detail cutover)
+         * רינדור שירותים — פריסת master-detail
+         * ────────────────────────────────────────────────────────────────────────
+         * Builds the pure view-model (ServiceCardModel) and renders it through the shared
+         * UnifiedServiceCard renderer as a master-detail layout:
+         *   - #cmManageRail            → a "כללי" row + one buildRailRow per service (nav).
+         *   - #managementServicesList  → ALL buildManageDetail cards, present at once so the
+         *     overdraft + add-package injectors keep scanning every card (VAL-2). Only the
+         *     selected service card is visible (the others get .cm-card-hidden).
+         * Manage mode = build WITHOUT getStageName, so stage.name resolves EXACTLY like the
+         * old renderStages did (AddPackageToStage matches a stage by its name). The old
+         * accordion renderer (renderServiceCard + helpers) is no longer wired — its
+         * byte-identical output now comes from UnifiedServiceCard (proven in U5a).
          */
         renderServices() {
             if (!this.currentClient) {
-return;
-}
+                return;
+            }
 
             const services = this.currentClient.services || [];
 
-            // 🔍 DEBUG: Check for duplicate services
+            // 🔍 DEBUG: Check for duplicate services (ids/counts only — never client PII)
             console.log('📊 Rendering services:', services.length);
             const serviceIds = services.map(s => s.id);
             const uniqueIds = [...new Set(serviceIds)];
@@ -432,50 +445,193 @@ return;
                 });
             }
 
-            if (services.length === 0) {
-                this.servicesListContainer.innerHTML = `
-                    <div class="management-empty-state">
-                        <i class="fas fa-inbox"></i>
-                        <h4>אין שירותים פעילים</h4>
-                        <p>הוסף שירות חדש כדי להתחיל</p>
-                    </div>
-                `;
+            const rail = document.getElementById('cmManageRail');
+            const list = this.servicesListContainer;
+            if (!rail || !list) {
+                // Not the master-detail markup (defensive — e.g. another page) → nothing to do.
                 return;
             }
 
-            const servicesHTML = services.map(service => this.renderServiceCard(service)).join('');
-            this.servicesListContainer.innerHTML = servicesHTML;
+            // The rail always starts with the "כללי · פרטי לקוח" row (pure DOM — no globals — so
+            // it is reachable even when the unified renderer is unavailable).
+            rail.innerHTML = '';
+            rail.appendChild(this._buildGeneralRailRow());
 
-            // Attach service action listeners
-            this.attachServiceActionListeners();
+            // FIX 1: renderServices must NEVER throw — open() calls it BEFORE it shows the modal,
+            // so a renderer failure here would silently abort the open (a client click does
+            // nothing). On any failure we render a professional Hebrew fallback (G1) and keep the
+            // "כללי" panel (fee-agreements + "הוסף שירות חדש") reachable as the default view.
+            const renderFallback = () => {
+                list.innerHTML =
+                    '<div class="management-empty-state">' +
+                    '<i class="fas fa-exclamation-triangle"></i>' +
+                    '<h4>שגיאה בטעינת השירותים</h4>' +
+                    '<p>רענן/י את הדף ונס/י שוב.</p>' +
+                    '</div>';
+            };
 
-            // Attach toggle listeners for expand/collapse
-            this.attachServiceToggleListeners();
+            // Guard the globals the card build depends on. Missing/stale → fallback + select
+            // "כללי" + RETURN (never throw).
+            const renderersReady =
+                window.ServiceCardModel && typeof window.ServiceCardModel.build === 'function' &&
+                window.UnifiedServiceCard &&
+                typeof window.UnifiedServiceCard.buildRailRow === 'function' &&
+                typeof window.UnifiedServiceCard.buildManageDetail === 'function';
+
+            if (!renderersReady) {
+                console.error('renderServices: unified renderer unavailable', {
+                    hasModel: !!window.ServiceCardModel,
+                    hasUnifiedCard: !!window.UnifiedServiceCard
+                });
+                renderFallback();
+                this._wireRailAndSelect(rail, true);
+                return;
+            }
+
+            try {
+                if (services.length === 0) {
+                    // FIX 3: the zero-service view IS the "כללי" panel (the rail carries only the
+                    // "כללי" row → the services list stays hidden). The old empty-state innerHTML
+                    // was unreachable under the hidden list — removed (delete-redundant).
+                    list.innerHTML = '';
+                } else {
+                    // Manage mode: NO getStageName → stage.name resolves identically to renderStages.
+                    const built = window.ServiceCardModel.build(this.currentClient);
+                    list.innerHTML = '';
+                    built.cards.forEach(card => {
+                        // FIX 4: a service with a falsy serviceId would key a rail row to '' → it
+                        // would silently select "general". Skip it (row + card) rather than emit it.
+                        if (!card.serviceId) {
+                            console.warn('renderServices: skipping a service with no serviceId');
+                            return;
+                        }
+                        // buildRailRow OWNS data-rail (= card.serviceId) — no re-tagging here (FIX 4).
+                        rail.appendChild(window.UnifiedServiceCard.buildRailRow(card));
+                        // DOM ELEMENTS (append, not innerHTML concat) — preserve them for the injectors.
+                        list.appendChild(window.UnifiedServiceCard.buildManageDetail(card));
+                    });
+
+                    // The new cards emit the SAME [data-service-action] / .override-btn /
+                    // .edit-pkg-date-btn selectors, so this binds them UNCHANGED.
+                    this.attachServiceActionListeners();
+                }
+            } catch (err) {
+                // Non-PII: error NAME + service COUNT only — never any client field.
+                console.error('renderServices failed', {
+                    errName: err && err.name,
+                    serviceCount: services.length
+                });
+                renderFallback();
+                this._wireRailAndSelect(rail, true);
+                return;
+            }
+
+            this._wireRailAndSelect(rail, false);
         }
 
         /**
-         * Attach toggle listeners for service cards
-         * צרף מאזינים להרחבה/כיווץ של כרטיסי שירות
+         * Wire the rail rows (click + roving ArrowUp/ArrowDown) and apply the selection.
+         * @param {HTMLElement} rail
+         * @param {boolean} forceGeneral - fallback paths force the "כללי" panel so the general
+         *        panel (fee-agreements) is always the reachable default.
          */
-        attachServiceToggleListeners() {
-            const serviceCards = this.servicesListContainer.querySelectorAll('.management-service-card');
-
-            serviceCards.forEach(card => {
-                const header = card.querySelector('.management-service-header');
-
-                header.addEventListener('click', () => {
-                    // Toggle expanded class
-                    const wasExpanded = card.classList.contains('expanded');
-
-                    // Close all other cards (optional - remove these 3 lines for multiple open cards)
-                    serviceCards.forEach(c => c.classList.remove('expanded'));
-
-                    // Toggle current card
-                    if (!wasExpanded) {
-                        card.classList.add('expanded');
-                    }
-                });
+        _wireRailAndSelect(rail, forceGeneral) {
+            // Click wiring — rows are recreated every render (innerHTML cleared), so no stacking.
+            // <button>s already fire click on Enter/Space (native keyboard).
+            rail.querySelectorAll('.cm-rail-row').forEach(row => {
+                row.addEventListener('click', () => this._selectRail(row.dataset.rail));
             });
+
+            // FIX 5: roving keyboard nav on the vertical tablist. The rail NODE persists across
+            // re-renders, so remove the prior handler before re-adding (no listener stacking).
+            if (this._railKeyHandler) {
+                rail.removeEventListener('keydown', this._railKeyHandler);
+            }
+            this._railKeyHandler = (e) => {
+                if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') {
+                    return;
+                }
+                const rows = Array.from(rail.querySelectorAll('.cm-rail-row'));
+                const idx = rows.indexOf(document.activeElement);
+                if (idx === -1) {
+                    return;
+                }
+                e.preventDefault();
+                const next = (idx + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length;
+                rows[next].focus();
+            };
+            rail.addEventListener('keydown', this._railKeyHandler);
+
+            // Restore/keep the selection; fall back to "כללי" if forced or the service is gone.
+            const services = (this.currentClient && this.currentClient.services) || [];
+            let selection = forceGeneral ? 'general' : (this._selectedRail || 'general');
+            if (selection !== 'general' && !services.some(s => s.id === selection)) {
+                selection = 'general';
+            }
+            this._selectRail(selection);
+        }
+
+        /**
+         * Build the "כללי · פרטי לקוח" rail row (mirrors UnifiedServiceCard.buildRailRow's
+         * element + classes so it styles + selects identically). data-rail="general".
+         */
+        _buildGeneralRailRow() {
+            const el = document.createElement('button');
+            el.type = 'button';
+            el.className = 'cm-rail-row';
+            el.setAttribute('role', 'tab');
+            el.setAttribute('aria-selected', 'false');
+            el.dataset.rail = 'general';
+            // FIX 5: the general row controls the general detail panel.
+            el.setAttribute('aria-controls', 'cmGeneralDetail');
+            el.innerHTML =
+                '<span class="cm-rail-row-icon"><i class="fas fa-user"></i></span>' +
+                '<span class="cm-rail-row-name">כללי · פרטי לקוח</span>';
+            return el;
+        }
+
+        /**
+         * Show ONE detail panel (master-detail selection).
+         *  - 'general'   → #cmGeneralDetail visible, #managementServicesList hidden.
+         *  - <serviceId> → #cmGeneralDetail hidden, #managementServicesList visible with ONLY the
+         *    matching .management-service-card shown (body revealed via the existing `.expanded`
+         *    accordion rule); the others are display:none via .cm-card-hidden.
+         * The matching rail row is marked aria-selected + active.
+         */
+        _selectRail(key) {
+            const selection = key || 'general';
+            this._selectedRail = selection;
+
+            const rail = document.getElementById('cmManageRail');
+            const general = document.getElementById('cmGeneralDetail');
+            const list = this.servicesListContainer;
+            if (!list) {
+                return;
+            }
+
+            const isGeneral = selection === 'general';
+
+            if (general) {
+                general.classList.toggle('cm-detail-panel--active', isGeneral);
+            }
+            if (isGeneral) {
+                list.setAttribute('hidden', '');
+            } else {
+                list.removeAttribute('hidden');
+                list.querySelectorAll('.management-service-card').forEach(card => {
+                    const match = card.getAttribute('data-service-id') === selection;
+                    card.classList.toggle('expanded', match);
+                    card.classList.toggle('cm-card-hidden', !match);
+                });
+            }
+
+            if (rail) {
+                rail.querySelectorAll('.cm-rail-row').forEach(row => {
+                    const active = (row.dataset.rail || 'general') === selection;
+                    row.classList.toggle('cm-rail-row--active', active);
+                    row.setAttribute('aria-selected', active ? 'true' : 'false');
+                });
+            }
         }
 
         /**

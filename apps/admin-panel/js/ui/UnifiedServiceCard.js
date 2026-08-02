@@ -487,6 +487,21 @@
         return el;
     }
 
+    // "Needs attention" = a blocked service OR an unresolved negative remainder (overdraft).
+    // Drives the rail status dot so an overdrawn/blocked service is visible WITHOUT a click.
+    // Number.isFinite-guarded so a missing/non-numeric remainder never trips the signal.
+    function railNeedsAttention(card) {
+        if (card.status === 'blocked') {
+            return true;
+        }
+        const remaining = Number(card.hoursRemaining);
+        if (Number.isFinite(remaining) && remaining < 0) {
+            const resolved = !!(card.overdraftResolved && card.overdraftResolved.isResolved === true);
+            return !resolved;
+        }
+        return false;
+    }
+
     /**
      * mode 'rail-row' → a THIN navigation row (no `.management-*` classes — DA-3, so the
      * add-package/overdraft injectors never match a rail row). Selecting it shows the
@@ -499,10 +514,29 @@
         el.className = 'cm-rail-row';
         el.setAttribute('role', 'tab');
         el.setAttribute('aria-selected', 'false');
-        el.dataset.railServiceId = card.serviceId || '';
-        el.innerHTML = `
-            <span class="cm-rail-row-icon"><i class="fas ${manageServiceIcon(card.type || 'hours')}"></i></span>
-            <span class="cm-rail-row-name">${esc(truncate(card.name || 'ללא שם'))}</span>`;
+        // FIX 4: the builder OWNS the rail selection key (single source of truth).
+        el.dataset.rail = card.serviceId || '';
+        // FIX 5: a service row controls the shared services-list detail area.
+        el.setAttribute('aria-controls', 'managementServicesList');
+
+        // FIX 2: surface "needs attention" (overdraft/blocked) on the rail so an admin does not
+        // have to open every service. NOT color-only (WCAG) — the row `title` + a visually-hidden
+        // label carry the signal too. SEC-1: every interpolated value stays escaped via esc().
+        const attention = railNeedsAttention(card);
+        if (attention) {
+            el.setAttribute('title', 'דורש טיפול');
+        }
+        const statusDot = attention
+            ? '<span class="cm-rail-row-status cm-rail-row-status--attention" aria-hidden="true"></span>'
+            : '';
+        const srLabel = attention
+            ? '<span class="cm-rail-row-sr">דורש טיפול</span>'
+            : '';
+        el.innerHTML =
+            statusDot +
+            '<span class="cm-rail-row-icon"><i class="fas ' + manageServiceIcon(card.type || 'hours') + '"></i></span>' +
+            '<span class="cm-rail-row-name">' + esc(truncate(card.name || 'ללא שם')) + '</span>' +
+            srLabel;
         return el;
     }
 

@@ -1562,3 +1562,188 @@ select.form-input {
     outline: 2px solid var(--blue);
     outline-offset: 2px;
 }
+
+/* ============================================================
+   PR-U5b — management modal master-detail (rail + detail)
+   Calm/Emil: semantic tokens, motion via --transition-*, RTL-aware,
+   :focus-visible on the rail rows, no layering over the retired accordion.
+   ============================================================ */
+
+/* Split: rail (sits on the RIGHT in RTL) + detail (fills the rest) */
+.cm-split {
+    display: flex;
+    gap: var(--space-4);
+    align-items: stretch;
+    min-height: 320px;
+}
+
+/* Rail — vertical service navigation */
+.cm-rail {
+    flex: 0 0 220px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding-inline-end: var(--space-4);
+    border-inline-end: 1px solid var(--gray-200);
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.cm-rail-row {
+    appearance: none;
+    position: relative; /* containing block for the attention status dot */
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    text-align: start;
+    padding: var(--space-3);
+    background: none;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--gray-700);
+    font-size: var(--text-md);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.cm-rail-row:hover {
+    background: var(--gray-50);
+    color: var(--gray-900);
+}
+
+.cm-rail-row:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+.cm-rail-row--active {
+    background: var(--blue-light);
+    color: var(--blue-dark);
+    font-weight: 600;
+}
+
+.cm-rail-row-icon {
+    display: inline-flex;
+    width: 1.25rem;
+    justify-content: center;
+    color: var(--gray-400);
+    flex-shrink: 0;
+}
+
+.cm-rail-row--active .cm-rail-row-icon {
+    color: var(--blue);
+}
+
+.cm-rail-row-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Attention indicator (FIX 2) — an overdrawn/blocked service surfaced on the rail so it is
+   visible without opening it. Absolutely positioned in the inline-start gutter so it never
+   shifts the icon/name (rows without a dot stay aligned). NOT color-only: buildRailRow also
+   sets the row `title` + a visually-hidden "דורש טיפול" label. No animation → reduced-motion safe. */
+.cm-rail-row-status {
+    position: absolute;
+    inset-inline-start: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.cm-rail-row-status--attention {
+    background: var(--red);
+}
+
+/* Screen-reader-only text carried by an attention row (the non-color-only signal). */
+.cm-rail-row-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Detail — holds the general panel + the per-service cards */
+.cm-detail {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.cm-detail-panel {
+    display: none;
+}
+
+.cm-detail-panel--active {
+    display: block;
+    animation: cmPanelFadeIn var(--transition-smooth);
+}
+
+/* The services list toggles via the [hidden] attribute — override the
+   .management-services-list flex display so [hidden] actually hides it. */
+.management-services-list[hidden] {
+    display: none;
+}
+
+/* One selected card visible at a time (non-selected → display:none). */
+.management-service-card.cm-card-hidden {
+    display: none;
+}
+
+/* In master-detail the selected card is ALWAYS expanded — reuse the accordion `.expanded`
+   reveal but lift the height cap so a long service (many packages) isn't clipped, and
+   neutralize the now-vestigial click-to-toggle affordance (no accordion in this context). */
+.cm-detail .management-service-card.expanded .management-service-body {
+    max-height: none;
+}
+
+.cm-detail .management-service-toggle {
+    display: none;
+}
+
+.cm-detail .management-service-header {
+    cursor: default;
+}
+
+.cm-detail .management-service-header:hover {
+    background: transparent;
+}
+
+/* Narrow screens — stack the rail above the detail; the rail scrolls horizontally. */
+@media (width <= 700px) {
+    .cm-split {
+        flex-direction: column;
+    }
+
+    .cm-rail {
+        flex-basis: auto;
+        flex-direction: row;
+        max-height: none;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-inline-end: 0;
+        padding-bottom: var(--space-3);
+        border-inline-end: none;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .cm-rail-row {
+        flex: 0 0 auto;
+    }
+
+    .cm-detail {
+        max-height: none;
+    }
+}
