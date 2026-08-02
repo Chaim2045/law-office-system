@@ -8,6 +8,9 @@
  * 5-entity copies (ReportGenerator) — by replacing each
  * escaper BODY with `return window.escapeHtml(<param>);` (call-sites unchanged).
  * (The WhatsAppMessageDialog escaper was removed with the WhatsApp retirement.)
+ * (PR-U3 removed ClientReportModal's escapeHtml wrapper: the preview/edit code that used
+ *  it moved to ReportPreview.js, which calls the SSOT window.escapeHtml directly — so
+ *  ClientReportModal drops out of ROUTED, and ReportPreview joins the load-order set.)
  *
  * This is a SOURCE-LEVEL guard (the repo's AST-guard precedent — rules-drift-guard,
  * PR-SEC-2 migration guards). The 16 escapers live on heavyweight UI managers that
@@ -65,7 +68,6 @@ const ROUTED: ReadonlyArray<readonly [string, string, string]> = [
   ['js/ui/DeleteDataSidePanel.js', 'escapeHtml(text) {', 'text'],
   ['js/features/ServiceOverdraftResolution.js', 'escapeHtml(text) {', 'text'],
   ['js/ui/AnnouncementCard.js', 'static escapeHtml(text) {', 'text'],
-  ['js/ui/ClientReportModal.js', 'escapeHtml(text) {', 'text'],
   ['js/ui/ClientManagementModal.js', 'escapeHtml(text) {', 'text'],
   ['js/ui/ReadStatusModal.js', 'escapeHtml(text) {', 'text'],
   ['js/ui/TaskApprovalSidePanel.js', '_escapeHtml(str) {', 'str'],
@@ -77,8 +79,8 @@ const ROUTED: ReadonlyArray<readonly [string, string, string]> = [
 ];
 
 describe('escapeHtml PR2 — every routed escaper delegates to the SSOT', () => {
-  it('routes all 13 escapers (and the count is exactly 13)', () => {
-    expect(ROUTED).toHaveLength(13);
+  it('routes all 12 escapers (and the count is exactly 12)', () => {
+    expect(ROUTED).toHaveLength(12); // was 13; U3 moved ClientReportModal's escaper into ReportPreview (direct SSOT call)
   });
 
   for (const [file, sig, param] of ROUTED) {
@@ -130,12 +132,12 @@ describe('escapeHtml PR2 — load-order invariant (escape-html.js before EVERY r
     ]],
     ['system-announcements.html', ['js/ui/AnnouncementCard.js', 'js/ui/ReadStatusModal.js']],
     ['clients.html', [
-      'js/managers/ReportGenerator.js', 'js/ui/ClientReportModal.js',
+      'js/managers/ReportGenerator.js', 'js/ui/ReportPreview.js',
       'js/ui/ClientManagementModal.js', 'js/ui/ClientsTable.js',
       'js/features/ServiceOverdraftResolution.js', 'js/ui/TaskApprovalSidePanel.js'
     ]],
     ['clients-fluent.html', [
-      'js/ui/ClientsTable.js', 'js/ui/ClientReportModal.js',
+      'js/ui/ClientsTable.js', 'js/ui/ReportPreview.js',
       'js/managers/ReportGenerator.js', 'js/fluent/FluentDataGrid.js'
     ]]
   ];
