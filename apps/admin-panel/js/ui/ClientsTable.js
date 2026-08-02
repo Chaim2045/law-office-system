@@ -669,14 +669,26 @@ return '-';
          * טיפול בלחיצה על הפקת דוח
          */
         handleReportClick(clientId) {
-            console.log('📄 Opening report modal for client:', clientId);
+            console.log('📄 Opening unified client card (report tab) for client:', clientId);
 
-            if (window.ClientReportModal) {
-                window.ClientReportModal.open(clientId);
-            } else {
-                console.error('❌ ClientReportModal not loaded');
+            // U6 cutover: the "הפק דוח" button now opens the UNIFIED client card on its
+            // report tab (ClientManagementModal + the U4 report tab) — one client card,
+            // one source of truth — instead of the standalone ClientReportModal.
+            const client = this.dataManager.getClientById(clientId);
+            if (!client) {
+                console.error('❌ Client not found:', clientId);
                 if (window.notify) {
-                    window.notify.error('מערכת הדוחות לא נטענה', 'שגיאה');
+                    window.notify.error('הלקוח לא נמצא', 'שגיאה');
+                }
+                return;
+            }
+
+            if (window.ClientManagementModal) {
+                window.ClientManagementModal.open(client, this.dataManager, { initialTab: 'report' });
+            } else {
+                console.error('❌ ClientManagementModal not loaded');
+                if (window.notify) {
+                    window.notify.error('מערכת ניהול הלקוח לא נטענה', 'שגיאה');
                 }
             }
         }
