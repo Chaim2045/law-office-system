@@ -96,7 +96,7 @@
          * Open modal for client
          * פתיחת המודאל ללקוח
          */
-        open(client, dataManager) {
+        open(client, dataManager, opts = {}) {
             if (!client) {
                 console.error('❌ No client provided');
                 return;
@@ -107,7 +107,9 @@
             this.currentClient = client;
             this.dataManager = dataManager;
 
-            // Render content
+            // Render content. renderServices() + renderFeeAgreements() run on EVERY open —
+            // even when opening straight to the report tab — because the overdraft +
+            // add-package injectors scan the management service-cards in the DOM (PR-U4).
             this.renderClientInfo();
             this.renderServices();
             this.renderFeeAgreements();
@@ -123,6 +125,66 @@
             // Show modal
             this.modalElement.style.display = 'flex';
             document.body.style.overflow = 'hidden';
+
+            // PR-U4: tab-bar (ניהול | הפקת דוח). Safe no-op when the tab markup isn't present.
+            this._reportRenderedForOpen = false; // report tab renders once per open, then persists across toggles
+            this._setupTabs();
+            this._switchTab(opts && opts.initialTab === 'report' ? 'report' : 'manage');
+        }
+
+        /**
+         * PR-U4: wire the ניהול / הפקת-דוח tab-bar. Idempotent (wires once) and a safe
+         * no-op when the tab markup isn't in the DOM (e.g. another page).
+         */
+        _setupTabs() {
+            const tabs = this.modalElement ? this.modalElement.querySelectorAll('.cm-tab') : null;
+            if (!tabs || tabs.length === 0 || this._tabsWired) {
+                return;
+            }
+            tabs.forEach((tab) => {
+                tab.addEventListener('click', () => this._switchTab(tab.getAttribute('data-cm-tab')));
+            });
+            this._tabsWired = true;
+        }
+
+        /**
+         * PR-U4: show one tab panel via a CSS toggle. BOTH panels stay in the DOM — the
+         * management panel (hidden under the report tab) keeps its service-cards present so
+         * the overdraft + add-package injectors keep firing (VAL-2). The report tab is
+         * (re)rendered for the current client on each switch to it.
+         */
+        _switchTab(name) {
+            if (!this.modalElement) {
+                return;
+            }
+            const tabs = this.modalElement.querySelectorAll('.cm-tab');
+            const panels = this.modalElement.querySelectorAll('.cm-panel');
+            if (!tabs.length || !panels.length) {
+                return; // no tab UI on this page
+            }
+            const tabName = name === 'report' ? 'report' : 'manage';
+            const manageActive = tabName === 'manage';
+
+            tabs.forEach((tab) => {
+                const active = tab.getAttribute('data-cm-tab') === tabName;
+                tab.classList.toggle('cm-tab--active', active);
+                tab.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+            const managePanel = this.modalElement.querySelector('#cmManagePanel');
+            const reportPanel = this.modalElement.querySelector('#cmReportPanel');
+            if (managePanel) {
+                managePanel.classList.toggle('cm-panel--active', manageActive);
+            }
+            if (reportPanel) {
+                reportPanel.classList.toggle('cm-panel--active', !manageActive);
+            }
+            if (!manageActive && reportPanel && window.ReportTab && typeof window.ReportTab.render === 'function') {
+                // Render once per open — toggling manage↔report preserves the in-progress selection + dates.
+                if (!this._reportRenderedForOpen) {
+                    window.ReportTab.render(this.currentClient, reportPanel);
+                    this._reportRenderedForOpen = true;
+                }
+            }
         }
 
         /**

@@ -1442,3 +1442,123 @@ select.form-input {
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================================
+   PR-U4 — unified client-modal tab-bar + panels + report tab
+   ============================================================ */
+
+/* Tab bar (ניהול | הפקת דוח) — Soft-Minimal underline, motion via tokens only */
+.cm-tabs {
+    display: flex;
+    gap: var(--space-4);
+    border-bottom: 1px solid var(--gray-200);
+    margin: 0 0 var(--space-4);
+    padding: 0;
+}
+
+.cm-tab {
+    appearance: none;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px; /* sit the underline on the tab-bar border */
+    padding: var(--space-3) var(--space-3);
+    font-size: var(--text-md);
+    font-weight: 500;
+    color: var(--gray-500);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color var(--transition-fast), border-color var(--transition-smooth), transform var(--transition-fast);
+}
+
+.cm-tab:hover {
+    color: var(--gray-800);
+}
+
+.cm-tab:active {
+    transform: scale(0.97);
+}
+
+.cm-tab:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.cm-tab--active {
+    color: var(--blue-dark);
+    border-bottom-color: var(--blue);
+}
+
+.cm-tab i {
+    font-size: var(--text-sm);
+}
+
+/* Panels — both stay in the DOM (the injectors scan the hidden management panel) */
+.cm-panel {
+    display: none;
+}
+
+.cm-panel--active {
+    display: block;
+    animation: cmPanelFadeIn var(--transition-smooth);
+}
+
+@keyframes cmPanelFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Report tab — reuses .report-form / .form-section / .report-service-card styling */
+.report-form--tab {
+    padding-top: var(--space-3);
+}
+
+.report-tab-hint {
+    color: var(--gray-500);
+    margin-top: 12px;
+    display: block;
+    font-size: var(--text-sm);
+}
+
+.report-tab-empty {
+    color: var(--gray-500);
+    padding: var(--space-4);
+    text-align: center;
+    font-size: var(--text-md);
+}
+
+.report-tab-actions {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: flex-end;
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--gray-200);
+}
+
+/* A non-selectable card (DA-2: legal_procedure with no active/completed stage) */
+.report-service-card--disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    filter: grayscale(0.3);
+}
+
+.report-card-note {
+    color: var(--gray-500);
+    font-size: var(--text-sm);
+    margin-top: 4px;
+}
+
+/* Keyboard focus ring on the now-focusable selectable report cards (Design Bar) */
+.report-service-card[role="button"] {
+    cursor: pointer;
+}
+
+.report-service-card[role="button"]:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
