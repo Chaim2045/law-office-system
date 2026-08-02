@@ -217,7 +217,7 @@ jobs:
       # rules change (this PR adds client_profitability + the first isPartner()
       # consumer) must have its deny/allow suite gate the deploy, not just the PR.
       - name: ☕ Setup Java (required by Firestore Emulator)
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v5.6.0
         with:
           distribution: 'temurin'
           java-version: '17'
