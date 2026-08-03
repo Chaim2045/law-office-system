@@ -1571,6 +1571,10 @@ select.form-input {
 
 /* Split: rail (sits on the RIGHT in RTL) + detail (fills the rest) */
 .cm-split {
+    /* P1: faint-blue selected-row surface — the feature's semantic tint token (kept local to
+       this versioned stylesheet so it ships atomically with the ?v= bump, without touching the
+       unversioned design-system.css). */
+    --cm-active-surface: rgb(59 130 246 / 8%);
     display: flex;
     gap: var(--space-4);
     align-items: stretch;
@@ -1591,7 +1595,7 @@ select.form-input {
 
 .cm-rail-row {
     appearance: none;
-    position: relative; /* containing block for the attention status dot */
+    position: relative; /* containing block for the active-bar ::before (P1) */
     display: flex;
     align-items: center;
     gap: var(--space-2);
@@ -1619,9 +1623,23 @@ select.form-input {
 }
 
 .cm-rail-row--active {
-    background: var(--blue-light);
-    color: var(--blue-dark);
+    background: var(--cm-active-surface);
+    color: var(--gray-900);
     font-weight: 600;
+}
+
+/* P1: a thin active-bar on the inline-start (right in RTL) edge of the selected row — a subtle
+   selection cue instead of a heavy solid-blue fill. Pseudo-element → no layout shift; logical
+   inset-inline-start → RTL-correct. */
+.cm-rail-row--active::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    border-radius: 999px;
+    background: var(--blue);
 }
 
 .cm-rail-row-icon {
@@ -1637,28 +1655,39 @@ select.form-input {
 }
 
 .cm-rail-row-name {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-/* Attention indicator (FIX 2) — an overdrawn/blocked service surfaced on the rail so it is
-   visible without opening it. Absolutely positioned in the inline-start gutter so it never
-   shifts the icon/name (rows without a dot stay aligned). NOT color-only: buildRailRow also
-   sets the row `title` + a visually-hidden "דורש טיפול" label. No animation → reduced-motion safe. */
+/* Per-service status dot (P1) — a static flex item leading each service row: green (--ok) =
+   healthy, orange (--attention) = needs attention (overdraft/blocked). The general "כללי" row
+   uses an icon instead. NOT color-only: buildRailRow sets the row `title` + a visually-hidden
+   "דורש טיפול" label on attention rows. No animation → reduced-motion safe. */
 .cm-rail-row-status {
-    position: absolute;
-    inset-inline-start: 2px;
-    top: 50%;
-    transform: translateY(-50%);
     width: 8px;
     height: 8px;
     border-radius: 50%;
     flex-shrink: 0;
 }
 
+.cm-rail-row-status--ok {
+    background: var(--green);
+}
+
 .cm-rail-row-status--attention {
-    background: var(--red);
+    background: var(--orange);
+}
+
+/* P1: hours ratio "used/total" pushed to the inline-end (left in RTL) of a service row via
+   margin-inline-start:auto — an at-a-glance read without opening the service. Tabular figures. */
+.cm-rail-row-ratio {
+    margin-inline-start: auto;
+    flex-shrink: 0;
+    font-size: var(--text-sm);
+    color: var(--gray-500);
+    font-variant-numeric: tabular-nums;
 }
 
 /* Screen-reader-only text carried by an attention row (the non-color-only signal). */
