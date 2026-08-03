@@ -788,9 +788,77 @@ select.form-input {
     color: var(--primary-blue);
 }
 
+/* PR-P2 (Gap #2) — hero hours figure: the big used/total + "נותרו X" is the focal metric.
+   RTL-safe (flex items order by the inline direction, no physical left/right props); tokens only. */
+.management-hours-hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-4);
+    margin-bottom: var(--space-3);
+}
+
+.management-hours-hero-figure {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-1);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.management-hours-hero-used {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--gray-900);
+    letter-spacing: -0.02em;
+}
+
+/* the big figure stays neutral when healthy (success); it colors only on attention */
+.management-hours-hero-used.warning,
+.management-hours-hero-used.critical {
+    color: var(--orange);
+}
+
+.management-hours-hero-used.blocked {
+    color: var(--red);
+}
+
+.management-hours-hero-slash,
+.management-hours-hero-total {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    color: var(--gray-500);
+}
+
+.management-hours-hero-unit {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--gray-500);
+}
+
+.management-hours-hero-remaining {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--gray-500);
+    font-variant-numeric: tabular-nums;
+}
+
+.management-hours-hero-remaining.success {
+    color: var(--green);
+}
+
+.management-hours-hero-remaining.warning,
+.management-hours-hero-remaining.critical {
+    color: var(--orange);
+}
+
+.management-hours-hero-remaining.blocked {
+    color: var(--red);
+}
+
 .management-hours-progress-bar {
     position: relative;
-    height: 8px;
+    height: 10px;
     background: #f1f5f9;
     border-radius: 999px;
     overflow: hidden;
@@ -799,24 +867,35 @@ select.form-input {
 
 .management-hours-progress-fill {
     height: 100%;
-    transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s ease;
+    transition: width var(--transition-slow), background var(--transition-smooth);
     border-radius: 999px;
 }
 
+/* PR-P2 (Gap #3) — color semantics (Haim LOCKED): RED = overdraft/blocked ONLY (the open-debt
+   signal — do NOT dilute it); ORANGE = high-utilization (critical + warning); calm GREEN =
+   healthy. These fills mirror manageStatusClass() in UnifiedServiceCard.js — the thresholds
+   live there, ONLY the colors live here; do NOT re-map one without the other. */
 .management-hours-progress-fill.success {
-    background: var(--success-green);
+    background: var(--green);
 }
 
 .management-hours-progress-fill.warning {
-    background: var(--warning-yellow);
+    background: var(--orange);
 }
 
 .management-hours-progress-fill.critical {
-    background: var(--danger-red);
+    background: var(--orange);
 }
 
 .management-hours-progress-fill.blocked {
-    background: var(--text-secondary);
+    background: var(--red);
+}
+
+.management-hours-caption {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--gray-500);
+    font-variant-numeric: tabular-nums;
 }
 
 .management-hours-stats {

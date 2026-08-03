@@ -14,6 +14,13 @@
  * `buildManageDetail(ServiceCardModel card)` on identical fixtures and compares the
  * contract-bearing facts. (Raw whitespace/formatting is intentionally NOT compared — the
  * injectors + actions key off selectors/attrs/textContent, which are what this pins.)
+ *
+ * PR-P2 RE-ANCHOR: the redesign (title = the service NAME · a hero hours figure · a vivid
+ * color-semantic fill) INTENTIONALLY changes the hero/stats presentation and removes the
+ * `.service-name` badge, so the U5a "new == retired accordion" VISUAL equality on those two
+ * facts (`nameBadge`, `hoursStats`) no longer holds and is dropped from the old-vs-new toEqual.
+ * Every injector-critical / data fact stays pinned; the new intended contract is asserted in the
+ * "PR-P2 · detail hero" describe below (title-is-name, hero numbers, fill == manageStatusClass).
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -42,6 +49,7 @@ import '../../../apps/admin-panel/js/ui/UnifiedServiceCard.js';
 
 const ADMIN = path.resolve(__dirname, '../../../apps/admin-panel');
 const MGMT_SRC = fs.readFileSync(path.resolve(ADMIN, 'js/ui/ClientManagementModal.js'), 'utf8');
+const MODALS_CSS = fs.readFileSync(path.resolve(ADMIN, 'css/clients-modals.css'), 'utf8');
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mgmt = (window as any).ClientManagementModal;
@@ -63,12 +71,17 @@ function facts(card: HTMLElement) {
   const overrideBtn = el('.override-btn');
   return {
     serviceId: card.getAttribute('data-service-id'),
-    nameBadge: el('.management-service-badge.service-name')?.textContent?.trim(),
+    // NOTE (PR-P2 re-anchor): `nameBadge` (the small `.service-name` badge) and `hoursStats`
+    // (the dense `.management-hours-stat-value` row) are INTENTIONALLY dropped from the
+    // old-vs-new equality — the P2 redesign makes the NAME the header title and folds the
+    // hours numbers into a hero (Gap #2/#4). Those two facts were the U5a "== retired
+    // accordion" visual scaffolding, now superseded; the injector/data facts below (the ones
+    // ServiceOverdraftResolution / AddPackageToStage / the 5 actions depend on) stay pinned,
+    // and the new title + hero + fill-class contract is asserted in its own describes below.
     typeBadge: el('.management-service-badge:not(.service-name)')?.className,
     statusBadge: el('.service-status-badge')?.className,
     actions: all('[data-service-action]').map((b) => b.dataset.serviceAction).sort(),
     stageNames: all('.management-stage-name').map((e) => e.textContent?.trim()),
-    hoursStats: all('.management-hours-stat-value').map((e) => e.textContent?.trim()),
     override: overrideBtn ? { active: overrideBtn.dataset.active, name: overrideBtn.dataset.name } : null,
     editPkg: all('.edit-pkg-date-btn').map((b) => ({ svc: b.dataset.serviceId, pkg: b.dataset.packageId, date: b.dataset.currentDate })),
     // the info block (labels + values) + how many `.management-service-info` wrappers — catches
@@ -112,10 +125,9 @@ describe('U5a · manage-detail == the old renderServiceCard (contract-bearing DO
     const o = facts(oldCard(blockedHours));
     const n = facts(newCard(blockedHours));
     expect(n.serviceId).toBe('srv_h');
-    expect(n).toEqual(o); // serviceId, nameBadge (truncated), badges, actions, hoursStats, override, editPkg
+    expect(n).toEqual(o); // serviceId, badges, actions, stageNames, override, editPkg, info (P2: minus nameBadge/hoursStats)
     // spot-checks so a bad `toEqual` can't pass silently:
     expect(n.actions).toEqual(['change-status', 'complete', 'delete', 'renew']);
-    expect(n.hoursStats).toEqual(['50.0', '55.0', '-5.0']); // נרכשו / נוצלו / נותרו
     expect(n.override).toEqual({ active: 'true', name: 'ייעוץ שוטף עם שם ארוך במיוחד' }); // "אפשר חריגה"
     expect(n.editPkg).toEqual([{ svc: 'srv_h', pkg: 'pkg1', date: '2026-01-15' }]);
   });
@@ -147,15 +159,69 @@ describe('U5a · injector-anchor selectors are present on the new card', () => {
     expect(n.querySelectorAll('.management-stage-info').length).toBe(2);
     expect(n.querySelector('.management-stage-name')).not.toBeNull();
   });
-  it('SEC-1: escaping the name prevents an attribute breakout (no injected event handler)', () => {
+  it('SEC-1: escaping the name prevents an attribute breakout (title is now the service NAME)', () => {
     const el = USC.buildManageDetail(
       model.build({ services: [{ id: 's', name: 'A" onmouseover="alert(1)', type: 'hours', status: 'active', totalHours: 1, hoursUsed: 0, hoursRemaining: 1 }] }).cards[0]
     );
     // With escaping, the `"` cannot break out of the title attribute → NO injected onmouseover.
     expect(el.querySelector('[onmouseover]')).toBeNull();
-    // and the full raw name is preserved safely inside the attribute.
-    const badge = el.querySelector('.management-service-badge.service-name') as HTMLElement;
-    expect(badge.getAttribute('title')).toBe('A" onmouseover="alert(1)');
+    // Gap #4: the redundant `.service-name` badge is GONE — the name lives ONLY in the title.
+    expect(el.querySelector('.management-service-badge.service-name')).toBeNull();
+    // and the full raw name is preserved safely as both the title text and its `title=` tooltip.
+    const title = el.querySelector('.management-service-title') as HTMLElement;
+    expect(title.getAttribute('title')).toBe('A" onmouseover="alert(1)');
+    expect(title.textContent?.trim()).toBe('A" onmouseover="alert(1)');
+  });
+});
+
+// ── PR-P2 — the NEW intended detail contract (title = name · hero hours · vivid fill) ────────
+describe('PR-P2 · detail hero — the redesigned management-detail contract', () => {
+  // Build an hours card whose manageStatusClass() bucket is known from hoursRemaining.
+  const hoursCard = (over: Record<string, unknown>) =>
+    newCard({ id: 'srv_p2', name: 'שירות שעות', type: 'hours', status: 'active', ...over });
+
+  it('Gap #4 — the detail title textContent IS the (full, untruncated) service name; no `.service-name` badge', () => {
+    const n = newCard(blockedHours);
+    const title = n.querySelector('.management-service-title') as HTMLElement;
+    // the big title is the real name (not the old literal "שירות", not a truncated badge).
+    expect(title.textContent?.trim()).toBe('ייעוץ שוטף עם שם ארוך במיוחד');
+    expect(title.textContent?.trim()).not.toBe('שירות');
+    expect(title.getAttribute('title')).toBe('ייעוץ שוטף עם שם ארוך במיוחד'); // full name on hover
+    // the redundant name badge is gone — the name is shown exactly once.
+    expect(n.querySelector('.management-service-badge.service-name')).toBeNull();
+  });
+
+  it('Gap #2 — the hero renders the used/total + "נותרו X" (all three numbers present, byte-identical)', () => {
+    const n = newCard(blockedHours); // total 50, used 55, remaining -5
+    expect((n.querySelector('.management-hours-hero-used') as HTMLElement).textContent?.trim()).toBe('55.0');
+    expect((n.querySelector('.management-hours-hero-total') as HTMLElement).textContent?.trim()).toBe('50.0');
+    const remaining = (n.querySelector('.management-hours-hero-remaining') as HTMLElement).textContent || '';
+    expect(remaining).toContain('נותרו');
+    expect(remaining).toContain('-5.0'); // the נותרו value is preserved (overdraft shown truthfully)
+    // the % survives as a small caption (110% here — over-utilized), not the focal metric.
+    expect((n.querySelector('.management-hours-caption') as HTMLElement).textContent).toContain('110%');
+    // the dense stat-value row is folded into the hero (no redundant duplicate of the same 3 numbers).
+    expect(n.querySelectorAll('.management-hours-stat-value')).toHaveLength(0);
+  });
+
+  it('Gap #3 — the progress-fill class == manageStatusClass(hoursRemaining) (unchanged thresholds)', () => {
+    const fillClass = (over: Record<string, unknown>) =>
+      (hoursCard({ totalHours: 50, hoursUsed: 0, ...over })
+        .querySelector('.management-hours-progress-fill') as HTMLElement).className;
+    expect(fillClass({ hoursRemaining: -5 })).toContain('blocked');  // ≤ 0
+    expect(fillClass({ hoursRemaining: 3 })).toContain('critical');  // ≤ 5
+    expect(fillClass({ hoursRemaining: 8 })).toContain('warning');   // ≤ 10
+    expect(fillClass({ hoursRemaining: 30 })).toContain('success');  // > 10
+  });
+
+  it('Gap #3 (CSS source guard) — RED reserved for blocked; ORANGE for critical+warning; calm GREEN for success', () => {
+    expect(MODALS_CSS).toMatch(/\.management-hours-progress-fill\.blocked\s*\{\s*background:\s*var\(--red\)/);
+    expect(MODALS_CSS).toMatch(/\.management-hours-progress-fill\.critical\s*\{\s*background:\s*var\(--orange\)/);
+    expect(MODALS_CSS).toMatch(/\.management-hours-progress-fill\.warning\s*\{\s*background:\s*var\(--orange\)/);
+    expect(MODALS_CSS).toMatch(/\.management-hours-progress-fill\.success\s*\{\s*background:\s*var\(--green\)/);
+    // RED must NOT be diluted onto the calm/high-util fills (the overdraft signal stays distinct).
+    expect(MODALS_CSS).not.toMatch(/\.management-hours-progress-fill\.success\s*\{\s*background:\s*var\(--red\)/);
+    expect(MODALS_CSS).not.toMatch(/\.management-hours-progress-fill\.warning\s*\{\s*background:\s*var\(--red\)/);
   });
 });
 

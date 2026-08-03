@@ -309,25 +309,27 @@
                             <i class="fas fa-clock"></i>
                             ניצול שעות
                         </div>
+                        <!--
+                          Gap #2 (PR-P2): a large hero is the focal metric — the used/total hours
+                          + "נותרו X ש׳" as the visual anchor. נרכשו (=total) / נוצלו (=used) /
+                          נותרו (=remaining) are ALL folded into the hero (no redundant dense
+                          stats row); the % stays as a small caption under the bar. Same values as
+                          before (card.hoursUsed / totalHours / hoursRemaining) — reformatted only.
+                        -->
+                        <div class="management-hours-hero">
+                            <div class="management-hours-hero-figure">
+                                <span class="management-hours-hero-used ${statusClass}">${hoursUsed.toFixed(1)}</span>
+                                <span class="management-hours-hero-slash">/</span>
+                                <span class="management-hours-hero-total">${totalHours.toFixed(1)}</span>
+                                <span class="management-hours-hero-unit">ש׳</span>
+                            </div>
+                            <div class="management-hours-hero-remaining ${statusClass}">נותרו ${hoursRemaining.toFixed(1)} ש׳</div>
+                        </div>
                         <div class="management-hours-progress-bar">
                             <div class="management-hours-progress-fill ${statusClass}" style="width: ${percentage}%">
                             </div>
                         </div>
-                        <div class="management-hours-stats">
-                            <div class="management-hours-percentage">${percentage}%</div>
-                            <div class="management-hours-stat">
-                                <span class="management-hours-stat-label">נרכשו:</span>
-                                <span class="management-hours-stat-value">${totalHours.toFixed(1)}</span>
-                            </div>
-                            <div class="management-hours-stat">
-                                <span class="management-hours-stat-label">נוצלו:</span>
-                                <span class="management-hours-stat-value">${hoursUsed.toFixed(1)}</span>
-                            </div>
-                            <div class="management-hours-stat">
-                                <span class="management-hours-stat-label">נותרו:</span>
-                                <span class="management-hours-stat-value ${statusClass}">${hoursRemaining.toFixed(1)}</span>
-                            </div>
-                        </div>
+                        <div class="management-hours-caption">${percentage}% נוצלו</div>
                     </div>
                     ${buildPackagesBreakdown(card)}
                     ${buildOverride(card)}
@@ -457,15 +459,19 @@
         const el = document.createElement('div');
         el.className = 'management-service-card';
         el.dataset.serviceId = card.serviceId || '';
+        // Gap #4 (PR-P2): the big title IS the service NAME (was the literal "שירות" with the
+        // name demoted to a small `.service-name` badge). The redundant badge is removed — the
+        // name is shown ONCE, as the header title. `title=` keeps the full name on hover when
+        // CSS truncates. Status + type badges are unchanged.
+        const serviceName = card.name || 'ללא שם';
         el.innerHTML = `
                     <div class="management-service-header">
                         <div class="management-service-header-left">
-                            <div class="management-service-title">
+                            <div class="management-service-title" title="${esc(serviceName)}">
                                 <i class="fas ${manageServiceIcon(type)}"></i>
-                                שירות
+                                ${esc(serviceName)}
                             </div>
                             ${MANAGE_STATUS_BADGE[card.status] || MANAGE_STATUS_BADGE[card.status || 'active'] || ''}
-                            <span class="management-service-badge service-name" title="${esc(card.name || 'ללא שם')}"><i class="fas fa-tag"></i> ${esc(truncate(card.name || 'ללא שם'))}</span>
                             ${MANAGE_TYPE_BADGE[type] || ''}
                         </div>
                         <i class="fas fa-chevron-down management-service-toggle"></i>
