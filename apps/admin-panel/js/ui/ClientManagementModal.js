@@ -183,7 +183,7 @@
             if (!manageActive && reportPanel && window.ReportTab && typeof window.ReportTab.render === 'function') {
                 // Render once per open — toggling manage↔report preserves the in-progress selection + dates.
                 if (!this._reportRenderedForOpen) {
-                    window.ReportTab.render(this.currentClient, reportPanel);
+                    window.ReportTab.render(this.currentClient, reportPanel, this.dataManager);
                     this._reportRenderedForOpen = true;
                 }
             }
