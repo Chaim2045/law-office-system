@@ -137,8 +137,9 @@ describe('U4 · ClientManagementModal + clients.html — VAL-2 / tab-switching c
     expect(HTML).toContain('class="cm-tabs"');
     expect(HTML).toContain('id="cmManagePanel"');
     expect(HTML).toContain('id="cmReportPanel"');
-    // exactly the two OLD report radios keep name="reportFormat"; the tab uses mgmtReportFormat
-    expect((HTML.match(/name="reportFormat"/g) || []).length).toBe(2);
+    // U7 removed the old #clientReportModal block (its 2 name="reportFormat" radios) → 0 remain;
+    // the report tab's radios use name="mgmtReportFormat" and are built in JS (not in static HTML).
+    expect((HTML.match(/name="reportFormat"/g) || []).length).toBe(0);
     expect(HTML).not.toContain('name="mgmtReportFormat"'); // the tab radios are built in JS, not HTML
   });
 });
