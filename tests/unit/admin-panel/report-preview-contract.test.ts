@@ -89,23 +89,27 @@ describe('U3 · fix#2 — overlay-on-open, no reopen, close-on-successful-genera
 });
 
 // ── delegates: the host routes the entry points to ReportPreview ─────────────
-describe('U3 · ClientReportModal keeps thin delegates', () => {
+describe('U7 · ClientReportModal is a thin shim — only the edit-timesheet delegate survives', () => {
+  // U7 (delete-last) gutted the standalone modal: the preview/generate/email flow moved to
+  // the unified report tab (ReportTab → ReportPreview/ReportGenerator). The shim keeps ONE
+  // delegate — openEditTimesheetModal → ReportPreview.openEditModal (ReportGenerator still calls it).
   it.each([
-    'window.ReportPreview.showTimesheetPreview()',
-    'window.ReportPreview.closePreview()',
-    'window.ReportPreview.proceedToGenerateReport()',
     'window.ReportPreview.openEditModal(entryData)'
-  ])('host delegates: %s', (call) => {
+  ])('shim delegate: %s', (call) => {
     expect(REPORT).toContain(call);
+  });
+  it('the retired preview/generate delegates are gone from the shim', () => {
+    expect(REPORT).not.toContain('window.ReportPreview.showTimesheetPreview()');
+    expect(REPORT).not.toContain('window.ReportPreview.proceedToGenerateReport()');
   });
   it('the in-preview onclicks point at ReportPreview, not the old ClientReportModal', () => {
     expect(PREVIEW).toContain('onclick="window.ReportPreview.closePreview()"');
     expect(PREVIEW).toContain('onclick="window.ReportPreview.proceedToGenerateReport()"');
     expect(PREVIEW).not.toContain('window.ClientReportModal.closePreview');
   });
-  it('generateAndEmailReport stays on the host (did NOT move)', () => {
-    expect(REPORT).toContain('generateAndEmailReport');
-    expect(REPORT).toContain('window.ReportGenerator.generateAndEmail');
+  it('the email flow moved OFF the host to ReportTab (U6/U7) — the shim does not carry it', () => {
+    expect(REPORT).not.toContain('generateAndEmailReport');
+    expect(REPORT).not.toContain('window.ReportGenerator.generateAndEmail');
   });
 });
 

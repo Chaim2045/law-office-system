@@ -1,43 +1,37 @@
 /**
- * U0 — CHARACTERIZATION: the CURRENT (buggy) report-modal service-picker behavior.
+ * U7 — RETIREMENT GUARD: the report modal's dead D1/D2 recompute path is GONE, and the
+ * surviving ClientReportModal is a thin compatibility shim.
  * ─────────────────────────────────────────────────────────────────────────────
- * MASTER_PLAN / docs/PLAN-ADMIN-MODAL-UNIFICATION-2026-07.md — PR-U0.
+ * docs/PLAN-ADMIN-MODAL-UNIFICATION-2026-07.md — PR-U7 (:361-374) + §6.6.
  *
- * The unification (U1–U7) deletes ClientReportModal's recompute path, which is the
- * root cause of two live bugs. This suite PINS that current behavior AS-IS — it
- * asserts what the code DOES today (the bugs included), so U4/U5 can prove the
- * unified renderer FIXES them (and U7 can prove the buggy path is gone). A
- * characterization test that fails against current code is wrong by definition.
+ * HISTORY — this file used to be the U0 CHARACTERIZATION suite: it PINNED the two live
+ * report-modal bugs AS-IS so U4/U5 could prove the unified renderer fixed them, and U7
+ * could prove the buggy path is gone:
+ *   • D2 (קובי הראל): `populateServiceCards` keyed a client-wide Map by the SERVICE-LOCAL
+ *       `stage.id` → two legal_procedure services that each own a `stage_a` collided and a
+ *       whole service VANISHED.
+ *   • D1 (רעות ואוריאל חליבה): the timesheet-fallback block fabricated a nameless
+ *       `{totalHours:0, usedHours:N}` phantom card for any ledger `serviceName` the stage.id
+ *       Map missed.
  *
- *   D2 (קובי הראל): `populateServiceCards` keys its client-wide map by the
- *       SERVICE-LOCAL `stage.id` (ClientReportModal.js:383). Two legal_procedure
- *       services that each own a `stage_a` collide → the second overwrites the
- *       first → a whole service VANISHES; the survivors carry the LAST service's id.
+ * U7 deleted that whole renderer (the D1/D2 point-of-no-return). ClientReportModal is now a
+ * ~shim that only: init()s no-op-safe, open()s → route-or-notify, and delegates
+ * openEditTimesheetModal → ReportPreview. The REAL report path is the unified card's report
+ * tab (U4/ReportTab → ServiceCardModel/UnifiedServiceCard), which never carried D1/D2.
  *
- *   D1 (רעות ואוריאל חליבה): the timesheet-fallback block (:505-531) fabricates a
- *       phantom card `{totalHours:0, usedHours:N}` (no displayName/type/status) for
- *       any `entry.serviceName` not already a map key. Because the map is keyed by
- *       stage.id, a legal service whose hours are logged under its NAME never
- *       matches → a nameless "used>0 / total 0" phantom. It survives only for a
- *       MIXED client (top-level procedureType:'hours' → the active-stage filter at
- *       :573-590 never runs to wipe it).
- *
- * Harness mirrors tests/unit/admin-panel/overdraft-debt-reframe.test.ts (stub the
- * window globals BEFORE importing the IIFE; drive the real exported instance).
+ * So the old known-bug behavioral cases are REPLACED here by:
+ *   (1) static guards proving the dead recompute mechanisms are GONE from the source, and
+ *   (2) behavioral tests of the shim's open() route-or-notify (harness mirrors
+ *       tests/unit/admin-panel/clientstable-report-cutover.test.ts — stub the window globals,
+ *       drive the real exported instance).
  */
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// Globals the render path reads — stub BEFORE importing the IIFE.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(window as any).escapeHtml = (s: unknown): string => (s === null || s === undefined ? '' : String(s));
-// getClientTimesheetEntries drives the D1 phantom path; default empty, overridden per-test.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(window as any).ClientsDataManager = { getClientTimesheetEntries: (): unknown[] => [] };
-
-// @ts-ignore — classic admin-panel script, no type declarations
+// @ts-ignore — classic admin-panel script, no type declarations. The shim IIFE reads no
+// globals at import time; it just sets window.ClientReportModal = new ClientReportModal().
 import '../../../apps/admin-panel/js/ui/ClientReportModal.js';
 
 const ADMIN = path.resolve(__dirname, '../../../apps/admin-panel');
@@ -46,114 +40,129 @@ const SRC = fs.readFileSync(path.resolve(ADMIN, 'js/ui/ClientReportModal.js'), '
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const inst = (window as any).ClientReportModal;
 
-// ── fixtures ────────────────────────────────────────────────────────────────
-// Two DISTINCT legal procedures, each with its own active stage_a + stage_b —
-// the D2 (קובי) shape. Stage ids are unique only WITHIN a service.
-function twoLegalProceduresClient() {
-  return {
-    fullName: 'לקוח דו-הליכי',
-    procedureType: 'legal_procedure',
-    services: [
-      {
-        id: 'srv_tviaa', name: 'תביעה', type: 'legal_procedure', pricingType: 'hourly',
-        stages: [
-          { id: 'stage_a', status: 'active', totalHours: 50, hoursUsed: 46.8 },
-          { id: 'stage_b', status: 'active', totalHours: 40, hoursUsed: 0 }
-        ]
-      },
-      {
-        id: 'srv_hagana', name: 'כתב הגנה', type: 'legal_procedure', pricingType: 'hourly',
-        stages: [
-          { id: 'stage_a', status: 'active', totalHours: 45, hoursUsed: 22.1 },
-          { id: 'stage_b', status: 'active', totalHours: 30, hoursUsed: 0 }
-        ]
-      }
-    ]
-  };
-}
+const CLIENT = { id: '2025994', fullName: 'לקוח לדוגמה' };
 
-// A MIXED client: top-level procedureType:'hours' + a legal service whose hours are
-// logged under its NAME — the D1 (חליבה) shape.
-function mixedHoursLegalClient() {
-  return {
-    fullName: 'לקוח מעורב',
-    procedureType: 'hours',
-    services: [
-      {
-        id: 'srv_beitdin', name: 'ביה"ד לעבודה', type: 'legal_procedure', pricingType: 'hourly',
-        stages: [{ id: 'stage_a', status: 'active', totalHours: 79.5, hoursUsed: 61.2 }]
-      }
-    ]
-  };
-}
-
-function cards(): HTMLElement[] {
-  return Array.from(inst.serviceCardsContainer.querySelectorAll('.report-service-card')) as HTMLElement[];
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let mgmtOpen: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let notifyInfo: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let notifyErr: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let previewOpen: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let dm: any;
 
 beforeEach(() => {
-  document.body.innerHTML = '<div id="reportServiceCards"></div><input id="selectedService" />';
-  inst.serviceCardsContainer = document.getElementById('reportServiceCards');
-  inst.selectedServiceInput = document.getElementById('selectedService'); // populateServiceCards nulls it at :267
+  mgmtOpen = vi.fn();
+  notifyInfo = vi.fn();
+  notifyErr = vi.fn();
+  previewOpen = vi.fn();
+  dm = { getClientById: vi.fn((id: string) => (id === CLIENT.id ? CLIENT : null)) };
+  // The shim resolves the dataManager via window.ClientsTable?.dataManager || window.ClientsDataManager.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).ClientsDataManager.getClientTimesheetEntries = (): unknown[] => [];
+  (window as any).ClientsTable = { dataManager: dm };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).ClientManagementModal = { open: mgmtOpen };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).ReportPreview = { openEditModal: previewOpen };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).notify = { info: notifyInfo, error: notifyErr, success: vi.fn(), show: vi.fn() };
 });
 
-// ── D2 — a service VANISHES via the stage.id collision ───────────────────────
-describe('U0 · D2 — stage.id map-key collision drops a service (current bug)', () => {
-  it('two legal procedures (each with stage_a+stage_b) render as 2 cards, ALL carrying the LAST service id', async () => {
-    await inst.populateServiceCards(twoLegalProceduresClient());
-    const rendered = cards();
+afterEach(() => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (window as any).ClientsTable;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (window as any).ClientManagementModal;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (window as any).ReportPreview;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (window as any).notify;
+  document.body.innerHTML = '';
+});
 
-    // 4 active stages exist across 2 services, but stage_a/stage_b keys collide →
-    // only 2 cards survive (one per stage id), and "תביעה" is gone.
-    expect(rendered).toHaveLength(2);
-    // BUG: every surviving card carries srv_hagana's id — srv_tviaa vanished.
-    for (const c of rendered) {
-      expect(c.dataset.serviceId).toBe('srv_hagana');
-    }
-    // srv_tviaa ("תביעה") is nowhere.
-    expect(rendered.some((c) => c.dataset.serviceId === 'srv_tviaa')).toBe(false);
+// ── static guards — the dead D1/D2 recompute path is GONE ────────────────────
+describe('U7 · static guard — the deleted renderer (D1/D2) is no longer in the source', () => {
+  it('the D2 map-keying renderer is gone: no populateServiceCards / createServiceCard', () => {
+    expect(SRC).not.toContain('populateServiceCards');
+    expect(SRC).not.toContain('createServiceCard');
+  });
+
+  it('the D2 stage.id map-key collision mechanism is gone: no servicesMap.set(stage.id …)', () => {
+    expect(SRC).not.toContain('servicesMap');
+    expect(SRC).not.toMatch(/servicesMap\.set\(\s*stage\.id\s*,/);
+  });
+
+  it('the D1 timesheet-fallback phantom block is gone: no ledger read / no total-0 fabrication', () => {
+    expect(SRC).not.toContain('getClientTimesheetEntries');
+    expect(SRC).not.toContain('if (!servicesMap.has(serviceName))');
+  });
+
+  it('the other dead render/compute methods are gone (getFormData / selectServiceCard / getStageName / active-stage filter)', () => {
+    expect(SRC).not.toContain('getFormData');
+    expect(SRC).not.toContain('selectServiceCard');
+    expect(SRC).not.toContain('getStageName');
+    expect(SRC).not.toContain('isLegalProcedure');
+  });
+
+  it('the shim keeps its 3 core members + the global handle (ReportPreview reads it back)', () => {
+    expect(SRC).toMatch(/\binit\s*\(/);
+    expect(SRC).toMatch(/\bopen\s*\(\s*clientId\s*\)/);
+    expect(SRC).toMatch(/openEditTimesheetModal\s*\(/);
+    expect(SRC).toContain('window.ClientReportModal');
+    // the real report path — the unified card's report tab — is named in the shim's docblock.
+    expect(SRC).toContain("initialTab: 'report'");
   });
 });
 
-// ── D1 — a phantom card is fabricated for a mixed client ─────────────────────
-describe('U0 · D1 — timesheet-fallback fabricates a phantom card (current bug)', () => {
-  it('with NO timesheet entries the mixed client renders exactly 1 (real) card', async () => {
-    await inst.populateServiceCards(mixedHoursLegalClient());
-    expect(cards()).toHaveLength(1);
+// ── behavioral — the shim's open() routes to the unified card, else Hebrew-notifies ──
+describe('U7 · shim open() — route-or-notify', () => {
+  it('with the unified modal present → resolves the client and opens the report tab (G4)', () => {
+    inst.open(CLIENT.id);
+    expect(dm.getClientById).toHaveBeenCalledWith(CLIENT.id);
+    expect(mgmtOpen).toHaveBeenCalledTimes(1);
+    // client OBJECT (not the id string) + the dataManager + the report-tab opt.
+    expect(mgmtOpen).toHaveBeenCalledWith(CLIENT, dm, { initialTab: 'report' });
+    expect(notifyInfo).not.toHaveBeenCalled();
   });
 
-  it('when the ledger carries the legal service NAME, an extra nameless total-0 phantom appears', async () => {
+  it('NO unified modal (the frozen Fluent page) → a professional Hebrew notice, no throw', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).ClientsDataManager.getClientTimesheetEntries = (): unknown[] => [
-      { serviceName: 'ביה"ד לעבודה', minutes: 3672 } // 61.2h, logged under the NAME
-    ];
-    await inst.populateServiceCards(mixedHoursLegalClient());
-    const rendered = cards();
+    delete (window as any).ClientManagementModal;
+    expect(() => inst.open(CLIENT.id)).not.toThrow();
+    expect(mgmtOpen).not.toHaveBeenCalled();
+    expect(notifyInfo).toHaveBeenCalledWith('הפקת דוח זמינה במסך ניהול הלקוחות');
+  });
 
-    // The phantom is the EXTRA card (the map keyed the real one by stage.id, so
-    // has('ביה"ד לעבודה') misses → a fabricated card is added).
-    expect(rendered).toHaveLength(2);
-    // The phantom has no displayName → its name renders empty (the "unfamiliar card").
-    const phantom = rendered.find((c) => (c.querySelector('.report-card-name')?.textContent ?? '') === '');
-    expect(phantom, 'a nameless phantom card must exist').toBeTruthy();
+  it('route branch, client not found → Hebrew error, no modal opened, no crash', () => {
+    expect(() => inst.open('does-not-exist')).not.toThrow();
+    expect(mgmtOpen).not.toHaveBeenCalled();
+    expect(notifyErr).toHaveBeenCalledWith('הלקוח לא נמצא');
   });
 });
 
-// ── source-level contracts (pin the exact mechanisms U-PRs must remove/replace)
-describe('U0 · source contracts — the buggy mechanisms are present today', () => {
-  it('D2: the map is keyed by the service-local stage.id', () => {
-    expect(SRC).toMatch(/servicesMap\.set\(\s*stage\.id\s*,/);
+// ── behavioral — init is no-op-safe, and the edit delegate is preserved ──────
+describe('U7 · shim — no-op-safe init + preserved edit delegate', () => {
+  it('init() does not throw with NO #clientReportModal DOM present (returns truthy)', () => {
+    // The block was removed from clients.html and never existed on the Fluent page.
+    document.body.innerHTML = '';
+    let result: unknown;
+    expect(() => {
+      result = inst.init();
+    }).not.toThrow();
+    expect(result).toBe(true);
   });
-  it('D1: the timesheet-fallback fabricates a total-0 card keyed by serviceName', () => {
-    expect(SRC).toContain('if (!servicesMap.has(serviceName))');
-    expect(SRC).toMatch(/servicesMap\.set\(serviceName,\s*\{[\s\S]*?totalHours:\s*0/);
+
+  it('openEditTimesheetModal delegates to ReportPreview.openEditModal (the live edit-timesheet flow)', () => {
+    const entry = { id: 'e1', minutes: 30 };
+    inst.openEditTimesheetModal(entry);
+    expect(previewOpen).toHaveBeenCalledWith(entry);
   });
-  it('createServiceCard falls back serviceId → stage when a service id is absent', () => {
-    expect(SRC).toMatch(/dataset\.serviceId\s*=\s*serviceInfo\.serviceId\s*\|\|\s*serviceInfo\.stage/);
-  });
-  it('the overdraft count/filter key is overdraftResolved.isResolved (must not move in U1-U7)', () => {
-    expect(SRC).toContain('overdraftResolved?.isResolved');
+
+  it('openEditTimesheetModal is guarded when ReportPreview is missing (no throw)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (window as any).ReportPreview;
+    expect(() => inst.openEditTimesheetModal({ id: 'e1' })).not.toThrow();
   });
 });

@@ -272,130 +272,11 @@
         </div>
     </main>
 
-    <!-- ===== Client Report Modal ===== -->
-    <div id="clientReportModal" class="modal" style="display: none;">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2 class="modal-title">
-                    <i class="fas fa-clock"></i>
-                    הפקת דוח שעות ללקוח
-                </h2>
-                <button class="modal-close" id="closeReportModal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-
-            <div class="modal-body">
-                <!-- Simplified Client Info -->
-                <div class="report-client-info">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h3 id="reportClientName" style="margin: 0;">-</h3>
-                        <div style="display: flex; gap: 1.5rem; font-size: 0.9rem; color: #6b7280;">
-                            <span>
-                                <i class="fas fa-calendar"></i>
-                                <strong>נרשם:</strong> <span id="reportClientRegistrationDate">-</span>
-                            </span>
-                            <span>
-                                <i class="fas fa-folder"></i>
-                                <strong>תיק:</strong> <span id="reportClientCaseNumber">-</span>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Report Form -->
-                <form id="reportForm" class="report-form">
-                    <!-- Date Range -->
-                    <div class="form-section">
-                        <h4>
-                            <i class="fas fa-calendar-alt"></i>
-                            בחר תקופה
-                        </h4>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="reportStartDate">מתאריך</label>
-                                <input type="date" id="reportStartDate" class="form-input" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="reportEndDate">עד תאריך</label>
-                                <input type="date" id="reportEndDate" class="form-input" required>
-                            </div>
-                        </div>
-                        <div class="quick-dates">
-                            <button type="button" class="btn-quick-date" data-range="thisMonth">החודש</button>
-                            <button type="button" class="btn-quick-date" data-range="lastMonth">חודש שעבר</button>
-                            <button type="button" class="btn-quick-date" data-range="last3Months">3 חודשים</button>
-                            <button type="button" class="btn-quick-date" data-range="thisYear">השנה</button>
-                            <button type="button" class="btn-quick-date" data-range="all">מההתחלה</button>
-                        </div>
-                    </div>
-
-                    <!-- Service Selection - REQUIRED -->
-                    <div class="form-section">
-                        <h4>
-                            <i class="fas fa-briefcase"></i>
-                            בחר שירות <span style="color: #ef4444;">*</span>
-                        </h4>
-
-                        <!-- Service Cards Container -->
-                        <div id="reportServiceCards">
-                            <!-- Service cards will be populated dynamically by ClientReportModal.js -->
-                            <!-- Styling in report-service-cards.css -->
-                        </div>
-
-                        <!-- Hidden input to store selected service -->
-                        <input type="hidden" id="reportSelectedService" name="selectedService" value="">
-
-                        <small style="color: #6b7280; margin-top: 0.75rem; display: block;">
-                            <i class="fas fa-info-circle"></i>
-                            לחץ על השירות הרצוי כדי לבחור אותו
-                        </small>
-                    </div>
-
-                    <!-- Divider -->
-                    <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;">
-
-                    <!-- Hidden Report Type - Always Hours -->
-                    <input type="hidden" name="reportType" value="hours">
-
-                    <!-- Format -->
-                    <div class="form-section">
-                        <h4>
-                            <i class="fas fa-file-download"></i>
-                            פורמט הדוח
-                        </h4>
-                        <div class="radio-group">
-                            <label class="radio-label">
-                                <input type="radio" name="reportFormat" value="pdf" checked>
-                                <span class="radio-custom"></span>
-                                <span class="radio-text">PDF להדפסה</span>
-                            </label>
-                            <label class="radio-label">
-                                <input type="radio" name="reportFormat" value="excel">
-                                <span class="radio-custom"></span>
-                                <span class="radio-text">Excel לעריכה</span>
-                            </label>
-                        </div>
-                    </div>
-                </form>
-            </div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" id="cancelReportBtn">
-                    <i class="fas fa-times"></i>
-                    ביטול
-                </button>
-                <button type="button" class="btn-primary" id="generateReportBtn">
-                    <i class="fas fa-clock"></i>
-                    הפק דוח שעות
-                </button>
-                <button type="button" class="btn-primary" id="emailReportBtn">
-                    <i class="fas fa-envelope"></i>
-                    הפק ושלח במייל
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- ===== Client Report Modal =====
+         REMOVED in PR-U7 (delete-last). The standalone report modal was retired: U6
+         repointed "הפק דוח" to the unified client card's report tab (ClientManagementModal +
+         ReportTab), and this DOM block is dead. ClientReportModal.js is now a compatibility
+         shim (kept only for the frozen Fluent page + ReportGenerator's edit delegate). -->
 
     <!-- ===== Client Management Modal ===== -->
     <div id="clientManagementModal" class="modal" style="display: none;">
@@ -612,7 +493,7 @@
     <script defer src="js/core/csv-safe.js?v=20260617-pr-sec-3"></script>
     <script defer src="js/managers/ReportGenerator.js?v=20260713-pr-report-2"></script>
     <script defer src="js/ui/Pagination.js?v=20251215"></script>
-    <script defer src="js/ui/ClientReportModal.js?v=20260802-u3-report-preview-extract"></script>
+    <script defer src="js/ui/ClientReportModal.js?v=20260802-u7-report-modal-shim"></script>
     <script defer src="js/ui/ReportPreview.js?v=20260802-u3"></script>
     <!-- ModalManager (window.ModalManager / window.ModalHelpers) — required by ClientManagementModal's renewServiceHours + _editPackagePurchaseDate dialogs. Was missing on clients.html only, breaking both. -->
     <script defer src="js/ui/Modals.js?v=20260726-modalmanager-fix"></script>
