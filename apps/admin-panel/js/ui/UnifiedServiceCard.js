@@ -525,19 +525,29 @@
     /**
      * mode 'rail-row' → a THIN navigation row (no `.management-*` classes — DA-3, so the
      * add-package/overdraft injectors never match a rail row). Selecting it shows the
-     * matching manage-detail panel.
+     * matching detail panel.
+     *
+     * opts (PR-R1) — the SAME rail row is reused by BOTH tabs; only the ARIA wiring differs:
+     *   - manage (default): role="tab"        → aria-selected, aria-controls="managementServicesList"
+     *   - report:           opts.role="radio" → aria-checked,  opts.ariaControls=<report detail id>
+     * The manage default output stays BYTE-IDENTICAL to pre-PR-R1 (ADMIN SAFETY — this row drives
+     * which management service-card is shown).
      * @returns {HTMLElement}
      */
-    function buildRailRow(card) {
+    function buildRailRow(card, opts) {
+        const o = opts || {};
+        const role = o.role || 'tab';
+        const selectedAttr = role === 'radio' ? 'aria-checked' : 'aria-selected';
+        const ariaControls = o.ariaControls || 'managementServicesList';
         const el = document.createElement('button');
         el.type = 'button';
         el.className = 'cm-rail-row';
-        el.setAttribute('role', 'tab');
-        el.setAttribute('aria-selected', 'false');
+        el.setAttribute('role', role);
+        el.setAttribute(selectedAttr, 'false');
         // FIX 4: the builder OWNS the rail selection key (single source of truth).
         el.dataset.rail = card.serviceId || '';
-        // FIX 5: a service row controls the shared services-list detail area.
-        el.setAttribute('aria-controls', 'managementServicesList');
+        // FIX 5: a service row controls its detail area (the manage services-list by default).
+        el.setAttribute('aria-controls', ariaControls);
 
         // FIX 2: surface "needs attention" (overdraft/blocked) on the rail so an admin does not
         // have to open every service. NOT color-only (WCAG) — the row `title` + a visually-hidden
