@@ -275,20 +275,57 @@ describe('U5b · rail "needs attention" indicator (FIX 2 — overdraft/blocked s
     expect(rowA.textContent).toContain('דורש טיפול');            // screen-reader text (not color-only)
   });
 
-  it('a healthy service row has no attention dot and no attention label', () => {
+  it('a healthy service row shows an OK (not attention) dot and no attention label', () => {
+    // P1: every service row now carries a status dot — healthy = --ok (green), never --attention.
     const rowC = Array.from(rail().querySelectorAll('.cm-rail-row'))
       .find((r) => (r as HTMLElement).dataset.rail === 'srv_c') as HTMLElement;
-    expect(rowC.querySelector('.cm-rail-row-status')).toBeNull();
+    expect(rowC.querySelector('.cm-rail-row-status--ok')).not.toBeNull();
+    expect(rowC.querySelector('.cm-rail-row-status--attention')).toBeNull();
     expect(rowC.getAttribute('title')).toBeNull();
+    expect(rowC.textContent).not.toContain('דורש טיפול');
   });
 
-  it('a RESOLVED overdraft does NOT flag attention', () => {
+  it('a RESOLVED overdraft shows the OK dot, not attention', () => {
     const client = makeClient();
     client.services[0].overdraftResolved = { isResolved: true };
     render(client);
     const rowA = Array.from(rail().querySelectorAll('.cm-rail-row'))
       .find((r) => (r as HTMLElement).dataset.rail === 'srv_a') as HTMLElement;
-    expect(rowA.querySelector('.cm-rail-row-status')).toBeNull();
+    expect(rowA.querySelector('.cm-rail-row-status--ok')).not.toBeNull();
+    expect(rowA.querySelector('.cm-rail-row-status--attention')).toBeNull();
+    expect(rowA.getAttribute('title')).toBeNull();
+  });
+});
+
+describe('P1 · rail polish — hours ratio + clean status dot (no type icon)', () => {
+  beforeEach(() => render(makeClient()));
+
+  const railRow = (id: string) =>
+    Array.from(rail().querySelectorAll('.cm-rail-row'))
+      .find((r) => (r as HTMLElement).dataset.rail === id) as HTMLElement;
+
+  it('an hours service row shows the "used/total" ratio (service-level rollup, overdraft shown truthfully)', () => {
+    // srv_a: hoursUsed 12, totalHours 10 → "12.0/10.0".
+    const ratio = railRow('srv_a').querySelector('.cm-rail-row-ratio');
+    expect(ratio).not.toBeNull();
+    expect(ratio?.textContent).toBe('12.0/10.0');
+  });
+
+  it('a legal procedure with no service-level total sums its stages', () => {
+    // srv_b stages: hoursUsed 5+10=15, totalHours 20+10=30 → "15.0/30.0".
+    const ratio = railRow('srv_b').querySelector('.cm-rail-row-ratio');
+    expect(ratio).not.toBeNull();
+    expect(ratio?.textContent).toBe('15.0/30.0');
+  });
+
+  it('a fixed (priceless) service row shows NO ratio', () => {
+    expect(railRow('srv_c').querySelector('.cm-rail-row-ratio')).toBeNull();
+  });
+
+  it('service rows drop the type icon (mockup parity); the "כללי" row keeps its icon', () => {
+    expect(railRow('srv_a').querySelector('.cm-rail-row-icon')).toBeNull();
+    expect(railRow('srv_b').querySelector('.cm-rail-row-icon')).toBeNull();
+    expect(railRow('general').querySelector('.cm-rail-row-icon')).not.toBeNull();
   });
 });
 

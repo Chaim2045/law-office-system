@@ -502,6 +502,26 @@
         return false;
     }
 
+    // Rail hours ratio "used/total". A service-level rollup wins (hours services); when it is
+    // absent (0) but the service carries stages (a legal procedure keeps its hours on the
+    // stages) the ratio falls back to the sum over stages. Type-agnostic on purpose — a
+    // priceless service (0 total, no stages) simply shows nothing.
+    function railRatioHtml(card) {
+        let total = num(card.totalHours);
+        let used = num(card.hoursUsed);
+        if (!(total > 0)) {
+            const stages = Array.isArray(card.stages) ? card.stages : [];
+            if (stages.length > 0) {
+                total = stages.reduce((sum, s) => sum + num(s.totalHours), 0);
+                used = stages.reduce((sum, s) => sum + num(s.hoursUsed), 0);
+            }
+        }
+        if (!(total > 0)) {
+            return '';
+        }
+        return '<span class="cm-rail-row-ratio">' + used.toFixed(1) + '/' + total.toFixed(1) + '</span>';
+    }
+
     /**
      * mode 'rail-row' → a THIN navigation row (no `.management-*` classes — DA-3, so the
      * add-package/overdraft injectors never match a rail row). Selecting it shows the
@@ -522,20 +542,24 @@
         // FIX 2: surface "needs attention" (overdraft/blocked) on the rail so an admin does not
         // have to open every service. NOT color-only (WCAG) — the row `title` + a visually-hidden
         // label carry the signal too. SEC-1: every interpolated value stays escaped via esc().
+        // FIX 2 (P1): every service row carries a status dot — green (--ok) = healthy,
+        // orange (--attention) = needs attention (overdraft/blocked). NOT color-only (WCAG): an
+        // attention row also sets the row `title` + a visually-hidden label. The type icon is
+        // dropped from the rail (the detail panel's type badge carries type) to match the mockup.
         const attention = railNeedsAttention(card);
         if (attention) {
             el.setAttribute('title', 'דורש טיפול');
         }
         const statusDot = attention
             ? '<span class="cm-rail-row-status cm-rail-row-status--attention" aria-hidden="true"></span>'
-            : '';
+            : '<span class="cm-rail-row-status cm-rail-row-status--ok" aria-hidden="true"></span>';
         const srLabel = attention
             ? '<span class="cm-rail-row-sr">דורש טיפול</span>'
             : '';
         el.innerHTML =
             statusDot +
-            '<span class="cm-rail-row-icon"><i class="fas ' + manageServiceIcon(card.type || 'hours') + '"></i></span>' +
             '<span class="cm-rail-row-name">' + esc(truncate(card.name || 'ללא שם')) + '</span>' +
+            railRatioHtml(card) +
             srLabel;
         return el;
     }
