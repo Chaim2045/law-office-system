@@ -1,19 +1,24 @@
 /**
  * ReportTab — the "הפקת דוח" tab inside the unified ClientManagementModal.
  * ─────────────────────────────────────────────────────────────────────────────
- * docs/PLAN-ADMIN-MODAL-UNIFICATION-2026-07.md — PR-U4 (additive; the old
- * ClientReportModal stays the primary path until the U6 cutover).
+ * docs/PLAN-ADMIN-MODAL-UNIFICATION-2026-07.md — PR-R2 (report master-detail).
  *
- * The tab renders the report form (dates + quick-dates + format) and the selectable
- * service cards (ServiceCardModel → UnifiedServiceCard, mode 'report-select'), holds the
- * selection state, and emits a formData object BIT-IDENTICAL to ClientReportModal.getFormData
+ * The tab is a MASTER-DETAIL surface: a right-hand rail of services (the SAME
+ * `UnifiedServiceCard.buildRailRow` the management tab uses, parameterized to role="radio"
+ * by PR-R1) + a left detail pane (date bar + per-service detail + format footer). It holds the
+ * selection state and emits a formData object BIT-IDENTICAL to ClientReportModal.getFormData
  * so the report engine (ReportGenerator / ReportPreview) can't tell which surface produced it.
  *
  * DA-1 (radio-name collision): the format radios use `name="mgmtReportFormat"` and are read
  * SCOPED to this tab's root — never the global `input[name="reportFormat"]` the old modal owns.
- * DA-2 (empty-stage legal): a legal_procedure is only selectable via a specific stage
- * (UnifiedServiceCard never emits stage:'' for a legal service); this controller also refuses
- * to generate a legal selection with an empty stage as a belt-and-suspenders guard.
+ * DA-2 (empty-stage legal): a legal_procedure is only selectable via a specific active/completed
+ * stage. When a legal service has no such stage the selection carries stage:'' and this
+ * controller refuses to generate it (belt-and-suspenders in _validateSelection). A stage picker
+ * never sets a stageless legal selection while a selectable stage exists.
+ *
+ * Injector safety (DA-3): the report tab emits NO `.management-*` classes — the rail rows are
+ * `.cm-rail-row` and the detail uses `.report-*`, so the add-package/overdraft injectors that
+ * scan the management panel never match anything here.
  *
  * Reachable only from within the unified modal (the report tab-bar) — no existing button changes.
  */
@@ -42,145 +47,305 @@
         return `${y}-${m}-${d}`;
     }
 
+    // Parse a yyyy-mm-dd input value into a LOCAL Date — midnight (start) or end-of-day (isEnd),
+    // MATCHING ReportGenerator._parseLocalDate. A bare new Date("yyyy-mm-dd") is UTC midnight, so
+    // the "unassigned hours" note would use a narrower window than the report (dropping entries
+    // logged today) — this keeps the note's window byte-identical to the report's.
+    function parseLocalDate(value, isEnd) {
+        if (!value) {
+            return null;
+        }
+        const parts = String(value).split('-');
+        if (parts.length !== 3) {
+            return null;
+        }
+        const y = Number(parts[0]);
+        const m = Number(parts[1]);
+        const d = Number(parts[2]);
+        if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
+            return null;
+        }
+        return isEnd
+            ? new Date(y, m - 1, d, 23, 59, 59, 999)
+            : new Date(y, m - 1, d, 0, 0, 0, 0);
+    }
+
+    // Local sinks/coercers (ReportTab has no esc/num of its own; escapeHtml is the SSOT).
+    function esc(s) {
+        const f = (typeof window !== 'undefined') ? window.escapeHtml : null;
+        if (typeof f === 'function') {
+            return f(s);
+        }
+        return (s === null || s === undefined) ? '' : String(s);
+    }
+
+    function num(v) {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    function mins(entry) {
+        const n = Number(entry && entry.minutes);
+        return Number.isFinite(n) ? n : 0;
+    }
+
     class ReportTab {
         constructor() {
             this._root = null;
             this._client = null;
             this._selection = null; // { service, serviceId, stage, type }
+            this._dataManager = null;
+            this._cards = [];
         }
 
         /**
          * (Re)render the report tab into `root` for `client`. Idempotent — called on open
-         * (and on first switch to the tab). Resets the selection state.
+         * (and on first switch to the tab). Resets the selection + card state.
          */
-        render(client, root) {
+        render(client, root, dataManager) {
             if (!root) {
                 return;
             }
             this._root = root;
             this._client = client || null;
             this._selection = null;
+            this._dataManager = dataManager || null;
+            this._cards = [];
 
-            root.innerHTML = this._formHtml();
-            this._populateCards();
+            root.innerHTML = this._shellHtml();
+            this._populateRail();
             this._wireQuickDates();
+            this._wireDateInputs();
             this._wireActions();
             this._setQuickDateRange('all'); // default = full client history (caseOpenDate anchor)
         }
 
-        _formHtml() {
+        _shellHtml() {
             return `
-                <div class="report-form report-form--tab">
-                    <div class="form-section">
-                        <h4><i class="fas fa-calendar-alt"></i> בחר תקופה</h4>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="mgmtReportStartDate">מתאריך</label>
-                                <input type="date" id="mgmtReportStartDate" class="form-input">
+                <div class="cm-split">
+                    <div id="mgmtReportRail" class="cm-rail report-rail" role="radiogroup" aria-label="בחר שירות לדוח">
+                        <div class="report-rail-label">בחר שירות לדוח <span class="report-req">*</span></div>
+                    </div>
+                    <div class="cm-detail report-detail">
+                        <div class="report-date-bar">
+                            <label for="mgmtReportStartDate">מתאריך</label>
+                            <input type="date" id="mgmtReportStartDate" class="form-input">
+                            <label for="mgmtReportEndDate">עד תאריך</label>
+                            <input type="date" id="mgmtReportEndDate" class="form-input">
+                            <div class="quick-dates">
+                                <button type="button" class="btn-quick-date" data-range="thisMonth">החודש</button>
+                                <button type="button" class="btn-quick-date" data-range="lastMonth">חודש שעבר</button>
+                                <button type="button" class="btn-quick-date" data-range="last3Months">3 חודשים</button>
+                                <button type="button" class="btn-quick-date" data-range="thisYear">השנה</button>
+                                <button type="button" class="btn-quick-date" data-range="all">מההתחלה</button>
                             </div>
-                            <div class="form-group">
-                                <label for="mgmtReportEndDate">עד תאריך</label>
-                                <input type="date" id="mgmtReportEndDate" class="form-input">
+                        </div>
+
+                        <div id="mgmtReportServiceDetail" class="report-service-detail">
+                            <div class="report-detail-empty"><i class="fas fa-hand-pointer"></i> בחר שירות מהרשימה כדי להפיק דוח</div>
+                        </div>
+
+                        <div id="mgmtReportUnassignedNote" class="report-unassigned-note" hidden></div>
+
+                        <div class="report-footer">
+                            <div class="report-format-seg" role="radiogroup" aria-label="פורמט הדוח">
+                                <label class="report-seg-option">
+                                    <input type="radio" name="mgmtReportFormat" value="pdf" checked>
+                                    <span>PDF</span>
+                                </label>
+                                <label class="report-seg-option">
+                                    <input type="radio" name="mgmtReportFormat" value="excel">
+                                    <span>Excel</span>
+                                </label>
+                            </div>
+                            <div class="report-footer-actions">
+                                <button type="button" class="btn-secondary" id="mgmtEmailReportBtn">
+                                    <i class="fas fa-envelope"></i> הפק ושלח במייל
+                                </button>
+                                <button type="button" class="btn-primary" id="mgmtGenerateReportBtn">
+                                    <i class="fas fa-clock"></i> הפק דוח
+                                </button>
                             </div>
                         </div>
-                        <div class="quick-dates">
-                            <button type="button" class="btn-quick-date" data-range="thisMonth">החודש</button>
-                            <button type="button" class="btn-quick-date" data-range="lastMonth">חודש שעבר</button>
-                            <button type="button" class="btn-quick-date" data-range="last3Months">3 חודשים</button>
-                            <button type="button" class="btn-quick-date" data-range="thisYear">השנה</button>
-                            <button type="button" class="btn-quick-date" data-range="all">מההתחלה</button>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <h4><i class="fas fa-briefcase"></i> בחר שירות <span style="color: var(--danger, #ef4444);">*</span></h4>
-                        <div id="mgmtReportServiceCards"></div>
-                        <small class="report-tab-hint"><i class="fas fa-info-circle"></i> לחץ על השירות הרצוי כדי לבחור אותו</small>
-                    </div>
-
-                    <div class="form-section">
-                        <h4><i class="fas fa-file-download"></i> פורמט הדוח</h4>
-                        <div class="radio-group">
-                            <label class="radio-label">
-                                <input type="radio" name="mgmtReportFormat" value="pdf" checked>
-                                <span class="radio-custom"></span>
-                                <span class="radio-text">PDF להדפסה</span>
-                            </label>
-                            <label class="radio-label">
-                                <input type="radio" name="mgmtReportFormat" value="excel">
-                                <span class="radio-custom"></span>
-                                <span class="radio-text">Excel לעריכה</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="report-tab-actions">
-                        <button type="button" class="btn-primary" id="mgmtGenerateReportBtn">
-                            <i class="fas fa-clock"></i> הפק דוח שעות
-                        </button>
-                        <button type="button" class="btn-primary" id="mgmtEmailReportBtn">
-                            <i class="fas fa-envelope"></i> הפק ושלח במייל
-                        </button>
                     </div>
                 </div>`;
         }
 
-        _populateCards() {
-            const container = this._root.querySelector('#mgmtReportServiceCards');
-            if (!container) {
+        _populateRail() {
+            const rail = this._root.querySelector('#mgmtReportRail');
+            if (!rail) {
                 return;
             }
-            container.innerHTML = '';
 
             const model = (typeof window !== 'undefined') ? window.ServiceCardModel : null;
-            if (!model || typeof model.build !== 'function' || !window.UnifiedServiceCard) {
-                container.innerHTML = '<div class="report-tab-empty">טעינת מנוע הכרטיסים נכשלה</div>';
+            const usc = (typeof window !== 'undefined') ? window.UnifiedServiceCard : null;
+            if (!model || typeof model.build !== 'function' || !usc || typeof usc.buildRailRow !== 'function') {
+                rail.insertAdjacentHTML('beforeend', '<div class="report-rail-empty">טעינת מנוע הכרטיסים נכשלה</div>');
                 return;
             }
 
             const built = model.build(this._client, { getStageName });
-            const cards = built && Array.isArray(built.cards) ? built.cards : [];
-            if (cards.length === 0) {
-                container.innerHTML = '<div class="report-tab-empty">אין שירותים להצגה</div>';
+            this._cards = (built && Array.isArray(built.cards)) ? built.cards : [];
+            if (this._cards.length === 0) {
+                rail.insertAdjacentHTML('beforeend', '<div class="report-rail-empty">אין שירותים להצגה</div>');
                 return;
             }
 
-            let selectableCount = 0;
-            cards.forEach((card) => {
-                const units = window.UnifiedServiceCard.buildReportSelectCards(card, { getStageName });
-                units.forEach((unit) => {
-                    container.appendChild(unit.el);
-                    if (unit.selection) {
-                        selectableCount++;
-                        const sel = unit.selection;
-                        const onPick = () => this._select(sel, unit.el);
-                        unit.el.addEventListener('click', onPick);
-                        unit.el.addEventListener('keydown', (e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                onPick();
-                            }
-                        });
+            this._cards.forEach((card) => {
+                const row = usc.buildRailRow(card, { role: 'radio', ariaControls: 'mgmtReportServiceDetail' });
+                const onPick = () => this._selectService(card, row);
+                row.addEventListener('click', onPick);
+                row.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onPick();
                     }
                 });
+                rail.appendChild(row);
             });
-
-            if (selectableCount === 0) {
-                container.insertAdjacentHTML('beforeend', '<div class="report-tab-empty">אין שירות שניתן לבחור להפקת דוח</div>');
-            }
         }
 
-        _select(selection, cardEl) {
-            this._selection = selection;
-            const cards = this._root.querySelectorAll('#mgmtReportServiceCards .report-service-card');
-            cards.forEach((c) => {
-                c.classList.remove('selected');
-                if (c.getAttribute('role') === 'button') {
-                    c.setAttribute('aria-pressed', 'false');
-                }
+        _selectService(card, row) {
+            this._root.querySelectorAll('#mgmtReportRail .cm-rail-row').forEach((r) => {
+                r.classList.remove('cm-rail-row--active');
+                r.setAttribute('aria-checked', 'false');
             });
-            cardEl.classList.add('selected');
-            cardEl.setAttribute('aria-pressed', 'true');
+            row.classList.add('cm-rail-row--active');
+            row.setAttribute('aria-checked', 'true');
+            this._renderServiceDetail(card);
+        }
+
+        _renderServiceDetail(card) {
+            const host = this._root.querySelector('#mgmtReportServiceDetail');
+            if (!host) {
+                return;
+            }
+
+            // Routing on the card's stored service-type. The card is the pure ServiceCardModel
+            // view-model (not a raw service), and this branch drives layout only — the SSOT
+            // service-type predicate is for classification, not this render fork.
+            // eslint-disable-next-line no-restricted-syntax
+            const isLegal = card.type === 'legal_procedure';
+
+            if (isLegal) {
+                const stages = Array.isArray(card.stages) ? card.stages : [];
+                const selectable = stages.filter((s) => s.status === 'active' || s.status === 'completed');
+
+                if (selectable.length === 0) {
+                    // DA-2: no active/completed stage → carry stage:'' (validate-blocked), show a note.
+                    this._selection = {
+                        service: card.name || 'ללא שם',
+                        serviceId: card.serviceId,
+                        stage: '',
+                        type: 'legal_procedure'
+                    };
+                    host.innerHTML =
+                        '<div class="report-detail-head"><h4>' + esc(card.name || 'ללא שם') + '</h4></div>' +
+                        '<div class="report-detail-note">אין שלב פעיל לבחירה בהליך זה.</div>';
+                    return;
+                }
+
+                const preferred = selectable.find((s) => s.status === 'active') || selectable[0];
+                this._setStageSelection(card, preferred);
+
+                const rowsHtml = stages
+                    .map((stage) => this._stageRowHtml(card, stage, stage.id === preferred.id))
+                    .join('');
+                host.innerHTML =
+                    '<div class="report-detail-head"><h4>' + esc(card.name || 'ללא שם') + '</h4>' +
+                    '<div class="report-detail-sub">בחר שלב לדוח</div></div>' +
+                    '<div class="report-stage-list">' + rowsHtml + '</div>';
+
+                host.querySelectorAll('.report-stage[data-stage-id]').forEach((el) => {
+                    const stageId = el.getAttribute('data-stage-id');
+                    const stage = stages.find((s) => s.id === stageId);
+                    if (!stage) {
+                        return;
+                    }
+                    const onPick = () => {
+                        host.querySelectorAll('.report-stage').forEach((n) => {
+                            n.classList.remove('report-stage--on');
+                            if (n.getAttribute('role') === 'radio') {
+                                n.setAttribute('aria-checked', 'false');
+                            }
+                        });
+                        el.classList.add('report-stage--on');
+                        el.setAttribute('aria-checked', 'true');
+                        this._setStageSelection(card, stage);
+                    };
+                    el.addEventListener('click', onPick);
+                    el.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            onPick();
+                        }
+                    });
+                });
+                return;
+            }
+
+            // hours / fixed — one selectable unit, no stage.
+            this._selection = {
+                // byte-match the old buildReportSelectCards payload (service: card.name, no fallback):
+                // ReportGenerator branches on `if (formData.service)`, so keep the value identical
+                // (devils-advocate Attack-2). Display below uses a 'ללא שם' fallback; the payload does not.
+                service: card.name,
+                serviceId: card.serviceId,
+                stage: '',
+                type: card.type || 'hours'
+            };
+            const note = card.isFixed
+                ? 'שירות במחיר קבוע — הדוח יכלול את כל השעות שנרשמו בטווח שנבחר.'
+                : `שירות שעות — הדוח יכלול את כל השעות בטווח שנבחר (${num(card.hoursUsed).toFixed(1)} מתוך ${num(card.totalHours).toFixed(1)}).`;
+            host.innerHTML =
+                '<div class="report-detail-head"><h4>' + esc(card.name || 'ללא שם') + '</h4></div>' +
+                '<div class="report-detail-note">' + esc(note) + '</div>';
+        }
+
+        /**
+         * CRUCIAL: `service` MUST be getStageName(stage.id) and `stage` the stage id — this is
+         * what makes getFormData BYTE-MATCH the old flow (buildReportSelectCards set
+         * selection.service = getStageName(stage.id)).
+         */
+        _setStageSelection(card, stage) {
+            this._selection = {
+                service: getStageName(stage.id),
+                serviceId: card.serviceId,
+                stage: stage.id,
+                type: 'legal_procedure'
+            };
+        }
+
+        _stageRowHtml(card, stage, isOn) {
+            const locked = !(stage.status === 'active' || stage.status === 'completed');
+            const classes = ['report-stage'];
+            if (isOn && !locked) {
+                classes.push('report-stage--on');
+            }
+            if (locked) {
+                classes.push('report-stage--locked');
+            }
+
+            let statusHtml;
+            if (stage.status === 'active') {
+                statusHtml = '<span class="report-stage-status">פעיל</span>';
+            } else if (stage.status === 'completed') {
+                statusHtml = '<span class="report-stage-status">הושלם</span>';
+            } else {
+                statusHtml = '<span class="report-stage-status report-stage-status--locked">' +
+                    '<i class="fas fa-lock report-stage-lock" aria-hidden="true"></i> ממתין</span>';
+            }
+
+            const attrs = locked
+                ? ' aria-disabled="true"'
+                : ' role="radio" tabindex="0" aria-checked="' + (isOn ? 'true' : 'false') + '" data-stage-id="' + esc(stage.id) + '"';
+
+            return '<div class="' + classes.join(' ') + '"' + attrs + '>' +
+                '<span class="report-stage-radio" aria-hidden="true"></span>' +
+                '<span class="report-stage-name">' + esc(getStageName(stage.id)) + '</span>' +
+                statusHtml +
+                '<span class="report-stage-hours">' + num(stage.hoursUsed).toFixed(1) + ' / ' + num(stage.totalHours).toFixed(1) + '</span>' +
+                '</div>';
         }
 
         _wireQuickDates() {
@@ -188,6 +353,17 @@
             buttons.forEach((btn) => {
                 btn.addEventListener('click', () => this._setQuickDateRange(btn.getAttribute('data-range')));
             });
+        }
+
+        _wireDateInputs() {
+            const start = this._root.querySelector('#mgmtReportStartDate');
+            const end = this._root.querySelector('#mgmtReportEndDate');
+            if (start) {
+                start.addEventListener('change', () => this._renderUnassignedNote());
+            }
+            if (end) {
+                end.addEventListener('change', () => this._renderUnassignedNote());
+            }
         }
 
         _setQuickDateRange(range) {
@@ -231,6 +407,7 @@
             this._root.querySelectorAll('.btn-quick-date').forEach((btn) => {
                 btn.classList.toggle('active', btn.getAttribute('data-range') === range);
             });
+            this._renderUnassignedNote();
         }
 
         /**
@@ -313,6 +490,105 @@
                 return;
             }
             window.ReportGenerator.generateAndEmail(this.getFormData());
+        }
+
+        /**
+         * "שעות ללא שיוך" — sum of timesheet minutes (in the current date range) whose entries
+         * match NO service on the client. Returns hours (Number ≥ 0) or null when uncomputable
+         * (no dataManager, no reader, throw, or non-array result) — NEVER a fake 0.
+         */
+        _computeUnassignedHours() {
+            const dm = this._dataManager;
+            const client = this._client;
+            if (!dm || typeof dm.getClientTimesheetEntries !== 'function' || !client) {
+                return null;
+            }
+            const startInput = this._root ? this._root.querySelector('#mgmtReportStartDate') : null;
+            const endInput = this._root ? this._root.querySelector('#mgmtReportEndDate') : null;
+            // LOCAL-midnight / LOCAL-end-of-day — byte-match the report's window so the note never
+            // silently drops today's orphan hours (devils-advocate Attack-1).
+            const start = parseLocalDate(startInput && startInput.value, false);
+            const end = parseLocalDate(endInput && endInput.value, true);
+
+            let entries;
+            try {
+                entries = dm.getClientTimesheetEntries(client.fullName, start, end) || [];
+            } catch {
+                return null;
+            }
+            if (!Array.isArray(entries)) {
+                return null;
+            }
+
+            const services = Array.isArray(client.services) ? client.services : [];
+            let sumMinutes = 0;
+            entries.forEach((entry) => {
+                if (!this._entryMatchesAnyService(entry, services)) {
+                    sumMinutes += mins(entry);
+                }
+            });
+            return sumMinutes / 60;
+        }
+
+        /**
+         * An entry is ASSIGNED (true) if it matches ANY service (any status). "Unassigned" =
+         * orphan hours matching no service. Mirrors ReportGenerator.collectReportData's
+         * matchService (trimmed): serviceId / service-as-id / service-as-name / serviceName /
+         * (legal) any stage id === entry.serviceId or entry.stage.
+         */
+        _entryMatchesAnyService(entry, services) {
+            if (!entry) {
+                return false;
+            }
+            const eServiceId = entry.serviceId;
+            const eService = (entry.service || '').trim();
+            const eServiceName = (entry.serviceName || '').trim();
+            const eStage = entry.stage;
+
+            for (let i = 0; i < services.length; i++) {
+                const s = services[i] || {};
+                const sName = (s.name || '').trim();
+                if (eServiceId && eServiceId === s.id) {
+                    return true;
+                }
+                if (eService && eService === s.id) {
+                    return true;
+                }
+                if (eService && sName && eService === sName) {
+                    return true;
+                }
+                if (eServiceName && sName && eServiceName === sName) {
+                    return true;
+                }
+                if (Array.isArray(s.stages)) {
+                    for (let j = 0; j < s.stages.length; j++) {
+                        const st = s.stages[j] || {};
+                        if (eServiceId && st.id === eServiceId) {
+                            return true;
+                        }
+                        if (eStage && st.id === eStage) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        _renderUnassignedNote() {
+            const note = this._root ? this._root.querySelector('#mgmtReportUnassignedNote') : null;
+            if (!note) {
+                return;
+            }
+            const hours = this._computeUnassignedHours();
+            if (hours === null || !(hours > 0)) {
+                note.hidden = true;
+                note.innerHTML = '';
+                return;
+            }
+            note.hidden = false;
+            note.innerHTML = '<i class="fas fa-info-circle"></i> שעות ללא שיוך לשירות: <b>' +
+                hours.toFixed(1) + '</b> — נרשמו בשעתון אך אינן משויכות לשירות.';
         }
     }
 
