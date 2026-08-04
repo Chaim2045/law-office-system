@@ -265,3 +265,182 @@ describe('R2 · ClientManagementModal + clients.html — tab-switching contracts
     expect(HTML).not.toContain('name="mgmtReportFormat"'); // the tab radios are built in JS, not HTML
   });
 });
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * PR-1 — report reading-pane: identity band + segmented presets + custom disclosure.
+ * The dates stay in the DOM (collapsed), getFormData is byte-identical, the note is
+ * unchanged (only restyled). New surfaces: the per-service identity band (icon + badge +
+ * hours meter/stat), the segmented preset control + live resolved caption, and the
+ * "מותאם" disclosure that reveals the (moved) native date inputs.
+ * ──────────────────────────────────────────────────────────────────────────── */
+const fixedClient = () => ({
+  id: 'c-fixed', fullName: 'לקוח מחיר קבוע',
+  services: [{ id: 'srv_f', name: 'ריטיינר', type: 'fixed', pricingType: 'fixed', totalHours: 0, hoursUsed: 0 }]
+});
+const hoursRemClient = (rem: number, used: number, total: number) => ({
+  id: 'c-rem', fullName: 'לקוח שעות',
+  services: [{ id: 'srv_r', name: 'שירות שעות', type: 'hours', totalHours: total, hoursUsed: used, hoursRemaining: rem }]
+});
+// An hours service with NO defined quota (total ≤ 0) — must NOT paint a red debt bar (FIX 3).
+const noQuotaHoursClient = () => ({
+  id: 'c-nq', fullName: 'לקוח ללא מכסה',
+  services: [{ id: 'srv_nq', name: 'שירות ללא מכסה', type: 'hours', totalHours: 0, hoursUsed: 0 }]
+});
+const clickRail = (id: string) =>
+  (root.querySelector(`#mgmtReportRail .cm-rail-row[data-rail="${id}"]`) as HTMLElement).click();
+const detailEl = () => root.querySelector('#mgmtReportServiceDetail') as HTMLElement;
+
+describe('PR-1 · identity band per service type', () => {
+  it('hours → identity meter present + badge שעות (band only, no verbose note)', () => {
+    ReportTab.render(hoursClient(), root);
+    clickRail('srv_h');
+    const detail = detailEl();
+    expect(detail.querySelector('.report-identity-meter')).not.toBeNull();
+    expect((detail.querySelector('.report-identity-badge') as HTMLElement).textContent).toBe('שעות');
+    // hours branch = band only — the meter+stat replace the old verbose .report-detail-note
+    expect(detail.querySelector('.report-detail-note')).toBeNull();
+  });
+
+  it('fixed → no meter + a fixed .report-detail-note + badge מחיר קבוע', () => {
+    ReportTab.render(fixedClient(), root);
+    clickRail('srv_f');
+    const detail = detailEl();
+    expect(detail.querySelector('.report-identity-meter')).toBeNull();
+    expect((detail.querySelector('.report-identity-badge') as HTMLElement).textContent).toBe('מחיר קבוע');
+    expect(detail.querySelector('.report-detail-note')).not.toBeNull();
+  });
+
+  it('legal → no meter + a .report-stage-list + badge הליך משפטי', () => {
+    ReportTab.render(twoLegalClient(), root);
+    clickRail('srv_hagana');
+    const detail = detailEl();
+    expect(detail.querySelector('.report-identity-meter')).toBeNull();
+    expect((detail.querySelector('.report-identity-badge') as HTMLElement).textContent).toBe('הליך משפטי');
+    expect(detail.querySelector('.report-stage-list')).not.toBeNull();
+  });
+});
+
+describe('PR-1 · meter threshold classes (over < 0 / high ≤10 / good)', () => {
+  it('rem −5 → over + overdraft stat "חריגה 5.0"', () => {
+    ReportTab.render(hoursRemClient(-5, 55, 50), root);
+    clickRail('srv_r');
+    const detail = detailEl();
+    expect(detail.querySelector('.report-identity-meter-fill--over')).not.toBeNull();
+    expect(detail.querySelector('.report-identity-rem--over')).not.toBeNull();
+    expect((detail.querySelector('.report-identity-rem') as HTMLElement).textContent).toContain('חריגה 5.0');
+  });
+
+  it('rem 0 (exactly on budget) → high, NEVER red (FIX 3 strict over)', () => {
+    ReportTab.render(hoursRemClient(0, 50, 50), root);
+    clickRail('srv_r');
+    const detail = detailEl();
+    expect(detail.querySelector('.report-identity-meter-fill--high')).not.toBeNull();
+    expect(detail.querySelector('.report-identity-rem--high')).not.toBeNull();
+    // and definitely not the red "over" class
+    expect(detail.querySelector('.report-identity-meter-fill--over')).toBeNull();
+  });
+
+  it('rem 30 → good (נותרו)', () => {
+    ReportTab.render(hoursRemClient(30, 20, 50), root);
+    clickRail('srv_r');
+    const detail = detailEl();
+    expect(detail.querySelector('.report-identity-meter-fill--good')).not.toBeNull();
+    expect(detail.querySelector('.report-identity-rem--good')).not.toBeNull();
+    expect((detail.querySelector('.report-identity-rem') as HTMLElement).textContent).toContain('נותרו 30.0');
+  });
+
+  it('total ≤ 0 → NO meter/stat + a neutral note (never a red debt bar) (FIX 3)', () => {
+    ReportTab.render(noQuotaHoursClient(), root);
+    clickRail('srv_nq');
+    const detail = detailEl();
+    expect(detail.querySelector('.report-identity-meter')).toBeNull();
+    expect(detail.querySelector('.report-identity-stat')).toBeNull();
+    const note = detail.querySelector('.report-detail-note') as HTMLElement;
+    expect(note).not.toBeNull();
+    expect(note.textContent).toContain('ללא מכסת שעות מוגדרת');
+  });
+});
+
+describe('PR-1 · segmented presets still drive the dates + formData', () => {
+  it('clicking a preset writes #mgmtReportStartDate; getFormData keeps the 9-key set', () => {
+    ReportTab.render(hoursClient(), root);
+    (root.querySelector('#mgmtReportPresetSeg .btn-quick-date[data-range="thisMonth"]') as HTMLElement).click();
+    expect((root.querySelector('#mgmtReportStartDate') as HTMLInputElement).value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(Object.keys(ReportTab.getFormData()).sort()).toEqual(
+      ['clientId', 'clientName', 'endDate', 'reportFormat', 'reportType', 'service', 'serviceId', 'stage', 'startDate'].sort()
+    );
+  });
+});
+
+describe('PR-1 · "מותאם" disclosure reveals the (always-in-DOM) date inputs', () => {
+  it('toggling opens the custom-dates block + flips aria-expanded; both inputs present before AND after', () => {
+    ReportTab.render(hoursClient(), root);
+    const dates = root.querySelector('#mgmtReportCustomDates') as HTMLElement;
+    const toggle = root.querySelector('#mgmtReportCustomToggle') as HTMLElement;
+    // the inputs live in the DOM even while collapsed
+    expect(root.querySelector('#mgmtReportStartDate')).not.toBeNull();
+    expect(root.querySelector('#mgmtReportEndDate')).not.toBeNull();
+    expect(dates.classList.contains('report-custom-dates--open')).toBe(false);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    toggle.click();
+    expect(dates.classList.contains('report-custom-dates--open')).toBe(true);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    // still present after opening
+    expect(root.querySelector('#mgmtReportStartDate')).not.toBeNull();
+    expect(root.querySelector('#mgmtReportEndDate')).not.toBeNull();
+  });
+});
+
+describe('PR-1 · live resolved-date caption', () => {
+  it('render → Hebrew "מ־… עד …" caption; a thisYear click resolves the start to בינואר', () => {
+    ReportTab.render(hoursClient(), root);
+    const cap = root.querySelector('#mgmtReportResolvedRange') as HTMLElement;
+    expect(cap.innerHTML).toContain('מ־');
+    expect(cap.innerHTML).toMatch(/ב(ינואר|פברואר|מרץ|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר)/);
+    (root.querySelector('#mgmtReportPresetSeg .btn-quick-date[data-range="thisYear"]') as HTMLElement).click();
+    expect(cap.innerHTML).toContain('בינואר'); // thisYear → Jan 1
+  });
+});
+
+describe('PR-1 · segmented presets are an accessible radiogroup (FIX 5)', () => {
+  it('the seg is role=radiogroup; a preset click sets aria-checked on the chosen chip only', () => {
+    ReportTab.render(hoursClient(), root);
+    const seg = root.querySelector('#mgmtReportPresetSeg') as HTMLElement;
+    expect(seg.getAttribute('role')).toBe('radiogroup');
+    // the resolved caption is a polite live region so the range is announced on change
+    expect((root.querySelector('#mgmtReportResolvedRange') as HTMLElement).getAttribute('aria-live')).toBe('polite');
+    (root.querySelector('#mgmtReportPresetSeg .btn-quick-date[data-range="thisMonth"]') as HTMLElement).click();
+    const chips = Array.from(root.querySelectorAll('#mgmtReportPresetSeg .btn-quick-date')) as HTMLElement[];
+    const checked = chips.filter((c) => c.getAttribute('aria-checked') === 'true');
+    expect(checked.length).toBe(1);
+    expect(checked[0].getAttribute('data-range')).toBe('thisMonth');
+  });
+});
+
+describe('PR-1 · quiet unassigned-note structure (restyle only)', () => {
+  it('keeps the <b> total + fa-info-circle inside .report-unassigned-note', () => {
+    const dm = stubDataManager([
+      { serviceId: 'srv_x', minutes: 60 },
+      { serviceId: 'orphan', minutes: 90 }
+    ]);
+    ReportTab.render(unassignedClient(), root, dm);
+    const note = root.querySelector('#mgmtReportUnassignedNote') as HTMLElement;
+    expect(note.hidden).toBe(false);
+    expect(note.classList.contains('report-unassigned-note')).toBe(true);
+    expect(note.innerHTML).toContain('fa-info-circle');
+    expect(note.querySelector('b')).not.toBeNull();
+  });
+});
+
+describe('PR-1 · injector safety (emitted DOM, FIX 2)', () => {
+  it('no rendered element (detail or rail) carries a management-* class', () => {
+    // hours: exercises the identity band + meter + rail
+    ReportTab.render(hoursClient(), root);
+    clickRail('srv_h');
+    expect(root.querySelector('[class*="management-"]')).toBeNull();
+    // legal: exercises the band + stage list + a two-row rail
+    ReportTab.render(twoLegalClient(), root);
+    clickRail('srv_hagana');
+    expect(root.querySelector('[class*="management-"]')).toBeNull();
+  });
+});
