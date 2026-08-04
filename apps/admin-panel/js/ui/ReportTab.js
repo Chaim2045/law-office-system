@@ -16,9 +16,9 @@
  * controller refuses to generate it (belt-and-suspenders in _validateSelection). A stage picker
  * never sets a stageless legal selection while a selectable stage exists.
  *
- * Injector safety (DA-3): the report tab emits NO `.management-*` classes — the rail rows are
- * `.cm-rail-row` and the detail uses `.report-*`, so the add-package/overdraft injectors that
- * scan the management panel never match anything here.
+ * Injector safety (DA-3): the report tab emits NONE of the injector-scanned `.management` prefix
+ * classes — the rail rows are `.cm-rail-row` and the detail uses `.report-*`, so the
+ * add-package/overdraft injectors that scan the management panel never match anything here.
  *
  * Reachable only from within the unified modal (the report tab-bar) — no existing button changes.
  */
@@ -89,6 +89,88 @@
         return Number.isFinite(n) ? n : 0;
     }
 
+    // Meter threshold — STRICT over: < 0 remaining = over (red), ≤10 = high (orange), else good
+    // (green). rem === 0 (exactly on budget) routes to 'high', NEVER red — a fully-used but not
+    // overdrawn quota is a warning, not a debt. NaN-safe: NaN < 0 is false → NaN <= 10 is false → 'good'
+    // is unreachable for a real overdraft since callers gate on total > 0 before painting the meter.
+    function meterStatus(hoursRemaining) {
+        return (hoursRemaining < 0) ? 'over' : (hoursRemaining <= 10 ? 'high' : 'good');
+    }
+
+    // Per-service identity band — icon + name + type badge, plus (hours only) an inline-end
+    // used/total · remaining stat and a 4px status meter. Numbers are toFixed()'d (no XSS
+    // surface); the name is the only user string → esc().
+    function identityBandHtml(card) {
+        // Layout-only classification (icon/badge/meter routing), mirrors _renderServiceDetail's fork.
+        // eslint-disable-next-line no-restricted-syntax
+        const isLegal = card.type === 'legal_procedure';
+        const isFixed = !!card.isFixed;
+
+        let icon;
+        let badge;
+        if (isLegal) {
+            icon = 'fa-gavel';
+            badge = 'הליך משפטי';
+        } else if (isFixed) {
+            icon = 'fa-dollar-sign';
+            badge = 'מחיר קבוע';
+        } else {
+            icon = 'fa-clock';
+            badge = 'שעות';
+        }
+
+        let stat = '';
+        let meter = '';
+        // Meter/stat ONLY for an hours service WITH a real quota (total > 0). A 0-budget hours
+        // service renders the band alone; the caller (_renderServiceDetail) adds a neutral note —
+        // never a red "debt" bar for a service that has no defined quota (FIX 3).
+        if (!isLegal && !isFixed && num(card.totalHours) > 0) {
+            const used = num(card.hoursUsed);
+            const total = num(card.totalHours);
+            // The card model exposes card.hoursRemaining (ServiceCardModel.buildCard) — use it.
+            const rem = num(card.hoursRemaining);
+            const status = meterStatus(rem);
+            const remText = rem < 0
+                ? 'חריגה ' + Math.abs(rem).toFixed(1)
+                : 'נותרו ' + rem.toFixed(1);
+            stat =
+                '<span class="report-identity-stat"><b>' + used.toFixed(1) + '</b> / ' +
+                total.toFixed(1) + ' ש׳ · ' +
+                '<span class="report-identity-rem report-identity-rem--' + status + '">' + remText + '</span></span>';
+            const pct = Math.min(100, Math.max(0, (used / total) * 100));
+            meter =
+                '<div class="report-identity-meter"><span class="report-identity-meter-fill report-identity-meter-fill--' +
+                status + '" style="width:' + pct + '%"></span></div>';
+        }
+
+        return '<div class="report-identity"><div class="report-identity-top">' +
+            '<span class="report-identity-icon"><i class="fas ' + icon + '" aria-hidden="true"></i></span>' +
+            '<span class="report-identity-name">' + esc(card.name || 'ללא שם') + '</span>' +
+            '<span class="report-identity-badge">' + badge + '</span>' +
+            stat +
+            '</div>' + meter + '</div>';
+    }
+
+    // yyyy-mm-dd → "D בMonth YYYY" (Hebrew), or "—" when empty/malformed. Parsed via split() —
+    // never via the Date constructor (a source-guard test forbids parsing the raw input value).
+    function fmtDateHebrew(value) {
+        if (!value) {
+            return '—';
+        }
+        const parts = String(value).split('-');
+        if (parts.length !== 3) {
+            return '—';
+        }
+        const months = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי',
+            'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+        const mIdx = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        if (!(mIdx >= 0 && mIdx <= 11) || !Number.isFinite(d)) {
+            return '—';
+        }
+        return d + ' ב' + months[mIdx] + ' ' + parts[0];
+    }
+
     class ReportTab {
         constructor() {
             this._root = null;
@@ -96,6 +178,7 @@
             this._selection = null; // { service, serviceId, stage, type }
             this._dataManager = null;
             this._cards = [];
+            this._resizeBound = false; // window resize listener attaches once (singleton)
         }
 
         /**
@@ -116,7 +199,9 @@
             this._populateRail();
             this._wireQuickDates();
             this._wireDateInputs();
+            this._wireCustomToggle();
             this._wireActions();
+            this._bindResizeOnce();
             this._setQuickDateRange('all'); // default = full client history (caseOpenDate anchor)
         }
 
@@ -127,22 +212,36 @@
                         <div class="report-rail-label">בחר שירות לדוח <span class="report-req">*</span></div>
                     </div>
                     <div class="cm-detail report-detail">
-                        <div class="report-date-bar">
-                            <label for="mgmtReportStartDate">מתאריך</label>
-                            <input type="date" id="mgmtReportStartDate" class="form-input">
-                            <label for="mgmtReportEndDate">עד תאריך</label>
-                            <input type="date" id="mgmtReportEndDate" class="form-input">
-                            <div class="quick-dates">
-                                <button type="button" class="btn-quick-date" data-range="thisMonth">החודש</button>
-                                <button type="button" class="btn-quick-date" data-range="lastMonth">חודש שעבר</button>
-                                <button type="button" class="btn-quick-date" data-range="last3Months">3 חודשים</button>
-                                <button type="button" class="btn-quick-date" data-range="thisYear">השנה</button>
-                                <button type="button" class="btn-quick-date" data-range="all">מההתחלה</button>
-                            </div>
-                        </div>
-
                         <div id="mgmtReportServiceDetail" class="report-service-detail">
                             <div class="report-detail-empty"><i class="fas fa-hand-pointer"></i> בחר שירות מהרשימה כדי להפיק דוח</div>
+                        </div>
+
+                        <div class="report-period">
+                            <div class="report-period-label">תקופת הדוח</div>
+                            <div class="report-preset-seg" id="mgmtReportPresetSeg" role="radiogroup" aria-label="טווח תאריכים לדוח">
+                                <span class="report-preset-thumb" aria-hidden="true"></span>
+                                <button type="button" class="btn-quick-date" data-range="thisMonth" role="radio" aria-checked="false">החודש</button>
+                                <button type="button" class="btn-quick-date" data-range="lastMonth" role="radio" aria-checked="false">חודש שעבר</button>
+                                <button type="button" class="btn-quick-date" data-range="last3Months" role="radio" aria-checked="false">3 חודשים</button>
+                                <button type="button" class="btn-quick-date" data-range="thisYear" role="radio" aria-checked="false">השנה</button>
+                                <button type="button" class="btn-quick-date" data-range="all" role="radio" aria-checked="false">מההתחלה</button>
+                            </div>
+                            <div class="report-dateline">
+                                <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+                                <span id="mgmtReportResolvedRange" class="report-dateline-range" aria-live="polite" aria-atomic="true"></span>
+                                <span class="report-dateline-dot" aria-hidden="true">·</span>
+                                <button type="button" class="report-custom-toggle" id="mgmtReportCustomToggle" aria-expanded="false" aria-controls="mgmtReportCustomDates"><i class="fas fa-pen" aria-hidden="true"></i> מותאם</button>
+                            </div>
+                            <div class="report-custom-dates" id="mgmtReportCustomDates">
+                                <div class="report-field">
+                                    <label for="mgmtReportStartDate">מתאריך</label>
+                                    <input type="date" id="mgmtReportStartDate" class="form-input">
+                                </div>
+                                <div class="report-field">
+                                    <label for="mgmtReportEndDate">עד תאריך</label>
+                                    <input type="date" id="mgmtReportEndDate" class="form-input">
+                                </div>
+                            </div>
                         </div>
 
                         <div id="mgmtReportUnassignedNote" class="report-unassigned-note" hidden></div>
@@ -240,7 +339,7 @@
                         type: 'legal_procedure'
                     };
                     host.innerHTML =
-                        '<div class="report-detail-head"><h4>' + esc(card.name || 'ללא שם') + '</h4></div>' +
+                        identityBandHtml(card) +
                         '<div class="report-detail-note">אין שלב פעיל לבחירה בהליך זה.</div>';
                     return;
                 }
@@ -252,8 +351,8 @@
                     .map((stage) => this._stageRowHtml(card, stage, stage.id === preferred.id))
                     .join('');
                 host.innerHTML =
-                    '<div class="report-detail-head"><h4>' + esc(card.name || 'ללא שם') + '</h4>' +
-                    '<div class="report-detail-sub">בחר שלב לדוח</div></div>' +
+                    identityBandHtml(card) +
+                    '<div class="report-detail-sub">בחר שלב לדוח</div>' +
                     '<div class="report-stage-list">' + rowsHtml + '</div>';
 
                 host.querySelectorAll('.report-stage[data-stage-id]').forEach((el) => {
@@ -294,12 +393,19 @@
                 stage: '',
                 type: card.type || 'hours'
             };
-            const note = card.isFixed
-                ? 'שירות במחיר קבוע — הדוח יכלול את כל השעות שנרשמו בטווח שנבחר.'
-                : `שירות שעות — הדוח יכלול את כל השעות בטווח שנבחר (${num(card.hoursUsed).toFixed(1)} מתוך ${num(card.totalHours).toFixed(1)}).`;
-            host.innerHTML =
-                '<div class="report-detail-head"><h4>' + esc(card.name || 'ללא שם') + '</h4></div>' +
-                '<div class="report-detail-note">' + esc(note) + '</div>';
+            if (card.isFixed) {
+                host.innerHTML =
+                    identityBandHtml(card) +
+                    '<div class="report-detail-note">שירות במחיר קבוע — הדוח יכלול את כל השעות שנרשמו בטווח שנבחר.</div>';
+            } else if (num(card.totalHours) > 0) {
+                // hours with a real quota — the identity-band meter + stat replace the old verbose note.
+                host.innerHTML = identityBandHtml(card);
+            } else {
+                // hours with no defined quota — no red "debt" bar; a neutral note instead (FIX 3).
+                host.innerHTML =
+                    identityBandHtml(card) +
+                    '<div class="report-detail-note">ללא מכסת שעות מוגדרת.</div>';
+            }
         }
 
         /**
@@ -358,11 +464,106 @@
         _wireDateInputs() {
             const start = this._root.querySelector('#mgmtReportStartDate');
             const end = this._root.querySelector('#mgmtReportEndDate');
+            // A manual date edit = a custom range: drop the preset thumb + active chip, then
+            // recompute the note (a window test depends on this) + the resolved caption.
+            const onChange = () => {
+                this._markCustomRange();
+                this._renderUnassignedNote();
+                this._updateResolvedCaption();
+            };
             if (start) {
-                start.addEventListener('change', () => this._renderUnassignedNote());
+                start.addEventListener('change', onChange);
             }
             if (end) {
-                end.addEventListener('change', () => this._renderUnassignedNote());
+                end.addEventListener('change', onChange);
+            }
+        }
+
+        // "מותאם" disclosure — reveals the (always-in-DOM) native date inputs.
+        _wireCustomToggle() {
+            const toggle = this._root ? this._root.querySelector('#mgmtReportCustomToggle') : null;
+            const dates = this._root ? this._root.querySelector('#mgmtReportCustomDates') : null;
+            if (!toggle || !dates) {
+                return;
+            }
+            toggle.addEventListener('click', () => {
+                const open = dates.classList.toggle('report-custom-dates--open');
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+        }
+
+        // A manual date edit is no longer a preset — hide the sliding thumb + clear the active chip
+        // (and its aria-checked, so the radiogroup announces "no preset selected").
+        _markCustomRange() {
+            if (!this._root) {
+                return;
+            }
+            const seg = this._root.querySelector('#mgmtReportPresetSeg');
+            if (seg) {
+                seg.classList.add('report-preset-seg--custom');
+            }
+            this._root.querySelectorAll('.btn-quick-date').forEach((btn) => {
+                btn.classList.remove('active');
+                if (btn.getAttribute('role') === 'radio') {
+                    btn.setAttribute('aria-checked', 'false');
+                }
+            });
+        }
+
+        // Slide the thumb over the active preset using PHYSICAL offsets (offsetLeft is RTL-correct;
+        // we set the physical `left`, never a logical inset). Retries via rAF ONLY while the seg is
+        // laid-out + connected, capped at 5 attempts — so a closed/hidden modal (offsetWidth 0 forever,
+        // or a disconnected panel after resize) can never busy-spin the rAF loop (FIX 1).
+        _placePresetThumb(attempt) {
+            const seg = this._root && this._root.querySelector('#mgmtReportPresetSeg');
+            if (!seg || !seg.isConnected) {
+                return;
+            }
+            const thumb = seg.querySelector('.report-preset-thumb');
+            const active = seg.querySelector('.btn-quick-date.active');
+            if (!thumb || !active) {
+                return;
+            }
+            if (active.offsetWidth === 0) {
+                const next = (attempt || 0) + 1;
+                if (next <= 5 && typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+                    window.requestAnimationFrame(() => this._placePresetThumb(next));
+                }
+                return;
+            }
+            thumb.style.left = active.offsetLeft + 'px';
+            thumb.style.width = active.offsetWidth + 'px';
+            seg.classList.remove('report-preset-seg--custom');
+        }
+
+        // Live caption of the resolved range (digits + constant month names only → no XSS surface).
+        _updateResolvedCaption() {
+            const el = this._root ? this._root.querySelector('#mgmtReportResolvedRange') : null;
+            if (!el) {
+                return;
+            }
+            const startInput = this._root.querySelector('#mgmtReportStartDate');
+            const endInput = this._root.querySelector('#mgmtReportEndDate');
+            const startVal = startInput ? startInput.value : '';
+            const endVal = endInput ? endInput.value : '';
+            el.innerHTML = 'מ־<b>' + fmtDateHebrew(startVal) + '</b> עד <b>' + fmtDateHebrew(endVal) + '</b>';
+        }
+
+        // ReportTab is a singleton — attach the resize listener once (re-place the thumb on resize).
+        // The handler is a no-op while the tab isn't mounted/connected (modal closed), so a resize
+        // never kicks off a thumb-reposition (and its rAF retry) against a detached panel (FIX 1).
+        _bindResizeOnce() {
+            if (this._resizeBound) {
+                return;
+            }
+            if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+                window.addEventListener('resize', () => {
+                    if (!this._root || !this._root.isConnected) {
+                        return;
+                    }
+                    this._placePresetThumb();
+                });
+                this._resizeBound = true;
             }
         }
 
@@ -405,9 +606,16 @@
                 endInput.value = fmtDateForInput(endDate);
             }
             this._root.querySelectorAll('.btn-quick-date').forEach((btn) => {
-                btn.classList.toggle('active', btn.getAttribute('data-range') === range);
+                const on = btn.getAttribute('data-range') === range;
+                btn.classList.toggle('active', on);
+                // Mirror the stage-picker radio pattern — announce the selected preset to AT (FIX 5).
+                if (btn.getAttribute('role') === 'radio') {
+                    btn.setAttribute('aria-checked', on ? 'true' : 'false');
+                }
             });
             this._renderUnassignedNote();
+            this._placePresetThumb();
+            this._updateResolvedCaption();
         }
 
         /**

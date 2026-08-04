@@ -1809,38 +1809,14 @@ select.form-input {
 /* Detail column. Localized surface/fg tokens (mirrors the .cm-split --cm-active-surface
    pattern) so the one-off literals ship atomically with this ?v= bump and aren't scattered. */
 .report-detail {
-    --report-attention-surface: rgb(249 115 22 / 8%);
     --report-on-fg: #fff;
+
+    /* White surface — absent from design-system.css; mirrors the existing --report-on-fg local
+       token so the thumb + date-input surfaces ship atomically with this ?v= bump. */
+    --report-surface: #fff;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-}
-
-/* Date bar — a wrapping row of the two date fields + the quick-date chips. */
-.report-date-bar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2) var(--space-3);
-    padding-bottom: var(--space-3);
-    border-bottom: 1px solid var(--gray-200);
-}
-
-.report-date-bar label {
-    font-size: var(--text-sm);
-    font-weight: 500;
-    color: var(--gray-700);
-}
-
-.report-date-bar .form-input {
-    width: auto;
-}
-
-.report-date-bar .quick-dates {
-    margin: 0;
-    padding: 0;
-    border: none;
-    justify-content: flex-start;
 }
 
 /* Empty placeholder before a service is picked. */
@@ -1860,15 +1836,280 @@ select.form-input {
     min-height: 96px;
 }
 
-.report-detail-head {
-    margin-bottom: var(--space-3);
+/* ============================================================
+   PR-1 — report reading-pane: identity band + period segment
+   Calm/Emil: tokens only, motion via --transition-*, RTL logical
+   properties, :focus-visible on every interactive element.
+   ============================================================ */
+
+/* ── Identity band — icon + name + type badge + inline-end hours stat + a 4px meter ── */
+.report-identity {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-bottom: var(--space-4);
+    margin-bottom: var(--space-4);
+    border-bottom: 1px solid var(--gray-200);
 }
 
-.report-detail-head h4 {
-    margin: 0;
+.report-identity-top {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.report-identity-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: var(--radius-sm);
+    background: var(--cm-active-surface);
+    color: var(--blue-dark);
+    font-size: var(--text-md);
+}
+
+.report-identity-name {
     font-size: var(--text-lg);
-    font-weight: 600;
+    font-weight: var(--font-semibold);
     color: var(--gray-900);
+    letter-spacing: var(--letter-spacing-tight);
+}
+
+.report-identity-badge {
+    flex-shrink: 0;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    background: var(--gray-100);
+    color: var(--gray-600);
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+}
+
+/* Hours-only stat — pushed to the inline-end (left in RTL). Tabular figures. */
+.report-identity-stat {
+    margin-inline-start: auto;
+    font-size: var(--text-md);
+    color: var(--gray-600);
+    font-variant-numeric: tabular-nums;
+}
+
+.report-identity-stat b {
+    color: var(--gray-900);
+    font-weight: var(--font-semibold);
+}
+
+.report-identity-rem {
+    font-weight: var(--font-semibold);
+}
+
+.report-identity-rem--good {
+    color: var(--green-dark);
+}
+
+.report-identity-rem--high {
+    color: var(--orange-dark);
+}
+
+.report-identity-rem--over {
+    color: var(--red-dark);
+}
+
+/* 4px status meter under the identity row */
+.report-identity-meter {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--gray-100);
+    overflow: hidden;
+}
+
+.report-identity-meter-fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    transition: width var(--transition-slow);
+}
+
+.report-identity-meter-fill--good {
+    background: var(--green);
+}
+
+.report-identity-meter-fill--high {
+    background: var(--orange);
+}
+
+.report-identity-meter-fill--over {
+    background: var(--red);
+}
+
+/* ── Period section — one segmented preset control + resolved caption + custom disclosure ── */
+.report-period {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.report-period-label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    letter-spacing: var(--letter-spacing-wide);
+    color: var(--gray-500);
+}
+
+/* Segmented sliding presets — ONE control; a white thumb slides to the active preset. */
+.report-preset-seg {
+    position: relative;
+    display: inline-flex;
+    align-self: flex-start;
+    max-width: 100%;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    border-radius: var(--radius-md);
+    background: var(--gray-100);
+    overflow-x: auto;
+}
+
+.report-preset-thumb {
+    position: absolute;
+    top: var(--space-1);
+    bottom: var(--space-1);
+    left: 0; /* PHYSICAL — set by _placePresetThumb via offsetLeft (RTL-correct), never a logical inset */
+    width: 0;
+    z-index: 0;
+    border-radius: var(--radius-sm);
+    background: var(--report-surface);
+    box-shadow: var(--shadow-sm);
+    pointer-events: none;
+    transition: left var(--transition-slow), width var(--transition-slow);
+}
+
+.report-preset-seg--custom .report-preset-thumb {
+    opacity: 0;
+}
+
+/* Scope the preset pills — override BOTH the base .btn-quick-date pill and the mobile
+   width:100% rule; segmented buttons are auto-width, borderless, and ride above the thumb. */
+.report-preset-seg .btn-quick-date {
+    position: relative;
+    z-index: 1;
+    width: auto;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--gray-600);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    white-space: nowrap;
+    transition: color var(--transition-fast);
+}
+
+.report-preset-seg .btn-quick-date:hover {
+    background: none;
+    border-color: transparent;
+    color: var(--gray-900);
+    transform: none;
+}
+
+.report-preset-seg .btn-quick-date.active {
+    background: none;
+    border-color: transparent;
+    color: var(--blue-dark);
+}
+
+.report-preset-seg .btn-quick-date:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* Resolved-date caption + "מותאם" disclosure toggle */
+.report-dateline {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    font-variant-numeric: tabular-nums;
+}
+
+.report-dateline > i {
+    flex-shrink: 0;
+    color: var(--gray-400);
+}
+
+.report-dateline-range b {
+    color: var(--gray-900);
+    font-weight: var(--font-semibold);
+}
+
+.report-dateline-dot {
+    color: var(--gray-300);
+}
+
+.report-custom-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    appearance: none;
+    padding: var(--space-1) var(--space-2);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--blue-dark);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.report-custom-toggle:hover {
+    background: var(--cm-active-surface);
+}
+
+.report-custom-toggle:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* Custom date inputs — collapsed by default; the disclosure reveals them. The inputs stay in
+   the DOM at all times (getFormData reads their .value) — only their visibility toggles. */
+.report-custom-dates {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height var(--transition-slow), opacity var(--transition-smooth);
+}
+
+.report-custom-dates--open {
+    max-height: 200px;
+    opacity: 1;
+}
+
+.report-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.report-field label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--gray-700);
+}
+
+.report-field .form-input {
+    width: 100%;
+    background: var(--report-surface);
+    font-variant-numeric: tabular-nums;
 }
 
 .report-detail-sub {
@@ -1976,20 +2217,24 @@ select.form-input {
     font-variant-numeric: tabular-nums;
 }
 
-/* Unassigned-hours info note */
+/* Unassigned-hours info note — quiet: a hairline row (ⓘ + muted text), not a filled box.
+   Read-only information, not an error, so it whispers instead of shouting. */
 .report-unassigned-note {
-    padding: var(--space-3);
-    border: 1px solid var(--orange-light);
-    border-radius: var(--radius-md);
-    background: var(--report-attention-surface);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     font-size: var(--text-sm);
-    line-height: 1.5;
-    color: var(--gray-700);
+    color: var(--gray-500);
 }
 
 .report-unassigned-note i {
     margin-inline-end: var(--space-1);
     color: var(--orange-dark);
+}
+
+.report-unassigned-note b {
+    color: var(--gray-900);
+    font-variant-numeric: tabular-nums;
 }
 
 /* Footer — format toggle on one side, actions on the other. */
