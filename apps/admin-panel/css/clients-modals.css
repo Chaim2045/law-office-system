@@ -2090,7 +2090,10 @@ select.form-input {
 }
 
 .report-custom-dates--open {
-    max-height: 200px;
+    /* 480px (was 200px) so the ~340px inline flatpickr calendar isn't clipped by the container's
+       overflow:hidden. The native two-field grid needs far less, but the shared open-height must
+       clear the tallest content (the calendar) in either state. */
+    max-height: 480px;
     opacity: 1;
 }
 
@@ -2321,5 +2324,105 @@ select.form-input {
 
     .report-footer-actions {
         justify-content: flex-end;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PR-R4 — inline flatpickr RANGE calendar (vendored 4.6.13) themed to our tokens.
+   flatpickr is ONLY the input surface; the two native date fields stay the source
+   of truth (getFormData reads them). EVERY .flatpickr-* override is scoped under
+   .report-detail so nothing leaks to the rest of the admin panel. Tokens only —
+   no hardcoded hex beyond the R3 locals --report-surface / --report-on-fg.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* The text anchor is invisible — the inline calendar renders next to it. */
+.report-cal-anchor {
+    display: none;
+}
+
+/* When flatpickr is live, drop the 1fr/1fr two-field grid → single-column full-width so the
+   inline calendar gets the whole row (otherwise it lands in a half-width cell and clips, worse
+   in RTL). Applies only while the calendar is active (the class is JS-added on success). */
+.report-custom-dates--fp {
+    display: block;
+}
+
+/* When flatpickr is live (JS adds .report-custom-dates--fp) hide the native fields.
+   They STAY in the DOM (getFormData + the fallback path still read them). */
+.report-custom-dates--fp .report-field {
+    display: none;
+}
+
+/* Calendar shell */
+.report-detail .flatpickr-calendar {
+    background: var(--report-surface);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Selected + range endpoints */
+.report-detail .flatpickr-day.selected,
+.report-detail .flatpickr-day.startRange,
+.report-detail .flatpickr-day.endRange {
+    background: var(--blue);
+    color: var(--report-on-fg);
+    border-color: var(--blue);
+}
+
+/* Days within the picked range */
+.report-detail .flatpickr-day.inRange {
+    background: var(--cm-active-surface);
+    border-radius: 2px;
+    box-shadow: none;
+}
+
+/* Day cells */
+.report-detail .flatpickr-day {
+    color: var(--gray-700);
+}
+
+.report-detail .flatpickr-day:hover {
+    background: var(--gray-100);
+}
+
+/* Adjacent-month days */
+.report-detail .flatpickr-day.prevMonthDay,
+.report-detail .flatpickr-day.nextMonthDay {
+    color: var(--gray-300);
+}
+
+/* Weekday header row */
+.report-detail .flatpickr-weekday {
+    color: var(--gray-400);
+}
+
+/* Month/year nav */
+.report-detail .flatpickr-current-month,
+.report-detail .flatpickr-monthDropdown-months,
+.report-detail .flatpickr-prev-month,
+.report-detail .flatpickr-next-month {
+    color: var(--gray-600);
+}
+
+.report-detail .flatpickr-prev-month:hover,
+.report-detail .flatpickr-next-month:hover {
+    color: var(--gray-900);
+}
+
+/* Keyboard focus rings via --blue (matches the rest of the report surface). */
+.report-detail .flatpickr-day:focus-visible,
+.report-detail .flatpickr-prev-month:focus-visible,
+.report-detail .flatpickr-next-month:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* Zero flatpickr's OWN hardcoded transitions/animations for reduced-motion users. */
+@media (prefers-reduced-motion: reduce) {
+    .report-detail .flatpickr-calendar,
+    .report-detail .flatpickr-day {
+        transition: none !important;
+        animation: none !important;
     }
 }

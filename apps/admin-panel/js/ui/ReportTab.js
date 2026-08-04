@@ -179,6 +179,7 @@
             this._dataManager = null;
             this._cards = [];
             this._resizeBound = false; // window resize listener attaches once (singleton)
+            this._fp = null; // flatpickr instance (inline range calendar) — null when unavailable (fallback)
         }
 
         /**
@@ -195,6 +196,13 @@
             this._dataManager = dataManager || null;
             this._cards = [];
 
+            // Destroy any prior flatpickr instance — the innerHTML wipe below removes its anchor
+            // element from the DOM but leaves the JS instance dangling (event listeners, calendar node).
+            if (this._fp) {
+                this._fp.destroy();
+                this._fp = null;
+            }
+
             root.innerHTML = this._shellHtml();
             this._populateRail();
             this._wireQuickDates();
@@ -202,7 +210,8 @@
             this._wireCustomToggle();
             this._wireActions();
             this._bindResizeOnce();
-            this._setQuickDateRange('all'); // default = full client history (caseOpenDate anchor)
+            this._initRangePicker(); // inline range calendar (no-op fallback if window.flatpickr is absent)
+            this._setQuickDateRange('all'); // default = full client history (seeds the calendar via the setDate hook)
         }
 
         _shellHtml() {
@@ -233,6 +242,7 @@
                                 <button type="button" class="report-custom-toggle" id="mgmtReportCustomToggle" aria-expanded="false" aria-controls="mgmtReportCustomDates"><i class="fas fa-pen" aria-hidden="true"></i> מותאם</button>
                             </div>
                             <div class="report-custom-dates" id="mgmtReportCustomDates">
+                                <input type="text" id="mgmtReportRangeAnchor" class="report-cal-anchor" readonly aria-hidden="true" tabindex="-1">
                                 <div class="report-field">
                                     <label for="mgmtReportStartDate">מתאריך</label>
                                     <input type="date" id="mgmtReportStartDate" class="form-input">
@@ -492,6 +502,88 @@
             });
         }
 
+        /**
+         * Wire the inline flatpickr RANGE calendar onto the hidden text anchor. flatpickr is ONLY
+         * the input surface — the two native #mgmtReportStartDate/#mgmtReportEndDate hidden fields
+         * stay the source of truth (getFormData reads THEM, unchanged).
+         *
+         * Graceful fallback: if window.flatpickr is missing (load failure / jsdom) OR the
+         * flatpickr constructor THROWS during init, this degrades to the native date inputs —
+         * it returns WITHOUT adding the `report-custom-dates--fp` class, so the native inputs
+         * stay visible + usable and getFormData works unchanged. Both the absence guard and the
+         * try/catch below cover this, so a broken calendar never blanks the report tab.
+         *
+         * Loop-break: onChange syncs both native fields only on a FULL range (2 dates). On a
+         * partial range (1 date, after the first click) it writes the start and BLANKS the end,
+         * so _validateSelection (both-dates-required) fails until the range is completed — the
+         * report can never run on a half-finished selection carrying the stale preset window.
+         * A preset click pushes the range in via `fp.setDate([...], false)` (false = do NOT
+         * retrigger onChange), and programmatic `.value` writes don't fire a native `change`, so
+         * _wireDateInputs can't double-fire.
+         */
+        _initRangePicker() {
+            if (typeof window === 'undefined' || !window.flatpickr) {
+                return;
+            }
+            if (this._fp) {
+                this._fp.destroy();
+                this._fp = null;
+            }
+            const anchor = this._root ? this._root.querySelector('#mgmtReportRangeAnchor') : null;
+            if (!anchor) {
+                return;
+            }
+            try {
+                this._fp = window.flatpickr(anchor, {
+                    mode: 'range',
+                    inline: true,
+                    locale: 'he',
+                    dateFormat: 'Y-m-d',
+                    onChange: (selectedDates) => {
+                        const s = this._root.querySelector('#mgmtReportStartDate');
+                        const e = this._root.querySelector('#mgmtReportEndDate');
+                        if (selectedDates.length === 1) {
+                            // Partial range (first click): write the start, INVALIDATE the stale end
+                            // so _validateSelection fails until the range is completed. Never leave the
+                            // native fields on the OLD preset window while the calendar shows a half-pick.
+                            if (s) {
+                                s.value = fmtDateForInput(selectedDates[0]);
+                            }
+                            if (e) {
+                                e.value = '';
+                            }
+                            this._markCustomRange();
+                            this._updateResolvedCaption();
+                            return;
+                        }
+                        if (selectedDates.length !== 2) {
+                            return;
+                        }
+                        // Byte-identical to how _setQuickDateRange writes the native fields (fmtDateForInput).
+                        if (s) {
+                            s.value = fmtDateForInput(selectedDates[0]);
+                        }
+                        if (e) {
+                            e.value = fmtDateForInput(selectedDates[1]);
+                        }
+                        this._markCustomRange();
+                        this._renderUnassignedNote();
+                        this._updateResolvedCaption();
+                    }
+                });
+                // Only NOW (flatpickr constructed successfully) hide the native fields — neither the
+                // absence guard above nor the catch below reaches here, so the native inputs stay
+                // visible whenever the calendar is unavailable OR failed to init.
+                const dates = this._root.querySelector('#mgmtReportCustomDates');
+                if (dates) {
+                    dates.classList.add('report-custom-dates--fp');
+                }
+            } catch {
+                // A throwing flatpickr must NOT blank the tab — degrade to the native-input fallback.
+                this._fp = null;
+            }
+        }
+
         // A manual date edit is no longer a preset — hide the sliding thumb + clear the active chip
         // (and its aria-checked, so the radiogroup announces "no preset selected").
         _markCustomRange() {
@@ -604,6 +696,16 @@
             }
             if (endInput) {
                 endInput.value = fmtDateForInput(endDate);
+            }
+            // Reflect the preset in the inline calendar. `false` = do NOT retrigger onChange (loop-break);
+            // the native fields are already written above, so onChange would only re-do the same work.
+            if (this._fp) {
+                try {
+                    this._fp.setDate([startDate, endDate], false);
+                } catch {
+                    // A throwing setDate must not break preset selection — the native fields (written
+                    // above) remain the source of truth.
+                }
             }
             this._root.querySelectorAll('.btn-quick-date').forEach((btn) => {
                 const on = btn.getAttribute('data-range') === range;
