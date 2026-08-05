@@ -33,6 +33,7 @@ const commonIgnores = [
   'functions/**', // ✅ Server-side code (Node.js) - different linting rules
   'scripts/**',   // ✅ Ad-hoc maintenance/migration scripts (Node.js, console output expected)
   '**/lib/**',    // ✅ Vendored third-party libraries (e.g. lucide.min.js)
+  'apps/admin-panel/vendor/**', // ✅ Vendored third-party libraries (flatpickr 4.6.13 — PR-R4). Scoped (not **/vendor/**) so a future unrelated vendor/ dir isn't silently unlinted.
   'vite.config.ts',
   'vitest.config.ts',
   'playwright.config.ts',

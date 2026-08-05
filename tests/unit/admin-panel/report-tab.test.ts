@@ -17,7 +17,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (window as any).escapeHtml = (s: unknown): string => (s === null || s === undefined ? '' : String(s));
@@ -442,5 +442,156 @@ describe('PR-1 · injector safety (emitted DOM, FIX 2)', () => {
     ReportTab.render(twoLegalClient(), root);
     clickRail('srv_hagana');
     expect(root.querySelector('[class*="management-"]')).toBeNull();
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * PR-R4 — inline flatpickr RANGE calendar. flatpickr is ONLY the input surface;
+ * the two native #mgmtReportStartDate/#mgmtReportEndDate fields stay the source of
+ * truth (getFormData reads THEM, unchanged). jsdom has no window.flatpickr, so the
+ * default path exercises the graceful FALLBACK; a stub proves the wiring.
+ * ──────────────────────────────────────────────────────────────────────────── */
+describe('PR-R4 · fallback — no window.flatpickr (jsdom default)', () => {
+  it('with window.flatpickr undefined, both native inputs stay type=date and a preset still writes the start', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((window as any).flatpickr).toBeUndefined(); // jsdom ships no flatpickr
+    ReportTab.render(hoursClient(), root);
+    const start = root.querySelector('#mgmtReportStartDate') as HTMLInputElement;
+    const end = root.querySelector('#mgmtReportEndDate') as HTMLInputElement;
+    expect(start).not.toBeNull();
+    expect(end).not.toBeNull();
+    // the native inputs are unchanged type="date" (not swapped/hidden by flatpickr)
+    expect(start.getAttribute('type')).toBe('date');
+    expect(end.getAttribute('type')).toBe('date');
+    // the fallback path never adds the --fp class, so CSS keeps the native fields visible
+    expect(
+      (root.querySelector('#mgmtReportCustomDates') as HTMLElement).classList.contains('report-custom-dates--fp')
+    ).toBe(false);
+    // a preset click still writes the native field (getFormData source is intact)
+    (root.querySelector('#mgmtReportPresetSeg .btn-quick-date[data-range="thisMonth"]') as HTMLElement).click();
+    expect(start.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // and getFormData still returns the 9-key set
+    expect(Object.keys(ReportTab.getFormData()).sort()).toEqual(
+      ['clientId', 'clientName', 'endDate', 'reportFormat', 'reportType', 'service', 'serviceId', 'stage', 'startDate'].sort()
+    );
+  });
+});
+
+describe('PR-R4 · stub — _initRangePicker config + setDate loop-break + onChange sync', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let calls: { config: any; setDateCalls: any[][] };
+  beforeEach(() => {
+    calls = { config: null, setDateCalls: [] };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).flatpickr = (_anchor: any, config: any) => {
+      calls.config = config;
+      return {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setDate: (...args: any[]) => {
+          calls.setDateCalls.push(args);
+        },
+        destroy: () => undefined
+      };
+    };
+  });
+  afterEach(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (window as any).flatpickr; // never leak the stub into the fallback / other suites
+  });
+
+  it('_initRangePicker calls flatpickr with mode:range, inline:true, locale:he, dateFormat:Y-m-d', () => {
+    ReportTab.render(hoursClient(), root);
+    expect(calls.config).not.toBeNull();
+    expect(calls.config.mode).toBe('range');
+    expect(calls.config.inline).toBe(true);
+    expect(calls.config.locale).toBe('he');
+    expect(calls.config.dateFormat).toBe('Y-m-d');
+  });
+
+  it('a preset click pushes the range into flatpickr via setDate([start,end], false) — loop-break', () => {
+    ReportTab.render(hoursClient(), root);
+    calls.setDateCalls.length = 0; // ignore the render-time default-preset ("all") seed
+    (root.querySelector('#mgmtReportPresetSeg .btn-quick-date[data-range="thisMonth"]') as HTMLElement).click();
+    expect(calls.setDateCalls.length).toBe(1);
+    const [dates, retrigger] = calls.setDateCalls[0];
+    expect(Array.isArray(dates)).toBe(true);
+    expect(dates.length).toBe(2);
+    expect(retrigger).toBe(false); // false = do NOT retrigger onChange (loop-break)
+  });
+
+  it('onChange(2 dates) writes both native fields via fmtDateForInput; getFormData keeps the 9-key set', () => {
+    ReportTab.render(hoursClient(), root);
+    // simulate the user picking a full range on the calendar
+    calls.config.onChange([new Date(2026, 0, 5), new Date(2026, 1, 20)]);
+    expect((root.querySelector('#mgmtReportStartDate') as HTMLInputElement).value).toBe('2026-01-05');
+    expect((root.querySelector('#mgmtReportEndDate') as HTMLInputElement).value).toBe('2026-02-20');
+    expect(Object.keys(ReportTab.getFormData()).sort()).toEqual(
+      ['clientId', 'clientName', 'endDate', 'reportFormat', 'reportType', 'service', 'serviceId', 'stage', 'startDate'].sort()
+    );
+  });
+
+  it('onChange(1 date) writes the start but BLANKS the end (invalidates the stale preset range); a following onChange(2 dates) writes both', () => {
+    ReportTab.render(hoursClient(), root);
+    // partial range — first click: start written, end BLANKED so _validateSelection fails until completed
+    calls.config.onChange([new Date(2026, 2, 10)]);
+    expect((root.querySelector('#mgmtReportStartDate') as HTMLInputElement).value).toBe('2026-03-10');
+    expect((root.querySelector('#mgmtReportEndDate') as HTMLInputElement).value).toBe(''); // source-of-truth invalidated
+    // _validateSelection must refuse a report on the half-finished range (no service picked either, but the
+    // blank end alone is enough — both dates are required)
+    expect(ReportTab._validateSelection()).toBe(false);
+    // completing the range writes BOTH native fields
+    calls.config.onChange([new Date(2026, 2, 10), new Date(2026, 2, 25)]);
+    expect((root.querySelector('#mgmtReportStartDate') as HTMLInputElement).value).toBe('2026-03-10');
+    expect((root.querySelector('#mgmtReportEndDate') as HTMLInputElement).value).toBe('2026-03-25');
+  });
+
+  it('onChange(0 dates — calendar cleared) leaves the native fields untouched', () => {
+    ReportTab.render(hoursClient(), root);
+    const start = (root.querySelector('#mgmtReportStartDate') as HTMLInputElement).value;
+    const end = (root.querySelector('#mgmtReportEndDate') as HTMLInputElement).value;
+    calls.config.onChange([]); // neither 1 nor 2 → no-op
+    expect((root.querySelector('#mgmtReportStartDate') as HTMLInputElement).value).toBe(start);
+    expect((root.querySelector('#mgmtReportEndDate') as HTMLInputElement).value).toBe(end);
+  });
+});
+
+describe('PR-R4 · source guards', () => {
+  it('ReportTab.js wires an inline flatpickr with a loop-break setDate(false) + a window.flatpickr fallback', () => {
+    expect(TAB).toContain('inline: true');
+    expect(TAB).toMatch(/setDate\([^)]*,\s*false\s*\)/); // the loop-break call
+    expect(TAB).toMatch(/!window\.flatpickr[\s\S]{0,60}return/); // graceful fallback guard
+  });
+});
+
+describe('PR-R4 · robustness — a THROWING flatpickr degrades to the native fallback (does not blank the tab)', () => {
+  afterEach(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (window as any).flatpickr;
+  });
+
+  it('flatpickr constructor throwing during init keeps the native date inputs + getFormData working', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).flatpickr = () => {
+      throw new Error('flatpickr init boom');
+    };
+    // render must NOT throw even though the constructor does
+    ReportTab.render(hoursClient(), root);
+    const start = root.querySelector('#mgmtReportStartDate') as HTMLInputElement;
+    const end = root.querySelector('#mgmtReportEndDate') as HTMLInputElement;
+    expect(start).not.toBeNull();
+    expect(end).not.toBeNull();
+    // native inputs unchanged (type=date), and NOT hidden — the throw path never adds the --fp class
+    expect(start.getAttribute('type')).toBe('date');
+    expect(end.getAttribute('type')).toBe('date');
+    expect(
+      (root.querySelector('#mgmtReportCustomDates') as HTMLElement).classList.contains('report-custom-dates--fp')
+    ).toBe(false);
+    // getFormData still returns the 9-key set
+    expect(Object.keys(ReportTab.getFormData()).sort()).toEqual(
+      ['clientId', 'clientName', 'endDate', 'reportFormat', 'reportType', 'service', 'serviceId', 'stage', 'startDate'].sort()
+    );
+    // and the tab stays fully usable — a preset still writes the native start
+    (root.querySelector('#mgmtReportPresetSeg .btn-quick-date[data-range="thisMonth"]') as HTMLElement).click();
+    expect(start.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
