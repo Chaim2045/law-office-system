@@ -2361,6 +2361,18 @@ select.form-input {
     box-shadow: var(--shadow-sm);
 }
 
+/* RTL calendar grid — flatpickr.min.css hardcodes `direction:ltr` on
+   .flatpickr-calendar, so inside this Hebrew (RTL) admin the week rendered
+   ראשון-on-the-LEFT (LTR order), reading backwards for a Hebrew user. Flip ONLY
+   the weekday header row + the day grid to rtl → ראשון sits on the right and
+   dates flow right-to-left. The month/year header + prev/next arrows are left
+   untouched on purpose (flipping the whole calendar re-orders the month-dropdown
+   and glitches its chevron). Scoped to .report-detail — no other flatpickr instance. */
+.report-detail .flatpickr-weekdaycontainer,
+.report-detail .dayContainer {
+    direction: rtl;
+}
+
 /* Selected + range endpoints */
 .report-detail .flatpickr-day.selected,
 .report-detail .flatpickr-day.startRange,
