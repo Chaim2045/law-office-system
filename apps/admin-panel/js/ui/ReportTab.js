@@ -89,67 +89,10 @@
         return Number.isFinite(n) ? n : 0;
     }
 
-    // Meter threshold — STRICT over: < 0 remaining = over (red), ≤10 = high (orange), else good
-    // (green). rem === 0 (exactly on budget) routes to 'high', NEVER red — a fully-used but not
-    // overdrawn quota is a warning, not a debt. NaN-safe: NaN < 0 is false → NaN <= 10 is false → 'good'
-    // is unreachable for a real overdraft since callers gate on total > 0 before painting the meter.
-    function meterStatus(hoursRemaining) {
-        return (hoursRemaining < 0) ? 'over' : (hoursRemaining <= 10 ? 'high' : 'good');
-    }
-
-    // Per-service identity band — icon + name + type badge, plus (hours only) an inline-end
-    // used/total · remaining stat and a 4px status meter. Numbers are toFixed()'d (no XSS
-    // surface); the name is the only user string → esc().
-    function identityBandHtml(card) {
-        // Layout-only classification (icon/badge/meter routing), mirrors _renderServiceDetail's fork.
-        // eslint-disable-next-line no-restricted-syntax
-        const isLegal = card.type === 'legal_procedure';
-        const isFixed = !!card.isFixed;
-
-        let icon;
-        let badge;
-        if (isLegal) {
-            icon = 'fa-gavel';
-            badge = 'הליך משפטי';
-        } else if (isFixed) {
-            icon = 'fa-dollar-sign';
-            badge = 'מחיר קבוע';
-        } else {
-            icon = 'fa-clock';
-            badge = 'שעות';
-        }
-
-        let stat = '';
-        let meter = '';
-        // Meter/stat ONLY for an hours service WITH a real quota (total > 0). A 0-budget hours
-        // service renders the band alone; the caller (_renderServiceDetail) adds a neutral note —
-        // never a red "debt" bar for a service that has no defined quota (FIX 3).
-        if (!isLegal && !isFixed && num(card.totalHours) > 0) {
-            const used = num(card.hoursUsed);
-            const total = num(card.totalHours);
-            // The card model exposes card.hoursRemaining (ServiceCardModel.buildCard) — use it.
-            const rem = num(card.hoursRemaining);
-            const status = meterStatus(rem);
-            const remText = rem < 0
-                ? 'חריגה ' + Math.abs(rem).toFixed(1)
-                : 'נותרו ' + rem.toFixed(1);
-            stat =
-                '<span class="report-identity-stat"><b>' + used.toFixed(1) + '</b> / ' +
-                total.toFixed(1) + ' ש׳ · ' +
-                '<span class="report-identity-rem report-identity-rem--' + status + '">' + remText + '</span></span>';
-            const pct = Math.min(100, Math.max(0, (used / total) * 100));
-            meter =
-                '<div class="report-identity-meter"><span class="report-identity-meter-fill report-identity-meter-fill--' +
-                status + '" style="width:' + pct + '%"></span></div>';
-        }
-
-        return '<div class="report-identity"><div class="report-identity-top">' +
-            '<span class="report-identity-icon"><i class="fas ' + icon + '" aria-hidden="true"></i></span>' +
-            '<span class="report-identity-name">' + esc(card.name || 'ללא שם') + '</span>' +
-            '<span class="report-identity-badge">' + badge + '</span>' +
-            stat +
-            '</div>' + meter + '</div>';
-    }
+    // The per-service identity band + its meter-threshold helper were EXTRACTED to the shared
+    // renderer window.UnifiedServiceCard.buildIdentityBand (Track-2 PR-1): the report tab AND the
+    // management detail now render the SAME band (class prefix usc-identity-*, injector-safe). The
+    // call sites in _renderServiceDetail call the shared builder directly.
 
     // yyyy-mm-dd → "D בMonth YYYY" (Hebrew), or "—" when empty/malformed. Parsed via split() —
     // never via the Date constructor (a source-guard test forbids parsing the raw input value).
@@ -349,7 +292,7 @@
                         type: 'legal_procedure'
                     };
                     host.innerHTML =
-                        identityBandHtml(card) +
+                        window.UnifiedServiceCard.buildIdentityBand(card) +
                         '<div class="report-detail-note">אין שלב פעיל לבחירה בהליך זה.</div>';
                     return;
                 }
@@ -361,7 +304,7 @@
                     .map((stage) => this._stageRowHtml(card, stage, stage.id === preferred.id))
                     .join('');
                 host.innerHTML =
-                    identityBandHtml(card) +
+                    window.UnifiedServiceCard.buildIdentityBand(card) +
                     '<div class="report-detail-sub">בחר שלב לדוח</div>' +
                     '<div class="report-stage-list">' + rowsHtml + '</div>';
 
@@ -405,15 +348,15 @@
             };
             if (card.isFixed) {
                 host.innerHTML =
-                    identityBandHtml(card) +
+                    window.UnifiedServiceCard.buildIdentityBand(card) +
                     '<div class="report-detail-note">שירות במחיר קבוע — הדוח יכלול את כל השעות שנרשמו בטווח שנבחר.</div>';
             } else if (num(card.totalHours) > 0) {
                 // hours with a real quota — the identity-band meter + stat replace the old verbose note.
-                host.innerHTML = identityBandHtml(card);
+                host.innerHTML = window.UnifiedServiceCard.buildIdentityBand(card);
             } else {
                 // hours with no defined quota — no red "debt" bar; a neutral note instead (FIX 3).
                 host.innerHTML =
-                    identityBandHtml(card) +
+                    window.UnifiedServiceCard.buildIdentityBand(card) +
                     '<div class="report-detail-note">ללא מכסת שעות מוגדרת.</div>';
             }
         }

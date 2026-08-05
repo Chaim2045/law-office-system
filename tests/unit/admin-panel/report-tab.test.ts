@@ -295,8 +295,8 @@ describe('PR-1 · identity band per service type', () => {
     ReportTab.render(hoursClient(), root);
     clickRail('srv_h');
     const detail = detailEl();
-    expect(detail.querySelector('.report-identity-meter')).not.toBeNull();
-    expect((detail.querySelector('.report-identity-badge') as HTMLElement).textContent).toBe('שעות');
+    expect(detail.querySelector('.usc-identity-meter')).not.toBeNull();
+    expect((detail.querySelector('.usc-identity-badge') as HTMLElement).textContent).toBe('שעות');
     // hours branch = band only — the meter+stat replace the old verbose .report-detail-note
     expect(detail.querySelector('.report-detail-note')).toBeNull();
   });
@@ -305,8 +305,8 @@ describe('PR-1 · identity band per service type', () => {
     ReportTab.render(fixedClient(), root);
     clickRail('srv_f');
     const detail = detailEl();
-    expect(detail.querySelector('.report-identity-meter')).toBeNull();
-    expect((detail.querySelector('.report-identity-badge') as HTMLElement).textContent).toBe('מחיר קבוע');
+    expect(detail.querySelector('.usc-identity-meter')).toBeNull();
+    expect((detail.querySelector('.usc-identity-badge') as HTMLElement).textContent).toBe('מחיר קבוע');
     expect(detail.querySelector('.report-detail-note')).not.toBeNull();
   });
 
@@ -314,8 +314,8 @@ describe('PR-1 · identity band per service type', () => {
     ReportTab.render(twoLegalClient(), root);
     clickRail('srv_hagana');
     const detail = detailEl();
-    expect(detail.querySelector('.report-identity-meter')).toBeNull();
-    expect((detail.querySelector('.report-identity-badge') as HTMLElement).textContent).toBe('הליך משפטי');
+    expect(detail.querySelector('.usc-identity-meter')).toBeNull();
+    expect((detail.querySelector('.usc-identity-badge') as HTMLElement).textContent).toBe('הליך משפטי');
     expect(detail.querySelector('.report-stage-list')).not.toBeNull();
   });
 });
@@ -325,36 +325,36 @@ describe('PR-1 · meter threshold classes (over < 0 / high ≤10 / good)', () =>
     ReportTab.render(hoursRemClient(-5, 55, 50), root);
     clickRail('srv_r');
     const detail = detailEl();
-    expect(detail.querySelector('.report-identity-meter-fill--over')).not.toBeNull();
-    expect(detail.querySelector('.report-identity-rem--over')).not.toBeNull();
-    expect((detail.querySelector('.report-identity-rem') as HTMLElement).textContent).toContain('חריגה 5.0');
+    expect(detail.querySelector('.usc-identity-meter-fill--over')).not.toBeNull();
+    expect(detail.querySelector('.usc-identity-rem--over')).not.toBeNull();
+    expect((detail.querySelector('.usc-identity-rem') as HTMLElement).textContent).toContain('חריגה 5.0');
   });
 
   it('rem 0 (exactly on budget) → high, NEVER red (FIX 3 strict over)', () => {
     ReportTab.render(hoursRemClient(0, 50, 50), root);
     clickRail('srv_r');
     const detail = detailEl();
-    expect(detail.querySelector('.report-identity-meter-fill--high')).not.toBeNull();
-    expect(detail.querySelector('.report-identity-rem--high')).not.toBeNull();
+    expect(detail.querySelector('.usc-identity-meter-fill--high')).not.toBeNull();
+    expect(detail.querySelector('.usc-identity-rem--high')).not.toBeNull();
     // and definitely not the red "over" class
-    expect(detail.querySelector('.report-identity-meter-fill--over')).toBeNull();
+    expect(detail.querySelector('.usc-identity-meter-fill--over')).toBeNull();
   });
 
   it('rem 30 → good (נותרו)', () => {
     ReportTab.render(hoursRemClient(30, 20, 50), root);
     clickRail('srv_r');
     const detail = detailEl();
-    expect(detail.querySelector('.report-identity-meter-fill--good')).not.toBeNull();
-    expect(detail.querySelector('.report-identity-rem--good')).not.toBeNull();
-    expect((detail.querySelector('.report-identity-rem') as HTMLElement).textContent).toContain('נותרו 30.0');
+    expect(detail.querySelector('.usc-identity-meter-fill--good')).not.toBeNull();
+    expect(detail.querySelector('.usc-identity-rem--good')).not.toBeNull();
+    expect((detail.querySelector('.usc-identity-rem') as HTMLElement).textContent).toContain('נותרו 30.0');
   });
 
   it('total ≤ 0 → NO meter/stat + a neutral note (never a red debt bar) (FIX 3)', () => {
     ReportTab.render(noQuotaHoursClient(), root);
     clickRail('srv_nq');
     const detail = detailEl();
-    expect(detail.querySelector('.report-identity-meter')).toBeNull();
-    expect(detail.querySelector('.report-identity-stat')).toBeNull();
+    expect(detail.querySelector('.usc-identity-meter')).toBeNull();
+    expect(detail.querySelector('.usc-identity-stat')).toBeNull();
     const note = detail.querySelector('.report-detail-note') as HTMLElement;
     expect(note).not.toBeNull();
     expect(note.textContent).toContain('ללא מכסת שעות מוגדרת');

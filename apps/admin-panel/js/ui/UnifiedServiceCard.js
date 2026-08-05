@@ -574,10 +574,80 @@
         return el;
     }
 
+    // ── Shared identity band (Track-2 PR-1) ─────────────────────────────────────
+    // EXTRACTED verbatim from ReportTab.identityBandHtml — the report tab and the management
+    // detail now render the SAME per-service band. The band uses the neutral usc-identity-*
+    // namespace (injector-safe: not .management-* and not .report-*). Returns an HTML
+    // STRING (both consumers write via innerHTML). Numbers are toFixed()'d (no XSS surface); the
+    // name is the only user string → esc(). bandNum coerces (byte-matching the source num()).
+    function bandNum(v) {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    // Meter threshold — STRICT over: < 0 remaining = over (red), ≤10 = high (orange), else good
+    // (green). rem === 0 (exactly on budget) routes to 'high', NEVER red — a fully-used but not
+    // overdrawn quota is a warning, not a debt.
+    function meterStatus(hoursRemaining) {
+        return (hoursRemaining < 0) ? 'over' : (hoursRemaining <= 10 ? 'high' : 'good');
+    }
+
+    function buildIdentityBand(card) {
+        // Layout-only classification (icon/badge/meter routing). The disable mirrors the extracted
+        // source (ReportTab.identityBandHtml): this is a display fork, not a business rule, and
+        // keeping the exact original predicate preserves byte-identity (PR-1 = zero behavior change).
+        // eslint-disable-next-line no-restricted-syntax
+        const isLegal = card.type === 'legal_procedure';
+        const isFixed = !!card.isFixed;
+
+        let icon;
+        let badge;
+        if (isLegal) {
+            icon = 'fa-gavel';
+            badge = 'הליך משפטי';
+        } else if (isFixed) {
+            icon = 'fa-dollar-sign';
+            badge = 'מחיר קבוע';
+        } else {
+            icon = 'fa-clock';
+            badge = 'שעות';
+        }
+
+        let stat = '';
+        let meter = '';
+        // Meter/stat ONLY for an hours service WITH a real quota (total > 0). A 0-budget hours
+        // service renders the band alone; the caller adds a neutral note — never a red "debt" bar.
+        if (!isLegal && !isFixed && bandNum(card.totalHours) > 0) {
+            const used = bandNum(card.hoursUsed);
+            const total = bandNum(card.totalHours);
+            const rem = bandNum(card.hoursRemaining);
+            const status = meterStatus(rem);
+            const remText = rem < 0
+                ? 'חריגה ' + Math.abs(rem).toFixed(1)
+                : 'נותרו ' + rem.toFixed(1);
+            stat =
+                '<span class="usc-identity-stat"><b>' + used.toFixed(1) + '</b> / ' +
+                total.toFixed(1) + ' ש׳ · ' +
+                '<span class="usc-identity-rem usc-identity-rem--' + status + '">' + remText + '</span></span>';
+            const pct = Math.min(100, Math.max(0, (used / total) * 100));
+            meter =
+                '<div class="usc-identity-meter"><span class="usc-identity-meter-fill usc-identity-meter-fill--' +
+                status + '" style="width:' + pct + '%"></span></div>';
+        }
+
+        return '<div class="usc-identity"><div class="usc-identity-top">' +
+            '<span class="usc-identity-icon"><i class="fas ' + icon + '" aria-hidden="true"></i></span>' +
+            '<span class="usc-identity-name">' + esc(card.name || 'ללא שם') + '</span>' +
+            '<span class="usc-identity-badge">' + badge + '</span>' +
+            stat +
+            '</div>' + meter + '</div>';
+    }
+
     const api = {
         buildReportSelectCards: buildReportSelectCards,
         buildManageDetail: buildManageDetail,
-        buildRailRow: buildRailRow
+        buildRailRow: buildRailRow,
+        buildIdentityBand: buildIdentityBand
     };
 
     if (typeof window !== 'undefined') {
