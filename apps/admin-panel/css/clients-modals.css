@@ -1843,7 +1843,7 @@ select.form-input {
    ============================================================ */
 
 /* ── Identity band — icon + name + type badge + inline-end hours stat + a 4px meter ── */
-.report-identity {
+.usc-identity {
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
@@ -1852,14 +1852,14 @@ select.form-input {
     border-bottom: 1px solid var(--gray-200);
 }
 
-.report-identity-top {
+.usc-identity-top {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: var(--space-2);
 }
 
-.report-identity-icon {
+.usc-identity-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1872,14 +1872,14 @@ select.form-input {
     font-size: var(--text-md);
 }
 
-.report-identity-name {
+.usc-identity-name {
     font-size: var(--text-lg);
     font-weight: var(--font-semibold);
     color: var(--gray-900);
     letter-spacing: var(--letter-spacing-tight);
 }
 
-.report-identity-badge {
+.usc-identity-badge {
     flex-shrink: 0;
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
@@ -1890,58 +1890,58 @@ select.form-input {
 }
 
 /* Hours-only stat — pushed to the inline-end (left in RTL). Tabular figures. */
-.report-identity-stat {
+.usc-identity-stat {
     margin-inline-start: auto;
     font-size: var(--text-md);
     color: var(--gray-600);
     font-variant-numeric: tabular-nums;
 }
 
-.report-identity-stat b {
+.usc-identity-stat b {
     color: var(--gray-900);
     font-weight: var(--font-semibold);
 }
 
-.report-identity-rem {
+.usc-identity-rem {
     font-weight: var(--font-semibold);
 }
 
-.report-identity-rem--good {
+.usc-identity-rem--good {
     color: var(--green-dark);
 }
 
-.report-identity-rem--high {
+.usc-identity-rem--high {
     color: var(--orange-dark);
 }
 
-.report-identity-rem--over {
+.usc-identity-rem--over {
     color: var(--red-dark);
 }
 
 /* 4px status meter under the identity row */
-.report-identity-meter {
+.usc-identity-meter {
     height: 4px;
     border-radius: 999px;
     background: var(--gray-100);
     overflow: hidden;
 }
 
-.report-identity-meter-fill {
+.usc-identity-meter-fill {
     display: block;
     height: 100%;
     border-radius: 999px;
     transition: width var(--transition-slow);
 }
 
-.report-identity-meter-fill--good {
+.usc-identity-meter-fill--good {
     background: var(--green);
 }
 
-.report-identity-meter-fill--high {
+.usc-identity-meter-fill--high {
     background: var(--orange);
 }
 
-.report-identity-meter-fill--over {
+.usc-identity-meter-fill--over {
     background: var(--red);
 }
 
