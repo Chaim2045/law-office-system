@@ -2016,7 +2016,54 @@ select.form-input {
     background: var(--red);
 }
 
-/* ── Period section — one segmented preset control + resolved caption + custom disclosure ── */
+/* ── Period section — one segmented preset control + resolved caption ── */
+
+/* ===== Report detail — two-column layout (V3) =====
+   The detail was a single vertical stack (stage picker → date presets → calendar),
+   which grew past the .cm-detail 60vh cap on a multi-stage legal service. V3 lays it
+   out as a full-width period bar on top, then two columns: the stage picker beside an
+   ALWAYS-VISIBLE calendar. Roughly halves the height (the tallest column is the
+   calendar alone, not stage+presets+calendar summed), so it can't overflow — and the
+   "מותאם" toggle is gone (the calendar is just there). All the wiring is unchanged:
+   the same #mgmtReport* ids, the native date fields stay the source of truth. */
+.report-period--bar {
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.report-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 348px;
+    gap: var(--space-5);
+    align-items: start;
+}
+
+/* Calendar column — 348px holds the 307px calendar + the divider/padding without clipping. */
+.report-cal-col {
+    border-inline-start: 1px solid var(--gray-200);
+    padding-inline-start: var(--space-4);
+}
+
+/* The calendar is ALWAYS visible in its column — drop the collapse cap + the transition
+   (--open is set in the markup; there is no toggle to animate). */
+.report-body .report-custom-dates {
+    max-height: none;
+    overflow: visible;
+    transition: none;
+}
+
+/* Narrow container → stack (calendar under the stage picker); divider off. */
+@media (width <= 720px) {
+    .report-body {
+        grid-template-columns: 1fr;
+    }
+
+    .report-cal-col {
+        border-inline-start: 0;
+        padding-inline-start: 0;
+    }
+}
+
 .report-period {
     display: flex;
     flex-direction: column;
