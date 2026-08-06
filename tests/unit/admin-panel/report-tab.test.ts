@@ -372,22 +372,22 @@ describe('PR-1 · segmented presets still drive the dates + formData', () => {
   });
 });
 
-describe('PR-1 · "מותאם" disclosure reveals the (always-in-DOM) date inputs', () => {
-  it('toggling opens the custom-dates block + flips aria-expanded; both inputs present before AND after', () => {
+describe('V3 · two-column body — calendar always visible (no "מותאם" toggle)', () => {
+  it('renders already-open, the disclosure toggle is gone, and the native inputs sit in the calendar column', () => {
     ReportTab.render(hoursClient(), root);
     const dates = root.querySelector('#mgmtReportCustomDates') as HTMLElement;
-    const toggle = root.querySelector('#mgmtReportCustomToggle') as HTMLElement;
-    // the inputs live in the DOM even while collapsed
-    expect(root.querySelector('#mgmtReportStartDate')).not.toBeNull();
-    expect(root.querySelector('#mgmtReportEndDate')).not.toBeNull();
-    expect(dates.classList.contains('report-custom-dates--open')).toBe(false);
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    toggle.click();
+    // V3 replaced the vertical stack + "מותאם" disclosure with a two-column body: the stage
+    // picker beside an ALWAYS-VISIBLE calendar. The toggle is removed; the block renders open.
+    expect(root.querySelector('#mgmtReportCustomToggle')).toBeNull();
     expect(dates.classList.contains('report-custom-dates--open')).toBe(true);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    // still present after opening
+    // the native date fields (the source of truth getFormData reads) are always in the DOM …
     expect(root.querySelector('#mgmtReportStartDate')).not.toBeNull();
     expect(root.querySelector('#mgmtReportEndDate')).not.toBeNull();
+    // … inside the calendar column of the two-column body, beside the service-detail column.
+    expect(root.querySelector('.report-body .report-cal-col #mgmtReportCustomDates')).not.toBeNull();
+    expect(root.querySelector('.report-body #mgmtReportServiceDetail')).not.toBeNull();
+    // the period bar (presets + resolved range) sits on top, outside the two-column body.
+    expect(root.querySelector('.report-period--bar #mgmtReportPresetSeg')).not.toBeNull();
   });
 });
 

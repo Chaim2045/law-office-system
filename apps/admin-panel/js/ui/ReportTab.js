@@ -40,6 +40,21 @@
         return stageId || 'הליך משפטי';
     }
 
+    // Short stage label for the picker ROW ("שלב א'"). The identity band above already names the
+    // procedure, so the row needn't repeat "הליך משפטי - " — and in the V3 two-column layout the
+    // verbose form truncates to an unreadable "הליך מ…". getStageName (verbose) stays the SELECTION
+    // label (getFormData.service byte-match, _setStageSelection), so this is display-only.
+    function stageShortName(stageId) {
+        const legacyMap = {
+            stageA: 'stage_a', stageB: 'stage_b', stageC: 'stage_c',
+            a: 'stage_a', b: 'stage_b', c: 'stage_c'
+        };
+        const canonicalId = legacyMap[stageId] || stageId;
+        const helper = (typeof window !== 'undefined') ? window.SystemConstantsHelpers : null;
+        const baseName = helper && typeof helper.getStageName === 'function' ? helper.getStageName(canonicalId) : null;
+        return (baseName && baseName !== canonicalId) ? baseName : (stageId || 'שלב');
+    }
+
     function fmtDateForInput(date) {
         const y = date.getFullYear();
         const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -150,7 +165,6 @@
             this._populateRail();
             this._wireQuickDates();
             this._wireDateInputs();
-            this._wireCustomToggle();
             this._wireActions();
             this._bindResizeOnce();
             this._initRangePicker(); // inline range calendar (no-op fallback if window.flatpickr is absent)
@@ -164,11 +178,7 @@
                         <div class="report-rail-label">בחר שירות לדוח <span class="report-req">*</span></div>
                     </div>
                     <div class="cm-detail report-detail">
-                        <div id="mgmtReportServiceDetail" class="report-service-detail">
-                            <div class="report-detail-empty"><i class="fas fa-hand-pointer"></i> בחר שירות מהרשימה כדי להפיק דוח</div>
-                        </div>
-
-                        <div class="report-period">
+                        <div class="report-period report-period--bar">
                             <div class="report-period-label">תקופת הדוח</div>
                             <div class="report-preset-seg" id="mgmtReportPresetSeg" role="radiogroup" aria-label="טווח תאריכים לדוח">
                                 <span class="report-preset-thumb" aria-hidden="true"></span>
@@ -181,18 +191,24 @@
                             <div class="report-dateline">
                                 <i class="fas fa-calendar-alt" aria-hidden="true"></i>
                                 <span id="mgmtReportResolvedRange" class="report-dateline-range" aria-live="polite" aria-atomic="true"></span>
-                                <span class="report-dateline-dot" aria-hidden="true">·</span>
-                                <button type="button" class="report-custom-toggle" id="mgmtReportCustomToggle" aria-expanded="false" aria-controls="mgmtReportCustomDates"><i class="fas fa-pen" aria-hidden="true"></i> מותאם</button>
                             </div>
-                            <div class="report-custom-dates" id="mgmtReportCustomDates">
-                                <input type="text" id="mgmtReportRangeAnchor" class="report-cal-anchor" readonly aria-hidden="true" tabindex="-1">
-                                <div class="report-field">
-                                    <label for="mgmtReportStartDate">מתאריך</label>
-                                    <input type="date" id="mgmtReportStartDate" class="form-input">
-                                </div>
-                                <div class="report-field">
-                                    <label for="mgmtReportEndDate">עד תאריך</label>
-                                    <input type="date" id="mgmtReportEndDate" class="form-input">
+                        </div>
+
+                        <div class="report-body">
+                            <div id="mgmtReportServiceDetail" class="report-service-detail">
+                                <div class="report-detail-empty"><i class="fas fa-hand-pointer"></i> בחר שירות מהרשימה כדי להפיק דוח</div>
+                            </div>
+                            <div class="report-cal-col">
+                                <div class="report-custom-dates report-custom-dates--open" id="mgmtReportCustomDates">
+                                    <input type="text" id="mgmtReportRangeAnchor" class="report-cal-anchor" readonly aria-hidden="true" tabindex="-1">
+                                    <div class="report-field">
+                                        <label for="mgmtReportStartDate">מתאריך</label>
+                                        <input type="date" id="mgmtReportStartDate" class="form-input">
+                                    </div>
+                                    <div class="report-field">
+                                        <label for="mgmtReportEndDate">עד תאריך</label>
+                                        <input type="date" id="mgmtReportEndDate" class="form-input">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -401,7 +417,7 @@
 
             return '<div class="' + classes.join(' ') + '"' + attrs + '>' +
                 '<span class="report-stage-radio" aria-hidden="true"></span>' +
-                '<span class="report-stage-name">' + esc(getStageName(stage.id)) + '</span>' +
+                '<span class="report-stage-name">' + esc(stageShortName(stage.id)) + '</span>' +
                 statusHtml +
                 '<span class="report-stage-hours">' + num(stage.hoursUsed).toFixed(1) + ' / ' + num(stage.totalHours).toFixed(1) + '</span>' +
                 '</div>';
@@ -430,19 +446,6 @@
             if (end) {
                 end.addEventListener('change', onChange);
             }
-        }
-
-        // "מותאם" disclosure — reveals the (always-in-DOM) native date inputs.
-        _wireCustomToggle() {
-            const toggle = this._root ? this._root.querySelector('#mgmtReportCustomToggle') : null;
-            const dates = this._root ? this._root.querySelector('#mgmtReportCustomDates') : null;
-            if (!toggle || !dates) {
-                return;
-            }
-            toggle.addEventListener('click', () => {
-                const open = dates.classList.toggle('report-custom-dates--open');
-                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-            });
         }
 
         /**
