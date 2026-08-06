@@ -180,6 +180,23 @@ div#clientManagementModal .modal-content.modal-large {
     width: 90% !important;
 }
 
+/* ===== Confine the client-modal scroll to the CONTENT (not the overlay) =====
+   The base `.modal` overlay is itself a scroll container (`overflow-y: auto`) and centers a
+   `max-height: 90vh` box with `2rem` padding — and 90vh + 4rem > 100vh, so the WHOLE overlay
+   slid up/down (a "whole-screen" scroll) on top of the box's own inner scroll. Scoped ONLY to
+   this modal via id-specificity (beats the base `.modal` / `.modal-content`): the overlay no
+   longer scrolls, and the box is capped to fit inside the overlay's 2rem top+bottom padding so
+   the header/close never clips — the inner `.modal-content` / `.cm-detail` scroll (the
+   management/report content) then handles ALL overflow. `#addServiceModal` + every other modal
+   keep the base behaviour untouched. */
+#clientManagementModal {
+    overflow: hidden;
+}
+
+#clientManagementModal .modal-content.modal-large {
+    max-height: calc(100vh - 4rem);
+}
+
 /* ============================================
    CLIENT REPORT MODAL - מודל הפקת דוחות
    ============================================ */
@@ -1450,6 +1467,11 @@ select.form-input {
     .modal-large {
         max-width: 100%;
         width: 100%;
+    }
+
+    /* Mobile mirror of the scroll-confine — the overlay padding is 1rem here (→ 2rem total). */
+    #clientManagementModal .modal-content.modal-large {
+        max-height: calc(100vh - 2rem);
     }
 
     .form-row {
