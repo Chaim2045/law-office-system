@@ -1866,8 +1866,17 @@ select.form-input {
     color: var(--gray-400);
 }
 
-/* Per-service detail pane */
+/* Per-service detail pane.
+   flex-shrink: 0 is load-bearing: .report-detail is BOTH a flex column AND the
+   .cm-detail scroll container (max-height: 60vh; overflow-y: auto). The explicit
+   min-height below overrides flex's default min-height:auto, so WITHOUT this line
+   the flex algorithm would shrink this pane toward 96px when the stage list + an
+   open date calendar push the total past 60vh — and the stage rows (overflow
+   visible) would spill DOWN over the period/preset section instead of the
+   container scrolling. Pinning shrink to 0 keeps the pane at its content height;
+   overflow then happens on .cm-detail (scroll), as intended. */
 .report-service-detail {
+    flex-shrink: 0;
     min-height: 96px;
 }
 
