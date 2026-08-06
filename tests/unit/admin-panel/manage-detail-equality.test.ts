@@ -1,19 +1,21 @@
 /**
- * U5a — DOM-equality: UnifiedServiceCard('manage-detail') reproduces the OLD
- * ClientManagementModal.renderServiceCard DOM contract byte-for-byte.
+ * Track-2 PR-2 — buildManageDetail live injector contract (identity-band adoption).
  * ─────────────────────────────────────────────────────────────────────────────
- * docs/PLAN-ADMIN-MODAL-UNIFICATION-2026-07.md — PR-U5 §5 (DOM-equality).
+ * docs/PLAN-ADMIN-MODAL-UNIFICATION-2026-07.md — PR-U5 §5, extended by Track-2 PR-2.
  *
- * U5a ships the manage-detail renderer as DEAD CODE (nothing wired it into the live
- * panel yet — the U5b cutover does that). This suite is the proof that the new renderer
- * emits the exact selectors + data-attrs + `.management-stage-name` textContent + the 5
- * data-service-action buttons + the .override-btn + the .edit-pkg-date-btn that the
- * overdraft/add-package injectors and all §14 callables depend on — BEFORE any live change.
+ * PR-2 replaced the management card's old `.management-service-header` with the SHARED
+ * identity band (`buildIdentityBand` from PR-1) + a calm status pill, and dropped the
+ * unclamped-"5838%" `.management-hours-progress` bar (hours-utilization now lives in the
+ * band's clamped 4px meter). That INTENTIONALLY breaks the old header-equality this suite
+ * used to assert (`buildManageDetail` vs the dead `ClientManagementModal.renderServiceCard`).
  *
- * It drives BOTH the OLD `renderServiceCard(service)` and the NEW
- * `buildManageDetail(ServiceCardModel card)` on identical fixtures and compares the
- * contract-bearing facts. (Raw whitespace/formatting is intentionally NOT compared — the
- * injectors + actions key off selectors/attrs/textContent, which are what this pins.)
+ * RE-ANCHORED here: instead of comparing against the dead old renderer, the suite now pins
+ * `buildManageDetail`'s LIVE injector contract directly — the root `.management-service-card`
+ * `[data-service-id]`, the 5 `data-service-action` buttons (per type), the legal
+ * `.management-stage` / `.management-stage-name` (=== stage.name) / `.management-stage-info`
+ * anchors, and the `.override-btn` / `.edit-pkg-date-btn` data-attrs — plus proof that the
+ * old header + progress bar are GONE and the shared band + status pill took their place.
+ * These are the selectors the overdraft / add-package injectors + the §14 callables depend on.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -21,7 +23,7 @@ import * as path from 'path';
 import { describe, it, expect } from 'vitest';
 
 // A REAL 5-entity escaper (mirrors the SSOT) so the SEC-1 breakout test is meaningful and
-// the old-vs-new comparison reflects production escaping (both renderers route through it).
+// the rendered output reflects production escaping (the renderer routes through it).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (window as any).escapeHtml = (s: unknown): string =>
   (s === null || s === undefined ? '' : String(s))
@@ -34,57 +36,41 @@ import { describe, it, expect } from 'vitest';
 };
 
 // @ts-ignore
-import '../../../apps/admin-panel/js/ui/ClientManagementModal.js';
-// @ts-ignore
 import '../../../apps/admin-panel/js/modules/ServiceCardModel.js';
 // @ts-ignore
 import '../../../apps/admin-panel/js/ui/UnifiedServiceCard.js';
 
 const ADMIN = path.resolve(__dirname, '../../../apps/admin-panel');
+// Source of the LIVE management modal — the U5b cutover pins (block 3) read it as text.
 const MGMT_SRC = fs.readFileSync(path.resolve(ADMIN, 'js/ui/ClientManagementModal.js'), 'utf8');
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mgmt = (window as any).ClientManagementModal;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const model = (window as any).ServiceCardModel;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const USC = (window as any).UnifiedServiceCard;
 
-function toEl(html: string): HTMLElement {
-  const box = document.createElement('div');
-  box.innerHTML = html;
-  return box.querySelector('.management-service-card') as HTMLElement;
-}
-
-// The contract-bearing facts the injectors + §14 actions depend on.
+// The contract-bearing facts the injectors + §14 actions depend on, read off the new card.
 function facts(card: HTMLElement) {
   const el = (sel: string) => card.querySelector(sel) as HTMLElement | null;
   const all = (sel: string) => Array.from(card.querySelectorAll(sel)) as HTMLElement[];
   const overrideBtn = el('.override-btn');
   return {
     serviceId: card.getAttribute('data-service-id'),
-    nameBadge: el('.management-service-badge.service-name')?.textContent?.trim(),
-    typeBadge: el('.management-service-badge:not(.service-name)')?.className,
-    statusBadge: el('.service-status-badge')?.className,
+    // the shared identity band now carries the (full, un-truncated) name.
+    identityName: el('.usc-identity-name')?.textContent?.trim(),
     actions: all('[data-service-action]').map((b) => b.dataset.serviceAction).sort(),
     stageNames: all('.management-stage-name').map((e) => e.textContent?.trim()),
-    hoursStats: all('.management-hours-stat-value').map((e) => e.textContent?.trim()),
     override: overrideBtn ? { active: overrideBtn.dataset.active, name: overrideBtn.dataset.name } : null,
     editPkg: all('.edit-pkg-date-btn').map((b) => ({ svc: b.dataset.serviceId, pkg: b.dataset.packageId, date: b.dataset.currentDate })),
-    // the info block (labels + values) + how many `.management-service-info` wrappers — catches
-    // the fixed-status-Hebrew / label-colon / extra-wrapper class of divergence.
+    // the info block (labels + values) — catches the fixed-status-Hebrew / label-colon class of divergence.
     infoItems: all('.management-service-info-item').map((item) => ({
       label: item.querySelector('.management-service-info-label')?.textContent?.trim(),
       value: item.querySelector('.management-service-info-value')?.textContent?.trim()
-    })),
-    infoWrappers: card.querySelectorAll('.management-service-info').length
+    }))
   };
 }
 
-// oldCard(service) / newCard(service) → the `.management-service-card` element from each renderer.
-function oldCard(service: unknown): HTMLElement {
-  return toEl(mgmt.renderServiceCard(service));
-}
+// newCard(service) → the `.management-service-card` element from buildManageDetail.
 function newCard(service: unknown): HTMLElement {
   // manage-mode: build WITHOUT getStageName so stage.name resolves identically to renderStages.
   const cardModel = model.build({ services: [service] }).cards[0];
@@ -107,55 +93,87 @@ const twoStageLegal = {
 };
 const fixedSvc = { id: 'srv_f', name: 'ריטיינר', type: 'fixed', status: 'active', fixedPrice: 12000 };
 
-describe('U5a · manage-detail == the old renderServiceCard (contract-bearing DOM)', () => {
-  it('blocked hours service (packages + override + 4 actions) — identical contract', () => {
-    const o = facts(oldCard(blockedHours));
-    const n = facts(newCard(blockedHours));
+describe('T2-2 · buildManageDetail live injector contract (shared band adopted)', () => {
+  it('blocked hours — card root + 4 actions + override + editPkg; header + "5838%" progress removed', () => {
+    const card = newCard(blockedHours);
+    const n = facts(card);
     expect(n.serviceId).toBe('srv_h');
-    expect(n).toEqual(o); // serviceId, nameBadge (truncated), badges, actions, hoursStats, override, editPkg
-    // spot-checks so a bad `toEqual` can't pass silently:
+    // 5-action set, hours variant: renew + the 3 always-on (no next-stage for hours).
     expect(n.actions).toEqual(['change-status', 'complete', 'delete', 'renew']);
-    expect(n.hoursStats).toEqual(['50.0', '55.0', '-5.0']); // נרכשו / נוצלו / נותרו
+    // buildOverride / buildPackagesBreakdown injectors untouched.
     expect(n.override).toEqual({ active: 'true', name: 'ייעוץ שוטף עם שם ארוך במיוחד' }); // "אפשר חריגה"
     expect(n.editPkg).toEqual([{ svc: 'srv_h', pkg: 'pkg1', date: '2026-01-15' }]);
+    // the shared band carries the full name; the hours branch keeps ONLY the "תאריך פתיחה" item.
+    expect(n.identityName).toBe('ייעוץ שוטף עם שם ארוך במיוחד');
+    expect(n.infoItems.length).toBe(1);
+    expect(n.infoItems[0].label).toBe('תאריך פתיחה:');
+    expect(n.infoItems[0].value).toBeTruthy();
+    // the old header + the UNCLAMPED "5838%" progress bar are gone; the calm status pill replaces the badge.
+    expect(card.querySelector('.management-service-header')).toBeNull();
+    expect(card.querySelector('.management-hours-progress')).toBeNull();
+    expect(card.querySelector('.service-status-badge')).toBeNull();
+    expect(card.querySelectorAll('.management-hours-stat-value').length).toBe(0);
+    expect(card.querySelector('.usc-identity-status--active')).not.toBeNull();
   });
 
-  it('legal procedure (2 stages) — .management-stage-name === stage.name + next-stage action', () => {
-    const o = facts(oldCard(twoStageLegal));
-    const n = facts(newCard(twoStageLegal));
-    expect(n).toEqual(o);
-    expect(n.stageNames).toEqual(['כתב תביעה', 'הוכחות']); // AddPackageToStage matches on these exactly
+  it('legal procedure (2 stages) — .management-stage-name === stage.name + stage-info + next-stage action', () => {
+    const card = newCard(twoStageLegal);
+    const n = facts(card);
+    expect(n.serviceId).toBe('srv_l');
     expect(n.actions).toEqual(['change-status', 'complete', 'delete', 'next-stage']);
+    // AddPackageToStage matches on .management-stage-name === stage.name EXACTLY.
+    expect(n.stageNames).toEqual(['כתב תביעה', 'הוכחות']);
+    expect(card.querySelectorAll('.management-stage').length).toBe(2);
+    expect(card.querySelectorAll('.management-stage-info').length).toBe(2);
+    // header removed; the band carries the name + the status pill.
+    expect(card.querySelector('.management-service-header')).toBeNull();
+    expect(n.identityName).toBe('תביעה');
+    expect(card.querySelector('.usc-identity-status--active')).not.toBeNull();
   });
 
-  it('fixed service — no renew/next-stage; change-status/complete/delete', () => {
-    const o = facts(oldCard(fixedSvc));
-    const n = facts(newCard(fixedSvc));
-    expect(n).toEqual(o);
+  it('fixed service — no renew/next-stage; change-status/complete/delete; no header/progress', () => {
+    const card = newCard(fixedSvc);
+    const n = facts(card);
+    expect(n.serviceId).toBe('srv_f');
     expect(n.actions).toEqual(['change-status', 'complete', 'delete']);
-    expect(n.typeBadge).toContain('fixed');
+    // fixed branch info items unchanged (מחיר / סטטוס, no label colons).
+    expect(n.infoItems.map((i) => i.label)).toEqual(['מחיר', 'סטטוס']);
+    expect(card.querySelector('.management-service-header')).toBeNull();
+    expect(card.querySelector('.management-hours-progress')).toBeNull();
+  });
+
+  it('out-of-enum status → NO status pill (never a false "פעיל"; devils-advocate Attack 5)', () => {
+    // A legacy/blocked service whose status is not one of {active,completed,on_hold,archived}
+    // must render NO pill — defaulting to "פעיל" would mislabel an admin-critical card and
+    // contradict the rail's "דורש טיפול" dot for the same service.
+    const card = newCard({ ...fixedSvc, id: 'srv_x', status: 'blocked' });
+    expect(card.querySelector('.usc-identity-status')).toBeNull();
+    expect(card.querySelector('.usc-identity-status--active')).toBeNull();
   });
 });
 
-describe('U5a · injector-anchor selectors are present on the new card', () => {
+describe('T2-2 · injector-anchor selectors + band are present on the new card', () => {
   it('emits .management-services-list anchors: the card + stages + info blocks the injectors scan', () => {
     const n = newCard(twoStageLegal);
     expect(n.classList.contains('management-service-card')).toBe(true);
     expect(n.getAttribute('data-service-id')).toBe('srv_l');
-    // AddPackageToStage needs .management-stage + .management-stage-name + .management-stage-info
+    // AddPackageToStage needs .management-stage + .management-stage-name + .management-stage-info.
     expect(n.querySelectorAll('.management-stage').length).toBe(2);
     expect(n.querySelectorAll('.management-stage-info').length).toBe(2);
     expect(n.querySelector('.management-stage-name')).not.toBeNull();
+    // the shared band replaced the old header (band selectors are usc-* → injector-safe).
+    expect(n.querySelector('.usc-identity')).not.toBeNull();
+    expect(n.querySelector('.usc-identity-status')).not.toBeNull();
   });
   it('SEC-1: escaping the name prevents an attribute breakout (no injected event handler)', () => {
     const el = USC.buildManageDetail(
       model.build({ services: [{ id: 's', name: 'A" onmouseover="alert(1)', type: 'hours', status: 'active', totalHours: 1, hoursUsed: 0, hoursRemaining: 1 }] }).cards[0]
     );
-    // With escaping, the `"` cannot break out of the title attribute → NO injected onmouseover.
+    // With escaping, the `"` cannot break out → NO injected onmouseover anywhere in the card.
     expect(el.querySelector('[onmouseover]')).toBeNull();
-    // and the full raw name is preserved safely inside the attribute.
-    const badge = el.querySelector('.management-service-badge.service-name') as HTMLElement;
-    expect(badge.getAttribute('title')).toBe('A" onmouseover="alert(1)');
+    // and the full raw name is preserved safely as the band name's text content.
+    const name = el.querySelector('.usc-identity-name') as HTMLElement;
+    expect(name.textContent).toBe('A" onmouseover="alert(1)');
   });
 });
 
@@ -174,6 +192,6 @@ describe('U5b · the live panel now renders via the unified renderer (master-det
     // it would break modal-unification-management-contracts.test.ts (source-pins those exact
     // strings) and modal-unification-u1-stored-hoursused.test.ts (drives getServiceInfo at
     // runtime), both outside this PR's editable file set. Removal + retargeting those pins is a
-    // follow-up. The equality describes above still prove parity because the old renderer remains.
+    // follow-up. The live-contract assertions above still prove the injector contract holds.
   });
 });

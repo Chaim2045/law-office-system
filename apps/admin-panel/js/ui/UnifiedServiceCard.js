@@ -185,41 +185,18 @@
         return s.length <= 20 ? s : (s.substring(0, 20) + '...');
     }
 
-    const MANAGE_TYPE_BADGE = {
-        hours: '<span class="management-service-badge hours"><i class="fas fa-clock"></i> שעות</span>',
-        legal_procedure: '<span class="management-service-badge legal"><i class="fas fa-gavel"></i> הליך משפטי</span>',
-        fixed: '<span class="management-service-badge fixed"><i class="fas fa-dollar-sign"></i> מחיר קבוע</span>'
-    };
-    const MANAGE_STATUS_BADGE = {
-        active: '<span class="service-status-badge status-active"><i class="fas fa-check-circle"></i> פעיל</span>',
-        completed: '<span class="service-status-badge status-completed"><i class="fas fa-lock"></i> הושלם</span>',
-        on_hold: '<span class="service-status-badge status-on-hold"><i class="fas fa-pause-circle"></i> בהמתנה</span>',
-        archived: '<span class="service-status-badge status-archived"><i class="fas fa-archive"></i> בארכיון</span>'
-    };
-    function manageServiceIcon(type) {
-        if (type === 'legal_procedure') {
-            return 'fa-gavel';
+    // Service status → a calm pill for the shared identity band (management detail only; the report
+    // tab passes no status so its band stays byte-identical). Replaces the dead MANAGE_STATUS_BADGE
+    // / MANAGE_TYPE_BADGE / manageServiceIcon (the type icon + badge now come from buildIdentityBand).
+    const USC_STATUS_TEXT = { active: 'פעיל', completed: 'הושלם', on_hold: 'בהמתנה', archived: 'בארכיון' };
+    function statusPillHtml(status) {
+        // Unknown/out-of-enum status → NO pill (matches the old MANAGE_STATUS_BADGE silent behavior).
+        // Never default to 'active': a false "פעיל" on a blocked/legacy service would mislabel an
+        // admin-critical card and contradict the rail's "דורש טיפול" dot. (devils-advocate Attack 5.)
+        if (!USC_STATUS_TEXT[status]) {
+            return '';
         }
-        if (type === 'fixed') {
-            return 'fa-dollar-sign';
-        }
-        if (type === 'hours') {
-            return 'fa-clock';
-        }
-        return 'fa-briefcase';
-    }
-
-    function manageStatusClass(hoursRemaining) {
-        if (hoursRemaining <= 0) {
-            return 'blocked';
-        }
-        if (hoursRemaining <= 5) {
-            return 'critical';
-        }
-        if (hoursRemaining <= 10) {
-            return 'warning';
-        }
-        return 'success';
+        return '<span class="usc-identity-status usc-identity-status--' + status + '">' + USC_STATUS_TEXT[status] + '</span>';
     }
 
     // The override "אפשר/בטל חריגה" block (hours services with hoursRemaining <= 0).
@@ -291,42 +268,13 @@
         }
 
         if (type === 'hours') {
-            const totalHours = num(card.totalHours);
-            const hoursRemaining = num(card.hoursRemaining);
-            const hoursUsed = num(card.hoursUsed);
-            const percentage = totalHours > 0 ? ((hoursUsed / totalHours) * 100).toFixed(0) : 0;
-            const statusClass = manageStatusClass(hoursRemaining);
+            // Hours utilization now lives in the shared identity band's meter (buildIdentityBand);
+            // the old inline hours-progress bar (which printed an UNCLAMPED percentage) is removed.
             return `
                     <div class="management-service-info">
                         <div class="management-service-info-item">
                             <span class="management-service-info-label">תאריך פתיחה:</span>
                             <span class="management-service-info-value">${dateDisplay || 'לא זמין'}</span>
-                        </div>
-                    </div>
-
-                    <div class="management-hours-progress">
-                        <div class="management-hours-progress-title">
-                            <i class="fas fa-clock"></i>
-                            ניצול שעות
-                        </div>
-                        <div class="management-hours-progress-bar">
-                            <div class="management-hours-progress-fill ${statusClass}" style="width: ${percentage}%">
-                            </div>
-                        </div>
-                        <div class="management-hours-stats">
-                            <div class="management-hours-percentage">${percentage}%</div>
-                            <div class="management-hours-stat">
-                                <span class="management-hours-stat-label">נרכשו:</span>
-                                <span class="management-hours-stat-value">${totalHours.toFixed(1)}</span>
-                            </div>
-                            <div class="management-hours-stat">
-                                <span class="management-hours-stat-label">נוצלו:</span>
-                                <span class="management-hours-stat-value">${hoursUsed.toFixed(1)}</span>
-                            </div>
-                            <div class="management-hours-stat">
-                                <span class="management-hours-stat-label">נותרו:</span>
-                                <span class="management-hours-stat-value ${statusClass}">${hoursRemaining.toFixed(1)}</span>
-                            </div>
                         </div>
                     </div>
                     ${buildPackagesBreakdown(card)}
@@ -458,18 +406,7 @@
         el.className = 'management-service-card';
         el.dataset.serviceId = card.serviceId || '';
         el.innerHTML = `
-                    <div class="management-service-header">
-                        <div class="management-service-header-left">
-                            <div class="management-service-title">
-                                <i class="fas ${manageServiceIcon(type)}"></i>
-                                שירות
-                            </div>
-                            ${MANAGE_STATUS_BADGE[card.status] || MANAGE_STATUS_BADGE[card.status || 'active'] || ''}
-                            <span class="management-service-badge service-name" title="${esc(card.name || 'ללא שם')}"><i class="fas fa-tag"></i> ${esc(truncate(card.name || 'ללא שם'))}</span>
-                            ${MANAGE_TYPE_BADGE[type] || ''}
-                        </div>
-                        <i class="fas fa-chevron-down management-service-toggle"></i>
-                    </div>
+                    ${buildIdentityBand(card, { statusHtml: statusPillHtml(card.status) })}
 
                     <div class="management-service-body">
                         <div class="management-service-content">
@@ -592,7 +529,7 @@
         return (hoursRemaining < 0) ? 'over' : (hoursRemaining <= 10 ? 'high' : 'good');
     }
 
-    function buildIdentityBand(card) {
+    function buildIdentityBand(card, opts) {
         // Layout-only classification (icon/badge/meter routing). The disable mirrors the extracted
         // source (ReportTab.identityBandHtml): this is a display fork, not a business rule, and
         // keeping the exact original predicate preserves byte-identity (PR-1 = zero behavior change).
@@ -639,6 +576,7 @@
             '<span class="usc-identity-icon"><i class="fas ' + icon + '" aria-hidden="true"></i></span>' +
             '<span class="usc-identity-name">' + esc(card.name || 'ללא שם') + '</span>' +
             '<span class="usc-identity-badge">' + badge + '</span>' +
+            ((opts && opts.statusHtml) ? opts.statusHtml : '') +
             stat +
             '</div>' + meter + '</div>';
     }
