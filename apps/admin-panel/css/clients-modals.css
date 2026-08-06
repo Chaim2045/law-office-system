@@ -1889,6 +1889,33 @@ select.form-input {
     font-weight: var(--font-semibold);
 }
 
+/* Service status pill for the shared identity band (management detail only — the report tab
+   passes no status, so its band is unaffected). Tokenized like the band; color-per-status. */
+.usc-identity-status {
+    flex-shrink: 0;
+    padding: var(--space-1) var(--space-2);
+    border-radius: 999px;
+    background: var(--gray-100);
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+}
+
+.usc-identity-status--active {
+    color: var(--green-dark);
+}
+
+.usc-identity-status--completed {
+    color: var(--gray-600);
+}
+
+.usc-identity-status--on_hold {
+    color: var(--orange-dark);
+}
+
+.usc-identity-status--archived {
+    color: var(--gray-500);
+}
+
 /* Hours-only stat — pushed to the inline-end (left in RTL). Tabular figures. */
 .usc-identity-stat {
     margin-inline-start: auto;
