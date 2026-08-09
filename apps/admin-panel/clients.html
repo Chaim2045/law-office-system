@@ -74,7 +74,7 @@
     <link rel="stylesheet" href="css/clients.css?v=20251127-HOURS-COMPACT">
     <!-- flatpickr (vendored/self-hosted 4.6.13) — CSP 'self'; our overrides in clients-modals.css must cascade AFTER this -->
     <link rel="stylesheet" href="vendor/flatpickr/flatpickr.min.css?v=fp-4.6.13">
-    <link rel="stylesheet" href="css/clients-modals.css?v=20260806-modal-scroll-confine">
+    <link rel="stylesheet" href="css/clients-modals.css?v=20260809-general-panel-reading-pane">
     <link rel="stylesheet" href="css/report-service-cards.css?v=20251231-SOFT-MINIMAL">
     <link rel="stylesheet" href="css/service-status-management.css?v=20260118">
     <link rel="stylesheet" href="css/task-approval-side-panel.css">
@@ -323,49 +323,41 @@
                         <!-- "כללי · פרטי לקוח" — default selection -->
                         <div id="cmGeneralDetail" class="cm-detail-panel cm-detail-panel--active" role="tabpanel" aria-label="כללי">
 
-                            <!-- Fee Agreements Section -->
-                            <div class="management-section">
-                                <h3 class="management-section-title">
-                                    <i class="fas fa-file-contract"></i>
-                                    הסכמי שכר טרחה
-                                </h3>
-                                <div id="feeAgreementsSection" class="fee-agreements-section">
+                            <!-- Fee Agreements -->
+                            <section class="gen-section">
+                                <h3 class="gen-label"><i class="fas fa-file-contract" aria-hidden="true"></i> הסכמי שכר טרחה</h3>
+                                <div id="feeAgreementsSection">
                                     <!-- Hidden file input and trigger button -->
                                     <input type="file" id="feeAgreementInput" accept=".pdf,image/jpeg,image/png,image/webp" style="display: none;">
                                     <button type="button" id="uploadFeeAgreementBtn" style="display: none;"></button>
 
-                                    <!-- Agreements List -->
-                                    <div id="feeAgreementsList" class="fee-agreements-list">
-                                        <!-- Will be populated by JS -->
-                                    </div>
+                                    <!-- Agreements list (populated by renderFeeAgreements) -->
+                                    <div id="feeAgreementsList"></div>
                                 </div>
-                            </div>
+                            </section>
 
                             <!-- Quick Actions -->
-                            <div class="management-section">
-                                <h3 class="management-section-title">
-                                    <i class="fas fa-lightning-bolt"></i>
-                                    פעולות מהירות
-                                </h3>
-                                <div class="management-actions-grid">
-                                    <button class="management-action-btn" data-action="add-service">
-                                        <i class="fas fa-plus-circle"></i>
+                            <section class="gen-section">
+                                <h3 class="gen-label"><i class="fas fa-bolt" aria-hidden="true"></i> פעולות מהירות</h3>
+                                <div class="gen-actions">
+                                    <button type="button" class="gen-act gen-act--primary" data-action="add-service">
+                                        <i class="fas fa-plus-circle" aria-hidden="true"></i>
                                         <span>הוסף שירות חדש</span>
                                     </button>
-                                    <button class="management-action-btn" data-action="renew-hours">
-                                        <i class="fas fa-redo"></i>
+                                    <button type="button" class="gen-act" data-action="renew-hours">
+                                        <i class="fas fa-redo" aria-hidden="true"></i>
                                         <span>חדש חבילת שעות</span>
                                     </button>
-                                    <button class="management-action-btn" data-action="change-status">
-                                        <i class="fas fa-exchange-alt"></i>
+                                    <button type="button" class="gen-act" data-action="change-status">
+                                        <i class="fas fa-exchange-alt" aria-hidden="true"></i>
                                         <span>שנה סטטוס</span>
                                     </button>
-                                    <button class="management-action-btn danger" data-action="close-case">
-                                        <i class="fas fa-archive"></i>
+                                    <button type="button" class="gen-act gen-act--danger" data-action="close-case">
+                                        <i class="fas fa-archive" aria-hidden="true"></i>
                                         <span>סגור תיק</span>
                                     </button>
                                 </div>
-                            </div>
+                            </section>
                         </div>
 
                         <!-- Per-service detail cards — ALL present (the overdraft + add-package injectors
@@ -499,7 +491,7 @@
     <script defer src="js/ui/ReportPreview.js?v=20260802-u3"></script>
     <!-- ModalManager (window.ModalManager / window.ModalHelpers) — required by ClientManagementModal's renewServiceHours + _editPackagePurchaseDate dialogs. Was missing on clients.html only, breaking both. -->
     <script defer src="js/ui/Modals.js?v=20260726-modalmanager-fix"></script>
-    <script defer src="js/ui/ClientManagementModal.js?v=20260803-r2-report-masterdetail"></script>
+    <script defer src="js/ui/ClientManagementModal.js?v=20260809-general-panel-reading-pane"></script>
     <script defer src="js/modules/ServiceCardModel.js?v=20260802-u5b-manage-cutover"></script>
     <script defer src="js/ui/UnifiedServiceCard.js?v=20260805-t2-2-manage-band"></script>
     <!-- flatpickr (vendored/self-hosted 4.6.13) + Hebrew locale — MUST load before ReportTab.js (its _initRangePicker reads window.flatpickr); graceful fallback if absent -->
