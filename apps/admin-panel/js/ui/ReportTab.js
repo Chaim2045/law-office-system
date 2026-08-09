@@ -417,9 +417,13 @@
 
             return '<div class="' + classes.join(' ') + '"' + attrs + '>' +
                 '<span class="report-stage-radio" aria-hidden="true"></span>' +
-                '<span class="report-stage-name">' + esc(stageShortName(stage.id)) + '</span>' +
-                statusHtml +
-                '<span class="report-stage-hours">' + num(stage.hoursUsed).toFixed(1) + ' / ' + num(stage.totalHours).toFixed(1) + '</span>' +
+                '<div class="report-stage-body">' +
+                    '<span class="report-stage-name" title="' + esc(getStageName(stage.id)) + '">' + esc(stageShortName(stage.id)) + '</span>' +
+                    '<div class="report-stage-meta">' +
+                        statusHtml +
+                        '<span class="report-stage-hours">' + num(stage.hoursUsed).toFixed(1) + ' / ' + num(stage.totalHours).toFixed(1) + '</span>' +
+                    '</div>' +
+                '</div>' +
                 '</div>';
         }
 
