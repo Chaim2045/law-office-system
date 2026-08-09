@@ -448,34 +448,6 @@ select.form-input {
     font-size: 1rem;
 }
 
-.management-section {
-    margin-bottom: 2rem;
-    padding-bottom: 2rem;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.management-section:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-
-.management-section-title {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #71717a;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.management-section-title i {
-    color: var(--primary-blue);
-    font-size: 0.875rem;
-}
-
 /* Services List */
 .management-services-list {
     display: flex;
@@ -988,69 +960,6 @@ select.form-input {
     border-color: var(--danger-red);
 }
 
-/* Quick Actions - 2 Column Grid Minimalist */
-.management-actions-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-}
-
-.management-action-btn {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 1rem 0.75rem;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.625rem;
-    text-align: center;
-}
-
-.management-action-btn:hover {
-    border-color: #d1d5db;
-    background: rgb(24 119 242 / 2%);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
-}
-
-.management-action-btn i {
-    font-size: 1.25rem;
-    color: var(--primary-blue);
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: rgb(24 119 242 / 8%);
-    flex-shrink: 0;
-}
-
-.management-action-btn span {
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: #18181b;
-    line-height: 1.4;
-}
-
-.management-action-btn.danger:hover {
-    border-color: var(--danger-red);
-    background: rgb(220 38 38 / 2%);
-}
-
-.management-action-btn.danger i {
-    color: var(--text-secondary);
-    background: rgb(107 114 128 / 8%);
-}
-
-.management-action-btn.danger:hover i {
-    color: var(--danger-red);
-    background: rgb(220 38 38 / 8%);
-}
-
 /* Empty State */
 .management-empty-state {
     text-align: center;
@@ -1074,318 +983,301 @@ select.form-input {
     font-size: 0.875rem;
 }
 
-/* ============================================
-   FEE AGREEMENTS - הסכמי שכר טרחה
-   ============================================ */
+/* ============================================================
+   GENERAL PANEL (כללי · פרטי לקוח) — reading-pane
+   Fee-agreements hairline list + quick-action row.
+   design-system.css tokens only · :focus-visible · RTL logical
+   props · WCAG AA (--red-dark 4.83:1 / --blue-dark 5.17:1).
+   ============================================================ */
 
-.fee-agreements-section {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+.gen-section {
+    margin-bottom: var(--space-8);
 }
 
-.fee-agreements-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+.gen-section:last-child {
+    margin-bottom: 0;
 }
 
-/* Individual Agreement Item */
-.fee-agreement-item {
+.gen-label {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem 1rem;
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    transition: all 0.2s ease;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    color: var(--gray-500);
+    letter-spacing: var(--letter-spacing-wide);
 }
 
-.fee-agreement-item:hover {
-    border-color: var(--primary-color);
-    background: rgb(37 99 235 / 2%);
+.gen-label i {
+    font-size: var(--text-sm);
+    color: var(--gray-400);
 }
 
-.fee-agreement-info {
+/* Agreements list */
+.gen-agr-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.gen-agr {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    flex: 1;
-    min-width: 0;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: #fff;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    transition: border-color var(--transition-fast), background-color var(--transition-fast);
 }
 
-.fee-agreement-icon {
+.gen-agr:hover {
+    border-color: var(--gray-300);
+    background: var(--gray-50);
+}
+
+.gen-agr-icon {
+    flex-shrink: 0;
     width: 36px;
     height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
-    background: rgb(37 99 235 / 8%);
-    color: var(--primary-color);
-    flex-shrink: 0;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-base);
+    background: var(--gray-100);
+    color: var(--gray-500);
 }
 
-.fee-agreement-icon i {
-    font-size: 1rem;
+.gen-agr-icon.pdf {
+    background: rgb(220 38 38 / 10%);
+    color: var(--red-dark);
 }
 
-.fee-agreement-icon.pdf {
-    background: rgb(220 38 38 / 8%);
-    color: #dc2626;
+.gen-agr-icon.image {
+    background: rgb(5 150 105 / 12%);
+    color: var(--green-dark);
 }
 
-.fee-agreement-icon.image {
-    background: rgb(16 185 129 / 8%);
-    color: #10b981;
-}
-
-.fee-agreement-details {
+.gen-agr-body {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.125rem;
-    min-width: 0;
+    gap: 2px;
 }
 
-.fee-agreement-name {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--text-primary);
+.gen-agr-name {
+    font-size: var(--text-md);
+    font-weight: var(--font-medium);
+    color: var(--gray-800);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.fee-agreement-meta {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
+.gen-agr-meta {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--gray-500);
 }
 
-.fee-agreement-meta span {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
+.gen-agr-meta span:not(:first-child) {
+    padding-inline-start: var(--space-2);
+    border-inline-start: 1px solid var(--gray-200);
 }
 
-/* Agreement Actions */
-.fee-agreement-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+.gen-agr-actions {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
 }
 
-.fee-agreement-action-btn {
+.gen-icon-btn {
     width: 32px;
     height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background: var(--card-bg);
-    color: var(--text-secondary);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--gray-500);
+    font-size: var(--text-md);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
 }
 
-.fee-agreement-action-btn:hover {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-    background: rgb(37 99 235 / 4%);
+.gen-icon-btn:hover {
+    background: var(--gray-100);
+    color: var(--gray-700);
 }
 
-.fee-agreement-action-btn.view:hover {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
+.gen-icon-btn.danger:hover {
+    background: rgb(220 38 38 / 10%);
+    color: var(--red-dark);
 }
 
-.fee-agreement-action-btn.delete:hover {
-    border-color: var(--danger-red);
-    color: var(--danger-red);
-    background: rgb(220 38 38 / 4%);
+.gen-icon-btn:focus-visible {
+    outline: none;
+    border-color: var(--blue-dark);
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 25%);
 }
 
-/* Add Agreement Button */
-.fee-agreement-add-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.75rem;
-    margin-top: 0.75rem;
-    background: #f8fafc;
-    color: #64748b;
-    border: 2px dashed #cbd5e1;
-    border-radius: 6px;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.fee-agreement-add-btn:hover {
-    background: #f1f5f9;
-    border-color: #94a3b8;
-    color: #475569;
-}
-
-.fee-agreement-add-btn i {
-    font-size: 0.875rem;
-}
-
-/* Upload Area */
-.fee-agreement-upload {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 1.25rem;
-    border: 2px dashed var(--border-color);
-    border-radius: 8px;
-    background: rgb(107 114 128 / 2%);
-    transition: all 0.2s ease;
-}
-
-.fee-agreement-upload:hover {
-    border-color: var(--primary-color);
-    background: rgb(37 99 235 / 2%);
-}
-
-.fee-agreement-upload-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.625rem 1.25rem;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.fee-agreement-upload-btn:hover {
-    background: var(--primary-hover);
-    transform: translateY(-1px);
-}
-
-.fee-agreement-upload-btn i {
-    font-size: 1rem;
-}
-
-.fee-agreement-upload-hint {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    margin: 0;
-}
-
-/* Empty State for Agreements */
-.fee-agreements-empty {
-    text-align: center;
-    padding: 2rem 1rem;
-    background: #f8fafc;
-    border: 2px dashed #cbd5e1;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-}
-
-.fee-agreements-empty:hover {
-    border-color: #94a3b8;
-    background: #f1f5f9;
-}
-
-.empty-state-icon {
-    width: 56px;
-    height: 56px;
-    margin: 0 auto 1rem;
-    background: #e2e8f0;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.empty-state-icon i {
-    font-size: 1.5rem;
-    color: #64748b;
-}
-
-.empty-state-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    align-items: center;
-}
-
-.empty-state-title {
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: #475569;
-    margin: 0;
-}
-
-.empty-state-text {
-    font-size: 0.8125rem;
-    color: #94a3b8;
-    margin: 0;
-}
-
-.empty-state-btn {
+/* Upload (ghost) */
+.gen-upload {
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
-    padding: 0.5rem 1rem;
-    margin-top: 0.5rem;
-    background: #3b82f6;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 0.8125rem;
-    font-weight: 500;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    background: transparent;
+    color: var(--gray-600);
+    border: 1px dashed var(--gray-300);
+    border-radius: var(--radius-md);
+    font-size: var(--text-md);
+    font-weight: var(--font-medium);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: color var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
 }
 
-.empty-state-btn:hover {
-    background: #2563eb;
-    transform: translateY(-1px);
+.gen-upload:hover {
+    color: var(--blue-dark);
+    border-color: var(--blue);
+    background: rgb(59 130 246 / 6%);
 }
 
-.empty-state-btn:active {
-    transform: translateY(0);
+.gen-upload:focus-visible {
+    outline: none;
+    border-color: var(--blue-dark);
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 25%);
 }
 
-.empty-state-btn i {
-    font-size: 0.875rem;
+.gen-upload i {
+    font-size: var(--text-md);
 }
 
-/* Upload Progress */
-.fee-agreement-uploading {
+/* Empty state */
+.gen-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-8) var(--space-4);
+    text-align: center;
+    background: var(--gray-50);
+    border: 1px dashed var(--gray-200);
+    border-radius: var(--radius-md);
+}
+
+.gen-empty-icon {
+    width: 48px;
+    height: 48px;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    background: rgb(37 99 235 / 4%);
-    border: 1px solid var(--primary-color);
-    border-radius: 8px;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--gray-100);
+    color: var(--gray-400);
+    font-size: var(--text-lg);
 }
 
-.fee-agreement-uploading i {
-    color: var(--primary-color);
-    animation: spin 1s linear infinite;
+.gen-empty-text {
+    margin: 0;
+    font-size: var(--text-md);
+    color: var(--gray-500);
 }
 
-.fee-agreement-uploading span {
-    font-size: 0.875rem;
-    color: var(--text-primary);
+.gen-empty .gen-upload {
+    margin-top: 0;
+}
+
+/* Quick actions */
+.gen-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+}
+
+.gen-act {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    background: #fff;
+    color: var(--gray-700);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    font-size: var(--text-md);
+    font-weight: var(--font-medium);
+    text-align: start;
+    cursor: pointer;
+    transition: color var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.gen-act i {
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+    font-size: var(--text-lg);
+    color: var(--gray-400);
+    transition: color var(--transition-fast);
+}
+
+.gen-act:hover {
+    border-color: var(--gray-300);
+    background: var(--gray-50);
+}
+
+.gen-act:hover i {
+    color: var(--gray-600);
+}
+
+.gen-act:focus-visible {
+    outline: none;
+    border-color: var(--blue-dark);
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 25%);
+}
+
+/* Primary — filled (#fff on --blue-dark = 5.17:1, AA) */
+.gen-act--primary {
+    background: var(--blue-dark);
+    color: #fff;
+    border-color: var(--blue-dark);
+}
+
+.gen-act--primary i {
+    color: rgb(255 255 255 / 85%);
+}
+
+.gen-act--primary:hover {
+    background: var(--blue-dark);
+    color: #fff;
+    border-color: var(--blue-dark);
+    filter: brightness(0.94);
+}
+
+.gen-act--primary:hover i {
+    color: #fff;
+}
+
+/* Danger — restrained (red icon; --red-dark 4.83:1 text, AA) */
+.gen-act--danger i {
+    color: var(--red-dark);
+}
+
+.gen-act--danger:hover {
+    color: var(--red-dark);
+    border-color: var(--red-dark);
+    background: rgb(220 38 38 / 6%);
+}
+
+.gen-act--danger:hover i {
+    color: var(--red-dark);
 }
 
 @keyframes spin {
@@ -1495,7 +1387,7 @@ select.form-input {
         justify-content: flex-start;
     }
 
-    .management-actions-grid {
+    .gen-actions {
         grid-template-columns: 1fr;
     }
 }

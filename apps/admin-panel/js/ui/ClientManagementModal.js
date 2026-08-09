@@ -2396,18 +2396,13 @@ return;
 
             if (agreements.length === 0) {
                 container.innerHTML = `
-                    <div class="fee-agreements-empty">
-                        <div class="empty-state-icon">
-                            <i class="fas fa-file-contract"></i>
-                        </div>
-                        <div class="empty-state-content">
-                            <h4 class="empty-state-title">אין הסכמי שכר טרחה</h4>
-                            <p class="empty-state-text">העלה הסכם שכר טרחה כדי להתחיל</p>
-                            <button class="empty-state-btn" onclick="document.getElementById('uploadFeeAgreementBtn').click()">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                                <span>העלאת הסכם</span>
-                            </button>
-                        </div>
+                    <div class="gen-empty">
+                        <div class="gen-empty-icon"><i class="fas fa-file-contract" aria-hidden="true"></i></div>
+                        <p class="gen-empty-text">אין הסכמי שכר טרחה עדיין</p>
+                        <button type="button" class="gen-upload" onclick="document.getElementById('uploadFeeAgreementBtn').click()">
+                            <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i>
+                            <span>העלה הסכם</span>
+                        </button>
                     </div>
                 `;
                 return;
@@ -2431,38 +2426,30 @@ return;
                 const fileSize = this.formatFileSize(agreement.fileSize);
 
                 return `
-                    <div class="fee-agreement-item" data-agreement-id="${agreement.id}">
-                        <div class="fee-agreement-info">
-                            <div class="fee-agreement-icon ${iconClass}">
-                                <i class="fas ${icon}"></i>
-                            </div>
-                            <div class="fee-agreement-details">
-                                <div class="fee-agreement-name" title="${this.escapeHtml(agreement.originalName || agreement.fileName)}">
-                                    ${this.escapeHtml(agreement.originalName || agreement.fileName)}
-                                </div>
-                                <div class="fee-agreement-meta">
-                                    <span><i class="fas fa-calendar-alt"></i> ${uploadDate}</span>
-                                    <span><i class="fas fa-hdd"></i> ${fileSize}</span>
-                                </div>
+                    <div class="gen-agr" data-agreement-id="${agreement.id}">
+                        <div class="gen-agr-icon ${iconClass}"><i class="fas ${icon}" aria-hidden="true"></i></div>
+                        <div class="gen-agr-body">
+                            <div class="gen-agr-name" title="${this.escapeHtml(agreement.originalName || agreement.fileName)}">${this.escapeHtml(agreement.originalName || agreement.fileName)}</div>
+                            <div class="gen-agr-meta">
+                                <span>${uploadDate}</span>
+                                <span>${fileSize}</span>
                             </div>
                         </div>
-                        <div class="fee-agreement-actions">
-                            <button class="fee-agreement-action-btn view" data-action="view" data-agreement-id="${agreement.id}" title="צפה בהסכם">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <button class="fee-agreement-action-btn delete" data-action="delete" data-agreement-id="${agreement.id}" title="מחק הסכם">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                        <div class="gen-agr-actions">
+                            <button type="button" class="gen-icon-btn" data-action="view" data-agreement-id="${agreement.id}" title="צפה בהסכם" aria-label="צפה בהסכם"><i class="fas fa-eye" aria-hidden="true"></i></button>
+                            <button type="button" class="gen-icon-btn danger" data-action="delete" data-agreement-id="${agreement.id}" title="מחק הסכם" aria-label="מחק הסכם"><i class="fas fa-trash" aria-hidden="true"></i></button>
                         </div>
                     </div>
                 `;
             }).join('');
 
             container.innerHTML = `
-                ${agreementsHTML}
-                <button class="fee-agreement-add-btn" onclick="document.getElementById('uploadFeeAgreementBtn').click()">
-                    <i class="fas fa-plus"></i>
-                    <span>הוסף הסכם נוסף</span>
+                <div class="gen-agr-list">
+                    ${agreementsHTML}
+                </div>
+                <button type="button" class="gen-upload" onclick="document.getElementById('uploadFeeAgreementBtn').click()">
+                    <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i>
+                    <span>העלה הסכם</span>
                 </button>
             `;
 
