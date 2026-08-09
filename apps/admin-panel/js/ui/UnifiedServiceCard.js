@@ -510,20 +510,14 @@
         return Number.isFinite(n) ? n : 0;
     }
 
-    // Meter threshold — STRICT over: < 0 remaining = over (red), ≤10 = high (orange), else good
-    // (green). rem === 0 (exactly on budget) routes to 'high', NEVER red — a fully-used but not
-    // overdrawn quota is a warning, not a debt.
-    function meterStatus(hoursRemaining) {
-        return (hoursRemaining < 0) ? 'over' : (hoursRemaining <= 10 ? 'high' : 'good');
-    }
-
-    // Management meter threshold — RELATIVE, and deliberately SEPARATE from the report band's
-    // absolute meterStatus above (which this fork does NOT touch → the report tab is unaffected).
-    // The absolute "≤10h remaining = orange" made a small quota (e.g. 10h total, 2.5h used = 25%)
-    // read as alarming; here orange fires only once ≥85% of the quota is used (≤15% remaining),
-    // and red only on a real overdraft (remaining < 0). remaining === 0 (fully used, not overdrawn)
-    // → high, never red — a spent-but-not-overdrawn quota is a warning, not a debt.
-    function manageMeterStatus(used, total, rem) {
+    // Meter threshold — RELATIVE, and SHARED by both the management header (buildManageHeader) and the
+    // report band (buildIdentityBand), so a service's meter reads the SAME on both tabs (the modal-
+    // unification SSOT extends to the display). over: remaining < 0 (a real overdraft, red). high:
+    // ≥85% of the quota used / ≤15% remaining (orange). good: else (green). remaining === 0 (fully used,
+    // not overdrawn) → high, NEVER red — a spent-but-not-overdrawn quota is a warning, not a debt.
+    // Replaces the old absolute "≤10h remaining = orange", which mislabelled a barely-used SMALL quota
+    // (e.g. 10h total / 2.5h used = 25%) as alarming.
+    function meterStatus(used, total, rem) {
         if (rem < 0) {
             return 'over';
         }
@@ -559,7 +553,7 @@
             const used = bandNum(card.hoursUsed);
             const total = bandNum(card.totalHours);
             const rem = bandNum(card.hoursRemaining);
-            const status = meterStatus(rem);
+            const status = meterStatus(used, total, rem);
             const remText = rem < 0
                 ? 'חריגה ' + Math.abs(rem).toFixed(1)
                 : 'נותרו ' + rem.toFixed(1);
@@ -627,7 +621,7 @@
             const used = bandNum(card.hoursUsed);
             const total = bandNum(card.totalHours);
             const rem = bandNum(card.hoursRemaining);
-            const st = manageMeterStatus(used, total, rem);
+            const st = meterStatus(used, total, rem);
             const remText = rem < 0 ? 'חריגה ' + Math.abs(rem).toFixed(1) : 'נותרו ' + rem.toFixed(1);
             const pct = Math.min(100, Math.max(0, (used / total) * 100));
             hours =

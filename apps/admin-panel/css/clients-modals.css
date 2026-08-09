@@ -628,6 +628,10 @@ select.form-input {
     color: var(--gray-500);
 }
 
+/* good/high/over share the report band's palette (buildIdentityBand) so the meter reads
+   identically on both tabs — the display half of the modal-unification SSOT (PR-2). */
+.msc-hours-rem--good { color: var(--green-dark); }
+
 .msc-hours-rem--high { color: var(--orange-darker); }
 
 .msc-hours-rem--over { color: var(--red-dark); }
@@ -646,6 +650,8 @@ select.form-input {
     border-radius: 999px;
     background: var(--blue);
 }
+
+.msc-meter-fill--good { background: var(--green); }
 
 .msc-meter-fill--high { background: var(--orange); }
 
@@ -2110,7 +2116,9 @@ details.msc-pkgs[open] .msc-chev { transform: rotate(180deg); }
 }
 
 .usc-identity-rem--high {
-    color: var(--orange-dark);
+    /* --orange-darker (5.18:1 AA) not --orange-dark (3.56:1, fails AA); also matches the
+       management .msc-hours-rem--high so the meter readout is one palette on both tabs (PR-2). */
+    color: var(--orange-darker);
 }
 
 .usc-identity-rem--over {
