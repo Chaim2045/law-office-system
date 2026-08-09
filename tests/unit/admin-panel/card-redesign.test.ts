@@ -3,8 +3,9 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * The management card got a compact reading-pane redesign: a management-forked header
  * (buildManageHeader → .msc-head / .msc-status, NOT the shared report band), a RELATIVE
- * hours meter (orange only ≥85% used — the report band's absolute meterStatus is untouched),
- * and a collapsible packages disclosure (native <details> for >1, inline for 1).
+ * hours meter (orange only ≥85% used — now the ONE shared meterStatus, so the report band
+ * reads identically; PR-2 unified the threshold), and a collapsible packages disclosure
+ * (native <details> for >1, inline for 1).
  *
  * This suite drives the REAL buildManageDetail (JSDOM) to prove:
  *   - the relative meter reads calm on a barely-used small quota (the #526 absolute threshold bug),

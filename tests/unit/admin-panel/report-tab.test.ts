@@ -320,7 +320,7 @@ describe('PR-1 · identity band per service type', () => {
   });
 });
 
-describe('PR-1 · meter threshold classes (over < 0 / high ≤10 / good)', () => {
+describe('PR-2 · meter threshold classes (relative: over rem<0 / high used≥85% / good)', () => {
   it('rem −5 → over + overdraft stat "חריגה 5.0"', () => {
     ReportTab.render(hoursRemClient(-5, 55, 50), root);
     clickRail('srv_r');
@@ -347,6 +347,18 @@ describe('PR-1 · meter threshold classes (over < 0 / high ≤10 / good)', () =>
     expect(detail.querySelector('.usc-identity-meter-fill--good')).not.toBeNull();
     expect(detail.querySelector('.usc-identity-rem--good')).not.toBeNull();
     expect((detail.querySelector('.usc-identity-rem') as HTMLElement).textContent).toContain('נותרו 30.0');
+  });
+
+  it('rem 9 but only 82% used → good, NOT the old absolute ≤10=high (proves the relative unify)', () => {
+    // 41/50 used = 82% < 85% → good, even though just 9h remain. The OLD absolute rule
+    // (rem ≤ 10 → high) painted this orange; the unified relative meter keeps a barely-used
+    // small quota calm on the report band exactly as on the management header (the SSOT).
+    ReportTab.render(hoursRemClient(9, 41, 50), root);
+    clickRail('srv_r');
+    const detail = detailEl();
+    expect(detail.querySelector('.usc-identity-meter-fill--good')).not.toBeNull();
+    expect(detail.querySelector('.usc-identity-meter-fill--high')).toBeNull();
+    expect(detail.querySelector('.usc-identity-rem--good')).not.toBeNull();
   });
 
   it('total ≤ 0 → NO meter/stat + a neutral note (never a red debt bar) (FIX 3)', () => {
