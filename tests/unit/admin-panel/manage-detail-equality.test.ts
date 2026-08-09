@@ -56,8 +56,8 @@ function facts(card: HTMLElement) {
   const overrideBtn = el('.override-btn');
   return {
     serviceId: card.getAttribute('data-service-id'),
-    // the shared identity band now carries the (full, un-truncated) name.
-    identityName: el('.usc-identity-name')?.textContent?.trim(),
+    // the management header (Track-2 fork) now carries the (full, un-truncated) name via .msc-name.
+    identityName: el('.msc-name')?.textContent?.trim(),
     actions: all('[data-service-action]').map((b) => b.dataset.serviceAction).sort(),
     stageNames: all('.management-stage-name').map((e) => e.textContent?.trim()),
     override: overrideBtn ? { active: overrideBtn.dataset.active, name: overrideBtn.dataset.name } : null,
@@ -103,17 +103,16 @@ describe('T2-2 · buildManageDetail live injector contract (shared band adopted)
     // buildOverride / buildPackagesBreakdown injectors untouched.
     expect(n.override).toEqual({ active: 'true', name: 'ייעוץ שוטף עם שם ארוך במיוחד' }); // "אפשר חריגה"
     expect(n.editPkg).toEqual([{ svc: 'srv_h', pkg: 'pkg1', date: '2026-01-15' }]);
-    // the shared band carries the full name; the hours branch keeps ONLY the "תאריך פתיחה" item.
+    // the management header carries the full name; the hours body is now packages-only (0 info items —
+    // the standalone "תאריך פתיחה" item moved out; each package row carries its own purchase date).
     expect(n.identityName).toBe('ייעוץ שוטף עם שם ארוך במיוחד');
-    expect(n.infoItems.length).toBe(1);
-    expect(n.infoItems[0].label).toBe('תאריך פתיחה:');
-    expect(n.infoItems[0].value).toBeTruthy();
-    // the old header + the UNCLAMPED "5838%" progress bar are gone; the calm status pill replaces the badge.
+    expect(n.infoItems.length).toBe(0);
+    // the old header + the UNCLAMPED "5838%" progress bar are gone; the calm status dot took their place.
     expect(card.querySelector('.management-service-header')).toBeNull();
     expect(card.querySelector('.management-hours-progress')).toBeNull();
     expect(card.querySelector('.service-status-badge')).toBeNull();
     expect(card.querySelectorAll('.management-hours-stat-value').length).toBe(0);
-    expect(card.querySelector('.usc-identity-status--active')).not.toBeNull();
+    expect(card.querySelector('.msc-status--active')).not.toBeNull();
   });
 
   it('legal procedure (2 stages) — .management-stage-name === stage.name + stage-info + next-stage action', () => {
@@ -125,10 +124,10 @@ describe('T2-2 · buildManageDetail live injector contract (shared band adopted)
     expect(n.stageNames).toEqual(['כתב תביעה', 'הוכחות']);
     expect(card.querySelectorAll('.management-stage').length).toBe(2);
     expect(card.querySelectorAll('.management-stage-info').length).toBe(2);
-    // header removed; the band carries the name + the status pill.
+    // header removed; the management header carries the name + the status dot.
     expect(card.querySelector('.management-service-header')).toBeNull();
     expect(n.identityName).toBe('תביעה');
-    expect(card.querySelector('.usc-identity-status--active')).not.toBeNull();
+    expect(card.querySelector('.msc-status--active')).not.toBeNull();
   });
 
   it('fixed service — no renew/next-stage; change-status/complete/delete; no header/progress', () => {
@@ -147,8 +146,8 @@ describe('T2-2 · buildManageDetail live injector contract (shared band adopted)
     // must render NO pill — defaulting to "פעיל" would mislabel an admin-critical card and
     // contradict the rail's "דורש טיפול" dot for the same service.
     const card = newCard({ ...fixedSvc, id: 'srv_x', status: 'blocked' });
-    expect(card.querySelector('.usc-identity-status')).toBeNull();
-    expect(card.querySelector('.usc-identity-status--active')).toBeNull();
+    expect(card.querySelector('.msc-status')).toBeNull();
+    expect(card.querySelector('.msc-status--active')).toBeNull();
   });
 });
 
@@ -161,9 +160,10 @@ describe('T2-2 · injector-anchor selectors + band are present on the new card',
     expect(n.querySelectorAll('.management-stage').length).toBe(2);
     expect(n.querySelectorAll('.management-stage-info').length).toBe(2);
     expect(n.querySelector('.management-stage-name')).not.toBeNull();
-    // the shared band replaced the old header (band selectors are usc-* → injector-safe).
-    expect(n.querySelector('.usc-identity')).not.toBeNull();
-    expect(n.querySelector('.usc-identity-status')).not.toBeNull();
+    // the management header replaced the old header (.msc-* selectors are injector-safe: NOT
+    // .management-stage / .report-*, so the add-package / overdraft scanners never match them).
+    expect(n.querySelector('.msc-head')).not.toBeNull();
+    expect(n.querySelector('.msc-status')).not.toBeNull();
   });
   it('SEC-1: escaping the name prevents an attribute breakout (no injected event handler)', () => {
     const el = USC.buildManageDetail(
@@ -171,8 +171,8 @@ describe('T2-2 · injector-anchor selectors + band are present on the new card',
     );
     // With escaping, the `"` cannot break out → NO injected onmouseover anywhere in the card.
     expect(el.querySelector('[onmouseover]')).toBeNull();
-    // and the full raw name is preserved safely as the band name's text content.
-    const name = el.querySelector('.usc-identity-name') as HTMLElement;
+    // and the full raw name is preserved safely as the management header name's text content.
+    const name = el.querySelector('.msc-name') as HTMLElement;
     expect(name.textContent).toBe('A" onmouseover="alert(1)');
   });
 });
