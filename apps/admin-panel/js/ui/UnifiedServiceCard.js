@@ -185,19 +185,10 @@
         return s.length <= 20 ? s : (s.substring(0, 20) + '...');
     }
 
-    // Service status → a calm pill for the shared identity band (management detail only; the report
-    // tab passes no status so its band stays byte-identical). Replaces the dead MANAGE_STATUS_BADGE
-    // / MANAGE_TYPE_BADGE / manageServiceIcon (the type icon + badge now come from buildIdentityBand).
+    // Service status → a calm dot + Hebrew label, rendered by the management header
+    // (buildManageHeader). Out-of-enum status → nothing (never a false "פעיל" on a blocked/legacy
+    // card, which would mislabel an admin-critical row and contradict the rail's "דורש טיפול" dot).
     const USC_STATUS_TEXT = { active: 'פעיל', completed: 'הושלם', on_hold: 'בהמתנה', archived: 'בארכיון' };
-    function statusPillHtml(status) {
-        // Unknown/out-of-enum status → NO pill (matches the old MANAGE_STATUS_BADGE silent behavior).
-        // Never default to 'active': a false "פעיל" on a blocked/legacy service would mislabel an
-        // admin-critical card and contradict the rail's "דורש טיפול" dot. (devils-advocate Attack 5.)
-        if (!USC_STATUS_TEXT[status]) {
-            return '';
-        }
-        return '<span class="usc-identity-status usc-identity-status--' + status + '">' + USC_STATUS_TEXT[status] + '</span>';
-    }
 
     // The override "אפשר/בטל חריגה" block (hours services with hoursRemaining <= 0).
     function buildOverride(card) {
@@ -222,6 +213,10 @@
                             </div>`;
     }
 
+    // Packages breakdown — a calm, collapsible list. >1 package → a native <details> disclosure
+    // (collapsed by default; keyboard + screen-reader come free); exactly 1 → shown inline (no
+    // toggle). The `.edit-pkg-date-btn` + its data-service-id/-package-id/-current-date are the
+    // "שינוי תאריך רכישה" handler contract (ClientManagementModal) — kept byte-identical.
     function buildPackagesBreakdown(card) {
         const packages = Array.isArray(card.packages) ? card.packages : [];
         if (packages.length === 0) {
@@ -234,49 +229,42 @@
             const hours = num(pkg.hours).toFixed(1);
             const used = num(pkg.hoursUsed).toFixed(1);
             const remaining = num(pkg.hoursRemaining).toFixed(1);
-            const desc = pkg.description ? esc(pkg.description) : '';
+            const desc = pkg.description ? esc(pkg.description) : 'חבילה';
             return `
-                    <tr>
-                        <td style="padding:4px 8px;white-space:nowrap;">
-                            ${esc(date)}
-                            <button class="edit-pkg-date-btn" data-service-id="${esc(card.serviceId)}" data-package-id="${esc(pkg.id)}" data-current-date="${esc(pkg.purchaseDate || '')}" title="ערוך תאריך רכישה" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 4px;">✏️</button>
-                        </td>
-                        <td style="padding:4px 8px;">${hours}</td>
-                        <td style="padding:4px 8px;">${used}</td>
-                        <td style="padding:4px 8px;">${remaining}</td>
-                        <td style="padding:4px 8px;">${desc}</td>
-                    </tr>`;
+                        <div class="msc-pkg">
+                            <div class="msc-pkg-top">
+                                <span class="msc-pkg-name">${desc}</span>
+                                <button class="edit-pkg-date-btn msc-pkg-edit" data-service-id="${esc(card.serviceId)}" data-package-id="${esc(pkg.id)}" data-current-date="${esc(pkg.purchaseDate || '')}" title="ערוך תאריך רכישה" aria-label="ערוך תאריך רכישה"><i class="fas fa-pen" aria-hidden="true"></i></button>
+                            </div>
+                            <div class="msc-pkg-meta">${esc(date)} · ${hours} ש׳ · נוצלו ${used} · נותרו ${remaining}</div>
+                        </div>`;
         }).join('');
-        return `
-                    <div style="margin-top:12px;">
-                        <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;"><i class="fas fa-box-open"></i> חבילות (${packages.length})</div>
-                        <table style="width:100%;border-collapse:collapse;font-size:12px;">
-                            <thead><tr style="color:#6b7280;text-align:right;"><th style="padding:4px 8px;">תאריך רכישה</th><th style="padding:4px 8px;">שעות</th><th style="padding:4px 8px;">נוצלו</th><th style="padding:4px 8px;">נותרו</th><th style="padding:4px 8px;">תיאור</th></tr></thead>
-                            <tbody>${rows}</tbody>
-                        </table>
+
+        if (packages.length === 1) {
+            return `
+                    <div class="msc-pkgs-solo">
+                        <div class="msc-pkgs-lbl">חבילה</div>
+                        ${rows}
                     </div>`;
+        }
+        return `
+                    <details class="msc-pkgs">
+                        <summary class="msc-pkgs-sum">
+                            <span class="msc-pkgs-lbl">חבילות <span class="msc-pkgs-n">· ${packages.length}</span></span>
+                            <i class="fas fa-chevron-down msc-chev" aria-hidden="true"></i>
+                        </summary>
+                        <div class="msc-pkgs-list">${rows}</div>
+                    </details>`;
     }
 
     // getServiceInfo — 3 branches (HOURS / LEGAL_PROCEDURE / FIXED).
     function buildServiceInfo(card) {
         const type = card.type || 'hours';
-        const startRaw = card.startedAt || card.createdAt;
-        let dateDisplay = '';
-        if (startRaw) {
-            const d = new Date(startRaw.seconds ? startRaw.seconds * 1000 : startRaw);
-            dateDisplay = d.toLocaleDateString('he-IL', { year: 'numeric', month: '2-digit', day: '2-digit' });
-        }
 
         if (type === 'hours') {
-            // Hours utilization now lives in the shared identity band's meter (buildIdentityBand);
-            // the old inline hours-progress bar (which printed an UNCLAMPED percentage) is removed.
+            // Hours utilization lives in the management header's meter (buildManageHeader). The
+            // body is the (collapsible) packages breakdown + the overdraft override control.
             return `
-                    <div class="management-service-info">
-                        <div class="management-service-info-item">
-                            <span class="management-service-info-label">תאריך פתיחה:</span>
-                            <span class="management-service-info-value">${dateDisplay || 'לא זמין'}</span>
-                        </div>
-                    </div>
                     ${buildPackagesBreakdown(card)}
                     ${buildOverride(card)}
                 `;
@@ -290,33 +278,35 @@
             // pricingType (not a service-type) — routing string, mirrors getServiceInfo:685.
             // eslint-disable-next-line no-restricted-syntax
             const pricing = card.pricingType === 'hourly' ? 'שעתי' : 'קבוע';
-            // NOTE: no wrapping `.management-service-info` here — the old getServiceInfo legal
-            // branch returns bare items (renderServiceCard's single wrapper holds them).
             return `
-                    <div class="management-service-info-item">
-                        <span class="management-service-info-label">התקדמות</span>
-                        <span class="management-service-info-value">${completedStages}/${totalStages} שלבים</span>
-                    </div>
-                    <div class="management-service-info-item">
-                        <span class="management-service-info-label">שלב נוכחי</span>
-                        <span class="management-service-info-value">${esc(activeStage ? activeStage.name : 'אין')}</span>
-                    </div>
-                    <div class="management-service-info-item">
-                        <span class="management-service-info-label">תמחור</span>
-                        <span class="management-service-info-value">${pricing}</span>
+                    <div class="management-service-info">
+                        <div class="management-service-info-item">
+                            <span class="management-service-info-label">התקדמות</span>
+                            <span class="management-service-info-value">${completedStages}/${totalStages} שלבים</span>
+                        </div>
+                        <div class="management-service-info-item">
+                            <span class="management-service-info-label">שלב נוכחי</span>
+                            <span class="management-service-info-value">${esc(activeStage ? activeStage.name : 'אין')}</span>
+                        </div>
+                        <div class="management-service-info-item">
+                            <span class="management-service-info-label">תמחור</span>
+                            <span class="management-service-info-value">${pricing}</span>
+                        </div>
                     </div>
                 `;
         }
 
-        // fixed — bare items (no wrapper), Hebrew status, no label colons (matches getServiceInfo:689).
+        // fixed — self-wrapped items, Hebrew status, no label colons (matches getServiceInfo:689).
         return `
-                    <div class="management-service-info-item">
-                        <span class="management-service-info-label">מחיר</span>
-                        <span class="management-service-info-value">₪${num(card.fixedPrice).toLocaleString()}</span>
-                    </div>
-                    <div class="management-service-info-item">
-                        <span class="management-service-info-label">סטטוס</span>
-                        <span class="management-service-info-value">${card.status === 'active' ? 'פעיל' : 'הושלם'}</span>
+                    <div class="management-service-info">
+                        <div class="management-service-info-item">
+                            <span class="management-service-info-label">מחיר</span>
+                            <span class="management-service-info-value">₪${num(card.fixedPrice).toLocaleString()}</span>
+                        </div>
+                        <div class="management-service-info-item">
+                            <span class="management-service-info-label">סטטוס</span>
+                            <span class="management-service-info-value">${card.status === 'active' ? 'פעיל' : 'הושלם'}</span>
+                        </div>
                     </div>
                 `;
     }
@@ -406,13 +396,11 @@
         el.className = 'management-service-card';
         el.dataset.serviceId = card.serviceId || '';
         el.innerHTML = `
-                    ${buildIdentityBand(card, { statusHtml: statusPillHtml(card.status) })}
+                    ${buildManageHeader(card)}
 
                     <div class="management-service-body">
                         <div class="management-service-content">
-                            <div class="management-service-info">
-                                ${buildServiceInfo(card)}
-                            </div>
+                            ${buildServiceInfo(card)}
 
                             ${type === 'legal_procedure' ? buildStagesHtml(card) : ''}
 
@@ -529,6 +517,19 @@
         return (hoursRemaining < 0) ? 'over' : (hoursRemaining <= 10 ? 'high' : 'good');
     }
 
+    // Management meter threshold — RELATIVE, and deliberately SEPARATE from the report band's
+    // absolute meterStatus above (which this fork does NOT touch → the report tab is unaffected).
+    // The absolute "≤10h remaining = orange" made a small quota (e.g. 10h total, 2.5h used = 25%)
+    // read as alarming; here orange fires only once ≥85% of the quota is used (≤15% remaining),
+    // and red only on a real overdraft (remaining < 0). remaining === 0 (fully used, not overdrawn)
+    // → high, never red — a spent-but-not-overdrawn quota is a warning, not a debt.
+    function manageMeterStatus(used, total, rem) {
+        if (rem < 0) {
+            return 'over';
+        }
+        return (total > 0 && (used / total) >= 0.85) ? 'high' : 'good';
+    }
+
     function buildIdentityBand(card, opts) {
         // Layout-only classification (icon/badge/meter routing). The disable mirrors the extracted
         // source (ReportTab.identityBandHtml): this is a display fork, not a business rule, and
@@ -579,6 +580,66 @@
             ((opts && opts.statusHtml) ? opts.statusHtml : '') +
             stat +
             '</div>' + meter + '</div>';
+    }
+
+    // ── Management header (Track-2 redesign) ─────────────────────────────────────
+    // The management fork of the header. The report tab keeps buildIdentityBand (shared, byte-
+    // untouched) — this compact header renders ONLY on the management card, so redesigning it never
+    // reaches the report tab. Injector-safe: emits no `.management-stage` / `.report-*` classes; the
+    // `.management-service-card` root + `data-service-id` (the ServiceOverdraftResolution anchor)
+    // live on buildManageDetail's element, not here. Reuses meterStatus / bandNum (band parity).
+    function buildManageHeader(card) {
+        // eslint-disable-next-line no-restricted-syntax
+        const isLegal = card.type === 'legal_procedure';
+        const isFixed = !!card.isFixed;
+        let icon;
+        let badge;
+        if (isLegal) {
+            icon = 'fa-gavel';
+            badge = 'הליך משפטי';
+        } else if (isFixed) {
+            icon = 'fa-dollar-sign';
+            badge = 'מחיר קבוע';
+        } else {
+            icon = 'fa-clock';
+            badge = 'שעות';
+        }
+
+        const statusText = USC_STATUS_TEXT[card.status];
+        const status = statusText
+            ? '<span class="msc-status msc-status--' + esc(card.status) + '">' +
+                '<span class="msc-dot" aria-hidden="true"></span>' + statusText + '</span>'
+            : '';
+
+        const name = esc(card.name || 'ללא שם');
+        const head =
+            '<div class="msc-head">' +
+                '<div class="msc-id">' +
+                    '<i class="fas ' + icon + ' msc-id-icon" aria-hidden="true"></i>' +
+                    '<span class="msc-name" title="' + name + '">' + name + '</span>' +
+                '</div>' +
+                '<div class="msc-meta"><span class="msc-type">' + badge + '</span>' + status + '</div>' +
+            '</div>';
+
+        // Hours block — only an hours service with a real quota (total > 0) shows the meter.
+        let hours = '';
+        if (!isLegal && !isFixed && bandNum(card.totalHours) > 0) {
+            const used = bandNum(card.hoursUsed);
+            const total = bandNum(card.totalHours);
+            const rem = bandNum(card.hoursRemaining);
+            const st = manageMeterStatus(used, total, rem);
+            const remText = rem < 0 ? 'חריגה ' + Math.abs(rem).toFixed(1) : 'נותרו ' + rem.toFixed(1);
+            const pct = Math.min(100, Math.max(0, (used / total) * 100));
+            hours =
+                '<div class="msc-hours">' +
+                    '<div class="msc-hours-line">' +
+                        '<span class="msc-hours-used"><b>' + used.toFixed(1) + '</b> / ' + total.toFixed(1) + ' שעות</span>' +
+                        '<span class="msc-hours-rem msc-hours-rem--' + st + '">' + remText + '</span>' +
+                    '</div>' +
+                    '<div class="msc-meter"><span class="msc-meter-fill msc-meter-fill--' + st + '" style="width:' + pct + '%"></span></div>' +
+                '</div>';
+        }
+        return head + hours;
     }
 
     const api = {
