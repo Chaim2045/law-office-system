@@ -228,7 +228,7 @@ const VALID_USER = {
   uid: 'user1',
   email: 'test@test',
   username: 'testuser',
-  role: 'manager'
+  role: 'admin'
 };
 
 function makeCtx(uid = 'user1') {

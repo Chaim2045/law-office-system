@@ -151,14 +151,14 @@ function makeClientDoc(overrides = {}) {
 }
 
 function makeCtx(uid = 'user1') {
-  return { auth: { uid, token: { email: 'test@test.com', role: 'manager' } } };
+  return { auth: { uid, token: { email: 'test@test.com', role: 'admin' } } };
 }
 
 const VALID_USER = {
   uid: 'user1',
   email: 'test@test.com',
   username: 'testuser',
-  role: 'manager'
+  role: 'admin'
 };
 
 beforeEach(() => {

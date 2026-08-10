@@ -644,6 +644,13 @@ exports.changeClientStatus = functions.https.onCall(async (data, context) => {
     // 1. Auth
     const user = await checkUserPermissions(context);
 
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לשנות סטטוס לקוח'
+      );
+    }
+
     // 2. Validation — reject derived-field inputs
     if (!data.clientId || typeof data.clientId !== 'string') {
       throw new functions.https.HttpsError(
@@ -809,6 +816,13 @@ exports.closeCase = functions.https.onCall(async (data, context) => {
     // 1. AUTH — only admin
     // ═══════════════════════════════════════
     const user = await checkUserPermissions(context);
+
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לסגור תיק'
+      );
+    }
 
     // ═══════════════════════════════════════
     // 2. VALIDATION
