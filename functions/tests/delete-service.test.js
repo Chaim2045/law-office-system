@@ -170,6 +170,13 @@ describe('A. Auth + validation', () => {
     ).rejects.toMatchObject({ code: 'unauthenticated' });
   });
 
+  test('non-admin caller → permission-denied (PR-SEC-A)', async () => {
+    mockCheckUserPermissions.mockResolvedValue({ ...VALID_USER, role: 'employee' });
+    await expect(
+      deleteService({ clientId: 'c1', serviceId: 's1', confirmDelete: true }, makeCtx())
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+  });
+
   test('throws invalid-argument when clientId missing', async () => {
     await expect(
       deleteService({ serviceId: 's1', confirmDelete: true }, makeCtx())

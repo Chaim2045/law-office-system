@@ -180,6 +180,13 @@ describe('A. Authentication', () => {
       changeClientStatus({ clientId: 'c1', newStatus: 'active' }, makeCtx())
     ).rejects.toMatchObject({ code: 'unauthenticated' });
   });
+
+  test('non-admin caller → permission-denied (PR-SEC-A)', async () => {
+    mockCheckUserPermissions.mockResolvedValue({ ...VALID_USER, role: 'employee' });
+    await expect(
+      changeClientStatus({ clientId: 'c1', newStatus: 'active' }, makeCtx())
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════

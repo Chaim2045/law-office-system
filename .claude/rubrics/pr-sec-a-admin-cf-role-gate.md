@@ -47,5 +47,26 @@ files, 1 new guard test. **No** firestore.rules / schema / claim / auth-helper c
   admin-gated) → no real flow breaks; the "breakage" IS closing the vulnerability. `addServiceToClient` (the one
   employee-callable case) is explicitly preserved. No data migration.
 - **G7 — SECURITY (this IS the security fix):** authz hardening. No auth-helper / claims / firestore.rules / PII
-  change — it adds role checks that mirror the established pattern. **devils-advocate MANDATORY** (§3.8.4 — a
-  write-path authorization change on a live financial system).
+  change — it adds role checks that mirror the established pattern.
+
+## devils-advocate = GO-WITH-CHANGES (folded) + the authz boundary this PR does / does NOT close
+
+Independently re-verified: the 9-gate change breaks NO legitimate flow (0 user-app callers, 0 internal callers,
+admin-panel is hard admin-only, `'manager'` is not a real role). Folded:
+- **🔴 #1 — `addServiceToClient` residual IDOR is NOT closed by this PR (honesty, do NOT overclaim).** That CF
+  is employee-callable (user-app case creation) so it is deliberately un-gated here — but it also has **no
+  ownership check**, so an employee can add a service (arbitrary `fixedPrice` / hours package) to ANY `clientId`.
+  The "employee mutates arbitrary billing" threat is therefore only PARTIALLY closed by PR-SEC-A. Closing it is
+  **PR-SEC-A2** (Haim-approved, immediately after): add the owner-or-admin gate mirroring `updateClient`
+  (`clients/index.js:1082`), after verifying the user-app case-creation flow targets a caller-owned client.
+- **#5 — behavioral coverage widened:** non-admin→`permission-denied` runtime tests now cover
+  `changeServiceStatus`, `deleteService`, `changeClientStatus` (3/9) + the static guard over all 9.
+- **Authz boundary declared (#2/#3/#4):** these 9 are **admin-ONLY by design** — `'partner'` is excluded (H.3
+  reads profitability via `isAdmin()||isPartner()`, but partners do NOT mutate lifecycle; no employee holds
+  `role:'partner'` today, and it isn't UI-assignable). `updateClient`/`deleteClient` remain **owner-or-admin**
+  (unchanged). The gate uses `role==='admin'` consistent with the admin-panel login gate (`auth.js:424`) and the
+  local pattern (`setServiceOverride`); the legacy `employee.isAdmin` boolean used by `admin/index.js`/`budget-tasks`
+  is a pre-existing "which field means admin" SSOT question, flagged as a separate concern (no live lockout —
+  admins are `role:'admin'`).
+
+**devils-advocate MANDATORY (§3.8.4):** DONE = GO-WITH-CHANGES, all folded.
