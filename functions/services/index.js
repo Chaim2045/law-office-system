@@ -20,6 +20,8 @@ const { round2, isFixedService } = require('../shared/aggregates');
 // reused here too instead of a second hand-written copy.
 const { calcServiceHoursUsedFromStages, recomputeStageHoursUsedPreservingOrphan } = require('../src/modules/aggregation');
 const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
+// Server-side gate: a CLOSED service (archived/completed) must not accept new hours/packages.
+const { assertServiceAcceptsHours } = require('../shared/service-status');
 // PR-B-2 (2026-07-21): audit-FIRST-in-txn for the budget_tasks re-point that
 // happens inside moveToNextStage. Compiled TS output — see functions/src-ts/
 // audit-critical.ts + functions/lib/audit-critical.js (committed per
@@ -423,6 +425,10 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
         );
       }
 
+      // Status gate (A1): a CLOSED service (archived/completed) refuses new hour
+      // packages, regardless of overrideActive. Throw aborts the txn before any write.
+      assertServiceAcceptsHours(service);
+
       // יצירת חבילה חדשה — מתחילה ריקה (OWN-0(c): אין reseed מ-יתומים)
       const newPackage = {
         id: packageId,
@@ -715,7 +721,16 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
 
       const targetStage = stages[stageIndex];
 
-      // ⚠️ Step 4: בדיקה אם השלב completed
+      // Status gate (A1) — SERVICE level (the LOCKED requirement): a CLOSED
+      // legal-procedure service (archived/completed) refuses new hours, regardless
+      // of overrideActive. Throw aborts the txn before any write.
+      assertServiceAcceptsHours(legalProcedure);
+
+      // ⚠️ Step 4: a COMPLETED STAGE is observed but deliberately NOT blocked here.
+      // Stage-level locking is DEFERRED (Haim, 2026-08-10: this PR is SERVICE-level
+      // only). Rationale: the office legitimately tops-up hours on completed stages
+      // (documented drift), and no reopen-STAGE path exists yet — a hard throw would
+      // be a one-way lock. Warn-and-proceed preserved for observability.
       const stageWasCompleted = targetStage.status === 'completed';
       if (stageWasCompleted) {
         console.warn(`⚠️ Adding hours to COMPLETED stage ${data.stageId} for case ${caseId}`);

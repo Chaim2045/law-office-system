@@ -334,3 +334,89 @@ describe('updateTimesheetEntry — error contract (characterization)', () => {
       .rejects.toMatchObject({ code: 'unauthenticated', message: 'לא מחובר' });
   });
 });
+
+// ════════════════════════════════════════════════════════════════
+// Status gate (A1) — editing hours on a CLOSED service is refused.
+// Passing data.clientId makes the handler READ clientDoc2 → the gate runs.
+// Checked regardless of overrideActive. Throw aborts the txn (no entry write).
+// ════════════════════════════════════════════════════════════════
+
+describe('updateTimesheetEntry — closed-service status gate', () => {
+  function clientDocWith(status, extra = {}) {
+    return {
+      exists: true,
+      data: () => ({
+        services: [{
+          id: 'svc_1', type: 'hours', name: 'x', status,
+          totalHours: 10, hoursUsed: 2, hoursRemaining: 8,
+          packages: [{ id: 'svc_1_pkg', type: 'initial', hours: 10, hoursUsed: 2, hoursRemaining: 8, status: 'active' }],
+          ...extra
+        }]
+      })
+    };
+  }
+  const ARGS = (over = {}) => baseData({ clientId: 'C001', serviceId: 'svc_1', ...over });
+
+  test('archived service → failed-precondition, no entry write', async () => {
+    mockTransaction.get
+      .mockResolvedValueOnce(makeEntryDoc({ serviceId: 'svc_1' }))
+      .mockResolvedValueOnce(clientDocWith('archived'));
+    await expect(updateTimesheetEntry(ARGS(), {}))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(entryUpdates()).toHaveLength(0);
+  });
+
+  test('completed service → failed-precondition, no entry write', async () => {
+    mockTransaction.get
+      .mockResolvedValueOnce(makeEntryDoc({ serviceId: 'svc_1' }))
+      .mockResolvedValueOnce(clientDocWith('completed'));
+    await expect(updateTimesheetEntry(ARGS(), {}))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(entryUpdates()).toHaveLength(0);
+  });
+
+  test('archived + overrideActive:true → STILL failed-precondition (override does NOT bypass)', async () => {
+    mockTransaction.get
+      .mockResolvedValueOnce(makeEntryDoc({ serviceId: 'svc_1' }))
+      .mockResolvedValueOnce(clientDocWith('archived', { overrideActive: true }));
+    await expect(updateTimesheetEntry(ARGS(), {}))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(entryUpdates()).toHaveLength(0);
+  });
+
+  // ALLOWED: an OPEN service must PASS the status gate. We assert the call does
+  // NOT reject with failed-precondition (the gate let it through) — the full
+  // downstream write path is characterized by the other suites in this file.
+  async function passesStatusGate(promise) {
+    try { await promise; return true; } catch (e) { return !!e && e.code !== 'failed-precondition'; }
+  }
+
+  test('on_hold service → passes the status gate (not failed-precondition)', async () => {
+    // minutes DECREASED (90→30) so the +Δ overdraft guard is skipped.
+    mockTransaction.get
+      .mockResolvedValueOnce(makeEntryDoc({ serviceId: 'svc_1', minutes: 90, hours: 1.5 }))
+      .mockResolvedValueOnce(clientDocWith('on_hold'))
+      .mockResolvedValue(clientDocWith('on_hold'));
+    expect(await passesStatusGate(updateTimesheetEntry(ARGS({ minutes: 30 }), {}))).toBe(true);
+  });
+
+  test('active service → passes the status gate', async () => {
+    mockTransaction.get
+      .mockResolvedValueOnce(makeEntryDoc({ serviceId: 'svc_1', minutes: 90, hours: 1.5 }))
+      .mockResolvedValueOnce(clientDocWith('active'))
+      .mockResolvedValue(clientDocWith('active'));
+    expect(await passesStatusGate(updateTimesheetEntry(ARGS({ minutes: 30 }), {}))).toBe(true);
+  });
+
+  // Q1 (Haim, 2026-08-10): the gate fires ONLY on an hours INCREASE (it lives in the
+  // minutesDiff>0 block). A REDUCTION (or text/date-only edit) on a CLOSED service is a
+  // legitimate correction and PASSES the gate — the earlier unconditional block wrongly
+  // refused it, and its "cannot ADD hours" message lied on a reduction.
+  test('archived service + REDUCTION (minutes 90→30) → passes the status gate (correction allowed)', async () => {
+    mockTransaction.get
+      .mockResolvedValueOnce(makeEntryDoc({ serviceId: 'svc_1', minutes: 90, hours: 1.5 }))
+      .mockResolvedValueOnce(clientDocWith('archived'))
+      .mockResolvedValue(clientDocWith('archived'));
+    expect(await passesStatusGate(updateTimesheetEntry(ARGS({ minutes: 30 }), {}))).toBe(true);
+  });
+});

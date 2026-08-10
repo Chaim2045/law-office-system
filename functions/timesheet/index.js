@@ -10,6 +10,8 @@ const { sanitizeString, getDescriptionLimit } = require('../shared/validators');
 const { SYSTEM_CONSTANTS } = require('../shared/constants');
 const { ERROR_CODES, buildAppError } = require('../shared/errors');
 const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
+// Server-side gate: a CLOSED service (archived/completed) must not accept new hours.
+const { assertServiceAcceptsHours } = require('../shared/service-status');
 // PR-NOW-1: detect-only stage observability. Logs, never blocks. See shared/stage-detect.js.
 const { reportStageResolution, RESOLUTION_SOURCE } = require('../shared/stage-detect');
 // H.2 cost foundation — resolve the employee cost-per-hour + stamp a CF-only
@@ -257,6 +259,11 @@ exports.createQuickLogEntry = functions.https.onCall(async (data, context) => {
       if (resolvedServiceId) {
         const lookupId = data.parentServiceId || resolvedServiceId;
         const targetService = services.find(s => s.id === lookupId);
+        // Status gate (A1): a CLOSED service (archived/completed) refuses new hours,
+        // regardless of type/overrideActive, BEFORE the deduction below.
+        if (targetService) {
+          assertServiceAcceptsHours(targetService);
+        }
         if (targetService && targetService.type === ST.HOURS && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
           throw new functions.https.HttpsError(
             'failed-precondition',
@@ -867,6 +874,11 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
         if (resolvedServiceId) {
           const lookupId = data.parentServiceId || resolvedServiceId;
           const targetService = services.find(s => s.id === lookupId);
+          // Status gate (A1): a CLOSED service (archived/completed) refuses new hours,
+          // regardless of type/overrideActive, BEFORE the deduction below.
+          if (targetService) {
+            assertServiceAcceptsHours(targetService);
+          }
           if (targetService && targetService.type === ST.HOURS && (targetService.hoursRemaining || 0) <= 0 && !targetService.overrideActive) {
             throw new functions.https.HttpsError(
               'failed-precondition',
@@ -1452,6 +1464,13 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
           const targetService = services.find(s => s.id === lookupId);
 
           if (targetService) {
+            // Status gate (A1): a CLOSED service (archived/completed) refuses an
+            // hours-INCREASE edit. This block runs ONLY when minutesDiff > 0, so a
+            // reduction / text-only / date-only correction on a closed case is a
+            // legitimate fix and is ALLOWED (Haim, 2026-08-10). Override does not
+            // bypass. Throw aborts the txn before any write.
+            assertServiceAcceptsHours(targetService);
+
             const serviceType = targetService.type || clientData2.procedureType;
 
             if (serviceType === ST.HOURS) {

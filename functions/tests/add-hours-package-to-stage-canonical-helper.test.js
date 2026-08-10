@@ -304,31 +304,80 @@ describe('D. Validation failures → helper NOT called', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// E. Completed-stage warning + stageWasCompleted flag
+// E. Status gate (A1) — a CLOSED service/stage refuses new hours.
+// BEHAVIORAL CHANGE (fix/service-hours-locked-status): the prior
+// "completed stage → warn + still allows" is REPLACED by a hard throw.
+// The gate is checked regardless of overrideActive.
 // ═══════════════════════════════════════════════════════════════
 
-describe('E. Completed-stage warning preserved', () => {
-  test('completed stage → still allows package; audit log carries stageWasCompleted: true', async () => {
-    const stage = makeStage('stage_a', { totalHours: 10, hoursUsed: 10, status: 'completed' });
-    const lp = makeLegalProcedureService([stage]);
-    const clientDoc = makeClientDoc([lp]);
+describe('E. Status gate — closed service/stage refuses new hours', () => {
+  function setup(services) {
+    const clientDoc = makeClientDoc(services);
     mockTransaction.get.mockReset();
     mockTransaction.get
-      .mockResolvedValueOnce(clientDoc)
-      .mockResolvedValueOnce(clientDoc);
+      .mockResolvedValueOnce(clientDoc)   // CF read
+      .mockResolvedValueOnce(clientDoc);  // helper internal read (allowed cases)
+  }
 
-    const result = await addHoursPackageToStage(
-      { caseId: 'c1', stageId: 'stage_a', hours: 10, reason: 'דיונים נוספים' },
-      makeCtx()
-    );
+  const VALID_ARGS = { caseId: 'c1', stageId: 'stage_a', hours: 10, reason: 'דיונים נוספים' };
 
+  // Q2 (Haim, 2026-08-10): this PR gates SERVICE status ONLY. A completed/archived
+  // STAGE inside an ACTIVE service is NOT blocked here — stage-level locking is
+  // DEFERRED (the office legitimately tops up completed stages; no reopen-STAGE path
+  // exists yet, so a hard throw would be a one-way lock). Warn-and-proceed preserved.
+  test('completed STAGE (service active) → ALLOWED (stage-lock deferred; service-level only)', async () => {
+    setup([makeLegalProcedureService([
+      makeStage('stage_a', { totalHours: 10, hoursUsed: 10, status: 'completed' })
+    ])]);
+    await addHoursPackageToStage(VALID_ARGS, makeCtx());
+    expect(mockHelper).toHaveBeenCalled();
+  });
+
+  test('archived STAGE (service active) → ALLOWED (stage-lock deferred; service-level only)', async () => {
+    setup([makeLegalProcedureService([
+      makeStage('stage_a', { totalHours: 10, hoursUsed: 3, status: 'archived' })
+    ])]);
+    await addHoursPackageToStage(VALID_ARGS, makeCtx());
+    expect(mockHelper).toHaveBeenCalled();
+  });
+
+  test('archived SERVICE (stage active) → throws failed-precondition (LOCKED: gate on service status)', async () => {
+    const lp = makeLegalProcedureService([makeStage('stage_a', { totalHours: 10, hoursUsed: 3 })]);
+    setup([{ ...lp, status: 'archived' }]);
+    await expect(addHoursPackageToStage(VALID_ARGS, makeCtx()))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(mockHelper).not.toHaveBeenCalled();
+  });
+
+  test('completed SERVICE (stage active) → throws failed-precondition', async () => {
+    const lp = makeLegalProcedureService([makeStage('stage_a', { totalHours: 10, hoursUsed: 3 })]);
+    setup([{ ...lp, status: 'completed' }]);
+    await expect(addHoursPackageToStage(VALID_ARGS, makeCtx()))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(mockHelper).not.toHaveBeenCalled();
+  });
+
+  test('archived SERVICE + overrideActive:true → STILL throws (override does NOT bypass)', async () => {
+    const lp = makeLegalProcedureService([makeStage('stage_a', { totalHours: 10, hoursUsed: 3 })]);
+    setup([{ ...lp, status: 'archived', overrideActive: true }]);
+    await expect(addHoursPackageToStage(VALID_ARGS, makeCtx()))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(mockHelper).not.toHaveBeenCalled();
+  });
+
+  test('on_hold SERVICE, active stage → ALLOWED (temporary pause stays open)', async () => {
+    const lp = makeLegalProcedureService([makeStage('stage_a', { totalHours: 10, hoursUsed: 3 })]);
+    setup([{ ...lp, status: 'on_hold' }]);
+    const result = await addHoursPackageToStage(VALID_ARGS, makeCtx());
     expect(result.success).toBe(true);
-    expect(mockLogAction).toHaveBeenCalledWith(
-      'ADD_PACKAGE_TO_STAGE',
-      'user1',
-      'user',
-      expect.objectContaining({ stageStatusWasCompleted: true })
-    );
+    expect(mockHelper).toHaveBeenCalledTimes(1);
+  });
+
+  test('active SERVICE + active stage → ALLOWED', async () => {
+    setup([makeLegalProcedureService([makeStage('stage_a', { totalHours: 10, hoursUsed: 3 })])]);
+    const result = await addHoursPackageToStage(VALID_ARGS, makeCtx());
+    expect(result.success).toBe(true);
+    expect(mockHelper).toHaveBeenCalledTimes(1);
   });
 });
 

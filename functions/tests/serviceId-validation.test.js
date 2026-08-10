@@ -314,6 +314,73 @@ describe('addTimeToTaskWithTransaction — serviceId validation GATEs', () => {
 
 
 // ═══════════════════════════════════════════════════════════════
+// 1b. addTimeToTaskWithTransaction — status gate (A1)
+//     CLOSED service (archived/completed) refuses new hours; checked
+//     regardless of overrideActive. Throw aborts the txn (no write).
+// ═══════════════════════════════════════════════════════════════
+
+describe('addTimeToTaskWithTransaction — closed-service status gate', () => {
+  function svc(status, extra = {}) {
+    return { ...makeHoursService('svc_1'), status, ...extra };
+  }
+
+  test('archived service → failed-precondition, no entry/client write', async () => {
+    mockTransaction.get
+      .mockResolvedValueOnce(makeTaskDoc({ serviceId: 'svc_1' }))
+      .mockResolvedValueOnce(makeClientDoc({ services: [svc('archived')] }));
+
+    await expect(addTimeToTaskWithTransaction(mockDb, defaultData, defaultUser))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+    expect(mockTransaction.set).not.toHaveBeenCalled();
+  });
+
+  test('completed service → failed-precondition, no write', async () => {
+    mockTransaction.get
+      .mockResolvedValueOnce(makeTaskDoc({ serviceId: 'svc_1' }))
+      .mockResolvedValueOnce(makeClientDoc({ services: [svc('completed')] }));
+
+    await expect(addTimeToTaskWithTransaction(mockDb, defaultData, defaultUser))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+    expect(mockTransaction.set).not.toHaveBeenCalled();
+  });
+
+  test('archived service + overrideActive:true → STILL failed-precondition (override does NOT bypass)', async () => {
+    mockTransaction.get
+      .mockResolvedValueOnce(makeTaskDoc({ serviceId: 'svc_1' }))
+      .mockResolvedValueOnce(makeClientDoc({ services: [svc('archived', { overrideActive: true })] }));
+
+    await expect(addTimeToTaskWithTransaction(mockDb, defaultData, defaultUser))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+  });
+
+  test('on_hold service → ALLOWED (temporary pause stays open)', async () => {
+    const clientDoc = makeClientDoc({ services: [svc('on_hold')] });
+    mockTransaction.get
+      .mockResolvedValueOnce(makeTaskDoc({ serviceId: 'svc_1' }))
+      .mockResolvedValueOnce(clientDoc)
+      .mockResolvedValueOnce(clientDoc); // helper re-read
+
+    const result = await addTimeToTaskWithTransaction(mockDb, defaultData, defaultUser);
+    expect(result.success).toBe(true);
+  });
+
+  test('active service → ALLOWED', async () => {
+    const clientDoc = makeClientDoc({ services: [svc('active')] });
+    mockTransaction.get
+      .mockResolvedValueOnce(makeTaskDoc({ serviceId: 'svc_1' }))
+      .mockResolvedValueOnce(clientDoc)
+      .mockResolvedValueOnce(clientDoc); // helper re-read
+
+    const result = await addTimeToTaskWithTransaction(mockDb, defaultData, defaultUser);
+    expect(result.success).toBe(true);
+  });
+});
+
+
+// ═══════════════════════════════════════════════════════════════
 // 2. createQuickLogEntry — serviceId validation GATEs
 // ═══════════════════════════════════════════════════════════════
 
