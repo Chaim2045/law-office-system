@@ -151,14 +151,14 @@ function makeClientDoc(overrides = {}) {
 }
 
 function makeCtx(uid = 'user1') {
-  return { auth: { uid, token: { email: 'test@test.com', role: 'manager' } } };
+  return { auth: { uid, token: { email: 'test@test.com', role: 'admin' } } };
 }
 
 const VALID_USER = {
   uid: 'user1',
   email: 'test@test.com',
   username: 'testuser',
-  role: 'manager'
+  role: 'admin'
 };
 
 beforeEach(() => {
@@ -179,6 +179,13 @@ describe('A. Authentication', () => {
     await expect(
       changeClientStatus({ clientId: 'c1', newStatus: 'active' }, makeCtx())
     ).rejects.toMatchObject({ code: 'unauthenticated' });
+  });
+
+  test('non-admin caller → permission-denied (PR-SEC-A)', async () => {
+    mockCheckUserPermissions.mockResolvedValue({ ...VALID_USER, role: 'employee' });
+    await expect(
+      changeClientStatus({ clientId: 'c1', newStatus: 'active' }, makeCtx())
+    ).rejects.toMatchObject({ code: 'permission-denied' });
   });
 });
 

@@ -317,6 +317,13 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
   try {
     const user = await checkUserPermissions(context);
 
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול להוסיף חבילת שעות לשירות'
+      );
+    }
+
     // Validation
     const clientId = data.clientId || data.caseId;  // ✅ תמיכה בשני השמות
 
@@ -576,6 +583,13 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
   try {
     // 🛡️ Authentication & Authorization
     const user = await checkUserPermissions(context);
+
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול להוסיף שעות לשלב'
+      );
+    }
 
     // ============ Validation ============
 
@@ -1004,6 +1018,13 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
   try {
     // 1. Auth
     const user = await checkUserPermissions(context);
+
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לקדם שלב בהליך'
+      );
+    }
 
     // 2. Validation
     if (!data.clientId || typeof data.clientId !== 'string') {
@@ -1495,6 +1516,13 @@ exports.completeService = functions.https.onCall(async (data, context) => {
     // 1. Auth
     const user = await checkUserPermissions(context);
 
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לסמן שירות כהושלם'
+      );
+    }
+
     // 2. Validation
     if (!data.clientId || typeof data.clientId !== 'string') {
       throw new functions.https.HttpsError(
@@ -1644,6 +1672,13 @@ exports.changeServiceStatus = functions.https.onCall(async (data, context) => {
   try {
     // 1. Auth
     const user = await checkUserPermissions(context);
+
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לשנות סטטוס שירות'
+      );
+    }
 
     // 2. Validation
     if (!data.clientId || typeof data.clientId !== 'string') {
@@ -1843,6 +1878,13 @@ exports.deleteService = functions.https.onCall(async (data, context) => {
     // 1. Auth
     const user = await checkUserPermissions(context);
 
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול למחוק שירות'
+      );
+    }
+
     // 2. Validation
     if (!data.clientId || typeof data.clientId !== 'string') {
       throw new functions.https.HttpsError(
@@ -2008,6 +2050,13 @@ exports.deleteService = functions.https.onCall(async (data, context) => {
 exports.updatePackagePurchaseDate = functions.https.onCall(async (data, context) => {
   try {
     const user = await checkUserPermissions(context);
+
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לעדכן תאריך רכישת חבילה'
+      );
+    }
 
     if (!data.clientId || typeof data.clientId !== 'string') {
       throw new functions.https.HttpsError(

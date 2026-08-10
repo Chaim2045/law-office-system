@@ -131,7 +131,7 @@ const VALID_USER = {
   uid: 'user1',
   email: 'test@test',
   username: 'testuser',
-  role: 'manager'
+  role: 'admin'
 };
 
 function makeCtx(uid = 'user1') {
@@ -168,6 +168,13 @@ describe('A. Auth + validation', () => {
     await expect(
       deleteService({ clientId: 'c1', serviceId: 's1', confirmDelete: true }, makeCtx())
     ).rejects.toMatchObject({ code: 'unauthenticated' });
+  });
+
+  test('non-admin caller → permission-denied (PR-SEC-A)', async () => {
+    mockCheckUserPermissions.mockResolvedValue({ ...VALID_USER, role: 'employee' });
+    await expect(
+      deleteService({ clientId: 'c1', serviceId: 's1', confirmDelete: true }, makeCtx())
+    ).rejects.toMatchObject({ code: 'permission-denied' });
   });
 
   test('throws invalid-argument when clientId missing', async () => {
