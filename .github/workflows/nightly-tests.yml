@@ -145,7 +145,7 @@ jobs:
           npm list --depth=1 2>/dev/null || echo "Some dependencies have issues"
 
       - name: 📤 Upload Audit Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: nightly-audit-report-${{ github.run_number }}
