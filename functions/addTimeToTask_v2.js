@@ -182,6 +182,8 @@ const {
 const { SYSTEM_CONSTANTS } = require('./shared/constants');
 const { ERROR_CODES, buildAppError } = require('./shared/errors');
 const { writeClientWithCanonicalAggregates } = require('./shared/client-writer');
+// Server-side gate: a CLOSED service (archived/completed) must not accept new hours.
+const { assertServiceAcceptsHours } = require('./shared/service-status');
 // PR-NOW-1: detect-only stage observability. Logs, never blocks. See shared/stage-detect.js.
 const { reportStageResolution, RESOLUTION_SOURCE } = require('./shared/stage-detect');
 // H.2 cost foundation — resolve + atomically stamp a CF-only cost doc per entry.
@@ -552,6 +554,12 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           const targetService = services.find(s => s.id === lookupServiceId);
 
           if (targetService) {
+            // Status gate (A1): a CLOSED service (archived/completed) refuses new
+            // hours regardless of overrideActive/type. Placed at the deduction
+            // chokepoint (covers HOURS/LEGAL_PROCEDURE/FIXED + auto-selected single
+            // service) BEFORE any applyHoursDelta — a throw aborts the txn cleanly.
+            assertServiceAcceptsHours(targetService);
+
             const serviceType = targetService.type || clientData.procedureType;
 
             if (serviceType === ST.HOURS) {

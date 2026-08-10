@@ -369,3 +369,55 @@ describe('E. Helper writes lastModifiedAt + lastModifiedBy via auditMeta', () =>
     expect(payload.lastActivity).toBe('SERVER_TIMESTAMP');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// F. Status gate (A1) — a CLOSED service refuses new hours.
+//    Checked regardless of overrideActive. Throw aborts the txn (no write).
+// ═══════════════════════════════════════════════════════════════
+
+describe('F. Status gate — closed service refuses new hours', () => {
+  function svc(status, extra = {}) {
+    return { ...makeHoursService('svc1', { totalHours: 10, hoursUsed: 0 }), status, ...extra };
+  }
+  const ARGS = {
+    clientId: 'c1', date: '2026-05-18', minutes: 60,
+    action: 'work', taskId: 'task1', serviceId: 'svc1'
+  };
+  const clientUpdates = () =>
+    mockTransaction.update.mock.calls.filter(([, p]) => p && Array.isArray(p.services));
+
+  test('archived service → failed-precondition, no client write', async () => {
+    setupTxMocks(makeClientDoc([svc('archived')], 5));
+    await expect(createTimesheetEntry_v2(ARGS, makeCtx()))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(clientUpdates()).toHaveLength(0);
+  });
+
+  test('completed service → failed-precondition', async () => {
+    setupTxMocks(makeClientDoc([svc('completed')], 5));
+    await expect(createTimesheetEntry_v2(ARGS, makeCtx()))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(clientUpdates()).toHaveLength(0);
+  });
+
+  test('archived + overrideActive:true → STILL failed-precondition (override does NOT bypass)', async () => {
+    setupTxMocks(makeClientDoc([svc('archived', { overrideActive: true })], 5));
+    await expect(createTimesheetEntry_v2(ARGS, makeCtx()))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(clientUpdates()).toHaveLength(0);
+  });
+
+  test('on_hold service → ALLOWED', async () => {
+    setupTxMocks(makeClientDoc([svc('on_hold')], 5));
+    const result = await createTimesheetEntry_v2(ARGS, makeCtx());
+    expect(result.success).toBe(true);
+    expect(clientUpdates()).toHaveLength(1);
+  });
+
+  test('active service → ALLOWED', async () => {
+    setupTxMocks(makeClientDoc([svc('active')], 5));
+    const result = await createTimesheetEntry_v2(ARGS, makeCtx());
+    expect(result.success).toBe(true);
+    expect(clientUpdates()).toHaveLength(1);
+  });
+});

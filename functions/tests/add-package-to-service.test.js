@@ -269,6 +269,51 @@ describe('C. Service-type guard', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+// C2. Status gate (A1) — a CLOSED service refuses new hour packages.
+// Checked regardless of overrideActive. Throw aborts the txn (no write).
+// ═══════════════════════════════════════════════════════════════
+
+describe('C2. Status gate — closed service refuses new package', () => {
+  const ARGS = { clientId: 'c1', serviceId: 's1', hours: 5 };
+
+  test('archived service → failed-precondition + no write', async () => {
+    setupTxMocks(makeClientDoc([makeHoursService('s1', { status: 'archived' })]), []);
+    await expect(addPackageToService(ARGS, makeCtx()))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+  });
+
+  test('completed service → failed-precondition + no write', async () => {
+    setupTxMocks(makeClientDoc([makeHoursService('s1', { status: 'completed' })]), []);
+    await expect(addPackageToService(ARGS, makeCtx()))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+  });
+
+  test('archived service + overrideActive:true → STILL failed-precondition (override does NOT bypass)', async () => {
+    const svc = { ...makeHoursService('s1', { status: 'archived' }), overrideActive: true };
+    setupTxMocks(makeClientDoc([svc]), []);
+    await expect(addPackageToService(ARGS, makeCtx()))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+  });
+
+  test('on_hold service → ALLOWED (package added)', async () => {
+    setupTxMocks(makeClientDoc([makeHoursService('s1', { status: 'on_hold', totalHours: 10 })]), []);
+    const result = await addPackageToService(ARGS, makeCtx());
+    expect(result.success).toBe(true);
+    expect(mockTransaction.update).toHaveBeenCalledTimes(1);
+  });
+
+  test('active service → ALLOWED (package added)', async () => {
+    setupTxMocks(makeClientDoc([makeHoursService('s1', { status: 'active', totalHours: 10 })]), []);
+    const result = await addPackageToService(ARGS, makeCtx());
+    expect(result.success).toBe(true);
+    expect(mockTransaction.update).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
 // D. Service-level drift guard (predates this migration; preserved)
 // ═══════════════════════════════════════════════════════════════
 
