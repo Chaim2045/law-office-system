@@ -65,6 +65,16 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
   try {
     const user = await checkUserPermissions(context);
 
+    // PR-SEC-A2: adding a service to a case is an admin-only management action
+    // (Haim 2026-08-10). Closes the billing-IDOR (was: any employee could add a service
+    // with an arbitrary fixedPrice to ANY client). Management group = role==='admin'.
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול להוסיף שירות לתיק'
+      );
+    }
+
     // Validation
     if (!data.clientId || typeof data.clientId !== 'string') {
       throw new functions.https.HttpsError(

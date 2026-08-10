@@ -94,7 +94,7 @@ const { SYSTEM_CONSTANTS } = require('../shared/constants');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
-const VALID_USER = { uid: 'u1', email: 't@t', username: 'tester', role: 'manager' };
+const VALID_USER = { uid: 'u1', email: 't@t', username: 'tester', role: 'admin' };
 function makeCtx() { return { auth: { uid: 'u1', token: { email: 't@t' } } }; }
 
 // legal-hourly stage triples → totalHours = 18 in BOTH routes

@@ -75,10 +75,10 @@ jest.mock('../shared/client-writer', () => ({
 // ── Requires (after mocks) ───────────────────────────────────────────────────
 const { createClient, updateClient } = require('../clients/index');
 
-const VALID_USER = { uid: 'user1', email: 'test@test.com', username: 'testuser', role: 'manager' };
+const VALID_USER = { uid: 'user1', email: 'test@test.com', username: 'testuser', role: 'admin' };
 const VALID_ID = '123456782'; // correct check digit
 const INVALID_ID = '123456789'; // wrong check digit
-const ctx = { auth: { uid: 'user1', token: { email: 'test@test.com', role: 'manager' } } };
+const ctx = { auth: { uid: 'user1', token: { email: 'test@test.com', role: 'admin' } } };
 
 function hoursClientData(overrides = {}) {
   return { clientName: 'לקוח טסט', procedureType: 'hours', totalHours: 20, serviceName: 'שירות שעות', ...overrides };
@@ -96,6 +96,14 @@ describe('createClient — idNumber (ת"ז)', () => {
     expect(mockCreate).toHaveBeenCalledTimes(1);
     const written = mockCreate.mock.calls[0][0];
     expect(written.idNumber).toBe(VALID_ID);
+  });
+
+  it('admin-only: a non-admin caller → permission-denied, no write (PR-SEC-A2)', async () => {
+    mockCheckUserPermissions.mockResolvedValue({ ...VALID_USER, role: 'employee' });
+    await expect(
+      createClient(hoursClientData({ idNumber: VALID_ID }), ctx)
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it('B. rejects an invalid ת"ז WITHOUT echoing the value in the error', async () => {
