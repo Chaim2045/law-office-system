@@ -651,8 +651,8 @@
                 const isAdmin = window.authSystem?.isAdmin !== false; // true if authSystem doesn't exist or isAdmin is true
                 const unresolveBtnHTML = isAdmin ? `
                     <button class="unresolve-btn"
-                            data-service-id="${service.id}"
-                            data-client-id="${clientId}"
+                            data-service-id="${this.escapeHtml(service.id)}"
+                            data-client-id="${this.escapeHtml(clientId)}"
                             title="בטל סימון (אדמינים בלבד)">
                         <i class="fas fa-undo"></i>
                         <span>בטל סימון</span>
@@ -694,8 +694,8 @@
                         </span>
                     </div>
                     <button class="mark-resolved-btn"
-                            data-service-id="${service.id}"
-                            data-client-id="${clientId}">
+                            data-service-id="${this.escapeHtml(service.id)}"
+                            data-client-id="${this.escapeHtml(clientId)}">
                         <i class="fas fa-check-circle"></i>
                         <span>סמן כנגבה</span>
                     </button>
