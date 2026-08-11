@@ -133,13 +133,13 @@
             const icon = icons[config.type] || icons.info;
 
             return `
-                <div class="notification notification-${config.type}" id="${config.id}">
+                <div class="notification notification-${this.escapeHtml(config.type)}" id="${config.id}">
                     <div class="notification-icon">
                         <i class="fas ${icon}"></i>
                     </div>
                     <div class="notification-content">
-                        ${config.title ? `<div class="notification-title">${config.title}</div>` : ''}
-                        ${config.message ? `<div class="notification-message">${config.message}</div>` : ''}
+                        ${config.title ? `<div class="notification-title">${this.escapeHtml(config.title)}</div>` : ''}
+                        ${config.message ? `<div class="notification-message">${this.escapeHtml(config.message)}</div>` : ''}
                     </div>
                     ${config.closeable ? `
                         <button class="notification-close" data-notification-close>
@@ -153,6 +153,21 @@
                     ` : ''}
                 </div>
             `;
+        }
+
+        /**
+         * HTML-escape (5-entity). SELF-CONTAINED on purpose — this shared toast/confirm layer
+         * loads on admin pages that may not load core/escape-html.js first, so it must not
+         * depend on window.escapeHtml. PR-SEC-C2: title/message render into innerHTML; a value
+         * carrying `<img onerror=…>` (e.g. an unsanitized timesheet `action` shown in a delete
+         * confirm) must render as inert text.
+         */
+        escapeHtml(text) {
+            if (text === null || text === undefined) {
+                return '';
+            }
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return String(text).replace(/[&<>"']/g, m => map[m]);
         }
 
         /**
@@ -405,19 +420,19 @@ return;
                         <div class="confirm-icon" style="color: ${iconColor};">
                             <i class="fas ${iconClass}"></i>
                         </div>
-                        <h3 class="confirm-title">${config.title}</h3>
+                        <h3 class="confirm-title">${this.escapeHtml(config.title)}</h3>
                     </div>
                     <div class="confirm-body">
-                        <p class="confirm-message">${message.replace(/\n/g, '<br>')}</p>
+                        <p class="confirm-message">${this.escapeHtml(message).replace(/\n/g, '<br>')}</p>
                     </div>
                     <div class="confirm-footer">
                         <button class="confirm-btn confirm-btn-cancel" data-action="cancel">
                             <i class="fas fa-times"></i>
-                            <span>${config.cancelText}</span>
+                            <span>${this.escapeHtml(config.cancelText)}</span>
                         </button>
                         <button class="confirm-btn confirm-btn-confirm" data-action="confirm">
                             <i class="fas fa-check"></i>
-                            <span>${config.confirmText}</span>
+                            <span>${this.escapeHtml(config.confirmText)}</span>
                         </button>
                     </div>
                 </div>
