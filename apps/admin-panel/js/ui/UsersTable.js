@@ -162,7 +162,7 @@
          */
         renderAvatar(user) {
             if (user.photoURL) {
-                return `<img src="${user.photoURL}" alt="${user.displayName}" class="user-avatar">`;
+                return `<img src="${this.escapeHtml(user.photoURL)}" alt="${this.escapeHtml(user.displayName)}" class="user-avatar">`;
             }
 
             const initials = this.getInitials(user.displayName || user.username);
