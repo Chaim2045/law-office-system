@@ -601,10 +601,10 @@ return false;
             onmouseout="this.style.background='white'"
           >
             <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">
-              ${client.fullName}
+              ${this.escapeHtml(client.fullName)}
             </div>
             <div style="font-size: 12px; color: #6b7280;">
-              ${client.id || ''} ${client.phone ? '• ' + client.phone : ''}
+              ${this.escapeHtml(client.id || '')} ${client.phone ? '• ' + this.escapeHtml(client.phone) : ''}
             </div>
           </div>
         `).join('');
@@ -813,12 +813,12 @@ return false;
         const hoursInfo = caseItem.procedureType === 'hours'
           ? `${caseItem.hoursRemaining || 0} שעות נותרות`
           : caseItem.procedureType === 'legal_procedure'
-          ? `שלב ${caseItem.currentStage || 'א'}`
+          ? `שלב ${this.escapeHtml(caseItem.currentStage || 'א')}`
           : '';
 
         return `
           <option value="${caseItem.id}">
-            ${icon} ${caseItem.caseNumber} - ${caseItem.caseTitle || 'ללא כותרת'} ${hoursInfo ? '(' + hoursInfo + ')' : ''}
+            ${icon} ${this.escapeHtml(caseItem.caseNumber)} - ${this.escapeHtml(caseItem.caseTitle || 'ללא כותרת')} ${hoursInfo ? '(' + hoursInfo + ')' : ''}
           </option>
         `;
       }).join('');
@@ -962,7 +962,7 @@ return;
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
           <i class="fas fa-check-circle" style="color: #3b82f6;"></i>
           <span style="font-weight: 600; color: #1e40af;">
-            ${icon} ${caseItem.caseNumber} - ${caseItem.caseTitle}
+            ${icon} ${this.escapeHtml(caseItem.caseNumber)} - ${this.escapeHtml(caseItem.caseTitle)}
           </span>
         </div>
       `;
@@ -976,7 +976,7 @@ return;
       } else if (caseItem.procedureType === 'legal_procedure') {
         infoHtml += `
           <div style="font-size: 13px; color: #0369a1;">
-            📋 שלב נוכחי: ${caseItem.currentStage || 'שלב א'}
+            📋 שלב נוכחי: ${this.escapeHtml(caseItem.currentStage || 'שלב א')}
           </div>
         `;
       }
