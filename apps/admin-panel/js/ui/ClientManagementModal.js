@@ -280,7 +280,7 @@ return;
 
                 if (active) {
                     modal.innerHTML = `
-                        <div style="font-weight:600;margin-bottom:12px;font-size:15px;">אישור חריגה — ${serviceName}</div>
+                        <div style="font-weight:600;margin-bottom:12px;font-size:15px;">אישור חריגה — ${this.escapeHtml(serviceName)}</div>
                         <input type="text" id="overrideNoteInput" placeholder="הערה (אופציונלי)" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;margin-bottom:16px;box-sizing:border-box;">
                         <div style="display:flex;gap:8px;justify-content:flex-end;">
                             <button id="overrideCancel" style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;">ביטול</button>
@@ -288,7 +288,7 @@ return;
                         </div>`;
                 } else {
                     modal.innerHTML = `
-                        <div style="font-weight:600;margin-bottom:12px;font-size:15px;">ביטול חריגה — ${serviceName}</div>
+                        <div style="font-weight:600;margin-bottom:12px;font-size:15px;">ביטול חריגה — ${this.escapeHtml(serviceName)}</div>
                         <div style="color:#6b7280;margin-bottom:16px;font-size:14px;">האם לבטל את אישור החריגה לשירות זה?</div>
                         <div style="display:flex;gap:8px;justify-content:flex-end;">
                             <button id="overrideCancel" style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;">ביטול</button>

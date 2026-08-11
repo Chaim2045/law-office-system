@@ -491,7 +491,7 @@
     <script defer src="js/ui/ReportPreview.js?v=20260802-u3"></script>
     <!-- ModalManager (window.ModalManager / window.ModalHelpers) — required by ClientManagementModal's renewServiceHours + _editPackagePurchaseDate dialogs. Was missing on clients.html only, breaking both. -->
     <script defer src="js/ui/Modals.js?v=20260726-modalmanager-fix"></script>
-    <script defer src="js/ui/ClientManagementModal.js?v=20260809-general-panel-reading-pane"></script>
+    <script defer src="js/ui/ClientManagementModal.js?v=20260811-pr-sec-b-xss"></script>
     <script defer src="js/modules/ServiceCardModel.js?v=20260802-u5b-manage-cutover"></script>
     <script defer src="js/ui/UnifiedServiceCard.js?v=20260809-meter-unify"></script>
     <!-- flatpickr (vendored/self-hosted 4.6.13) + Hebrew locale — MUST load before ReportTab.js (its _initRangePicker reads window.flatpickr); graceful fallback if absent -->
@@ -504,7 +504,7 @@
     <script defer src="js/ui/Notifications.js?v=20251123v1"></script>
 
     <!-- ===== Service Overdraft Resolution Feature ===== -->
-    <script defer src="js/features/ServiceOverdraftResolution.js?v=20260625-h7a-debt-reframe"></script>
+    <script defer src="js/features/ServiceOverdraftResolution.js?v=20260811-pr-sec-b-xss"></script>
 
     <!-- ===== Task Approval System (for Side Panel) ===== -->
     <script type="module">
