@@ -1190,7 +1190,7 @@ exports.createTimesheetEntry_v2 = functions.https.onCall(async (data, context) =
         data: {
           minutes: data.minutes,
           hours: hoursWorked,
-          action: data.action,
+          action: sanitizeString(data.action),
           date: data.date
         },
 
@@ -1378,6 +1378,16 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
       );
     }
 
+    // PR-SEC-C2b: if action is provided it MUST be a string. sanitizeString passes non-strings
+    // through unchanged, so an object/array action would bypass the < > escaping below. Mirrors the
+    // create-path guard (createTimesheetEntry_v2 :723) but keeps action OPTIONAL on update.
+    if (data.action !== undefined && typeof data.action !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'תיאור פעולה לא תקין'
+      );
+    }
+
     // Prepare refs
     const entryRef = db.collection('timesheet_entries').doc(data.entryId);
     const taskRef = data.taskId ? db.collection('budget_tasks').doc(data.taskId) : null;
@@ -1559,8 +1569,11 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
       };
 
       if (data.action !== undefined) {
-        entryUpdateData.action = data.action;
-        console.log(`  ✅ Updating action field to: "${data.action}"`);
+        // PR-SEC-C2b: sanitize on UPDATE to match the create paths (:477/:1078). sanitizeString
+        // escapes only < > (not &) so it is idempotent — re-storing an already-sanitized value is
+        // a no-op, no double-encoding. Closes the stored-XSS root (a raw `<img onerror>` action).
+        entryUpdateData.action = sanitizeString(data.action);
+        console.log(`  ✅ Updating action field to: "${entryUpdateData.action}"`);
       }
 
       // Prepare task update (if needed)
@@ -1582,7 +1595,10 @@ exports.updateTimesheetEntry = functions.https.onCall(async (data, context) => {
                 ...entry,
                 minutes: data.minutes,
                 hours: data.minutes / 60,
-                action: data.action || entry.action,
+                // PR-SEC-C2b: mirror the entry-doc gating (:action only when data.action provided)
+                // so the entry doc and its task-mirror stay identical — sanitize the fresh input,
+                // else leave the existing entry.action untouched (no divergence on unrelated edits).
+                action: data.action !== undefined ? sanitizeString(data.action) : entry.action,
                 lastEditedAt: admin.firestore.FieldValue.serverTimestamp()
               };
             }

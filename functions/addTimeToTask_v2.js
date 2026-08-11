@@ -703,7 +703,11 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           date: data.date,
           minutes: data.minutes,
           hours: data.minutes / 60,
-          action: data.description || taskData.description,
+          // PR-SEC-C2b: sanitize the stored action (the timesheet_entries.action sink) — this
+          // create path stored it raw, unlike createQuickLogEntry/createTimesheetEntry_v2. Uses
+          // this file's local sanitizeString (strips < >, coerces non-string → '') for in-file
+          // consistency with its description handling; both forms render inert at the escaped sinks.
+          action: sanitizeString(data.description || taskData.description),
           employee: user.email,
           lawyer: user.username,
           isInternal: isInternalWork,
