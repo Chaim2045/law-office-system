@@ -27,6 +27,18 @@
 > The collections `whatsapp_approval_notifications` / `whatsapp_bot_interactions` /
 > `function_monitor_logs` have no live reader/writer. Treat every WhatsApp/Twilio and
 > function-monitor row below as HISTORICAL.
+>
+> **Correction (security red-team, 2026-08-10):** the management Cloud Functions listed
+> in §1 — `addPackageToService`, `addHoursPackageToStage`, `moveToNextStage`,
+> `completeService`, `changeServiceStatus`, `deleteService`, `updatePackagePurchaseDate`
+> (services/index.js) + `changeClientStatus`, `closeCase` (clients/index.js) — now carry
+> an explicit `if (user.role !== 'admin') throw permission-denied` gate immediately after
+> `checkUserPermissions` (PR #536, merged + deployed 2026-08-10). Before #536 these
+> verified authentication but NOT role, so a non-admin employee with a valid token could
+> invoke them directly (bypassing the UI) — an authorization-bypass class closed by #536.
+> `addServiceToClient` + `createClient` are NOT in that set yet (user-app case-creation
+> path) — their admin-only lockdown is **PR-SEC-A2 (PR #537, open — not yet merged/deployed)**.
+> See `docs/MASTER_PLAN.md` §14 (the 2026-08-10 Security red-team entry) for the full picture.
 
 ---
 

@@ -11,10 +11,15 @@
  * outside the admin-panel and NO internal/trigger caller → admin-only is correct. The fix
  * mirrors the pre-existing gate at clients/index.js setServiceOverride.
  *
- * `addServiceToClient` is DELIBERATELY EXCLUDED — it is also called from the USER APP
- * (case creation), so admin-gating it would break a live employee flow; its concern is
- * IDOR/ownership, not admin-only. This suite LOCKS that exclusion too, so a future change
- * can't silently admin-gate it.
+ * `addServiceToClient` + `createClient` were EXCLUDED by PR-SEC-A (user-app case creation).
+ * PR-SEC-A2 (2026-08-10, Haim's data-verified decision) REVERSES that exclusion: opening a
+ * case and adding a service are admin-only management actions. Data check (read-only
+ * list-management-group.js over ADC): 5 role='admin' (incl. the office manager), 10
+ * role='lawyer', 0 with the isAdmin flag → role==='admin' is the sole live management
+ * definition and locks nobody legitimate out. This also closes addServiceToClient's
+ * billing-IDOR (any employee could add a service with an arbitrary fixedPrice to ANY client).
+ * The user-app open-case / add-service buttons are hidden from non-admins in a frontend
+ * fast-follow; until then a lawyer gets a clean Hebrew permission-denied toast.
  */
 const fs = require('fs');
 const path = require('path');
@@ -40,11 +45,12 @@ function assertAdminGated(src, name) {
   expect(block).toContain("'permission-denied'");
 }
 
-const GATED_SERVICES = ['addPackageToService', 'addHoursPackageToStage', 'moveToNextStage',
-  'completeService', 'changeServiceStatus', 'deleteService', 'updatePackagePurchaseDate'];
-const GATED_CLIENTS = ['changeClientStatus', 'closeCase'];
+const GATED_SERVICES = ['addServiceToClient', 'addPackageToService', 'addHoursPackageToStage',
+  'moveToNextStage', 'completeService', 'changeServiceStatus', 'deleteService',
+  'updatePackagePurchaseDate'];
+const GATED_CLIENTS = ['createClient', 'changeClientStatus', 'closeCase'];
 
-describe('PR-SEC-A · every admin-only management CF gates on role !== admin, after auth', () => {
+describe('PR-SEC-A + A2 · every admin-only management CF gates on role !== admin, after auth', () => {
   GATED_SERVICES.forEach((name) => {
     it(`services/${name} — admin role gate present, after checkUserPermissions`, () => {
       assertAdminGated(servicesSrc, name);
@@ -55,16 +61,5 @@ describe('PR-SEC-A · every admin-only management CF gates on role !== admin, af
     it(`clients/${name} — admin role gate present, after checkUserPermissions`, () => {
       assertAdminGated(clientsSrc, name);
     });
-  });
-
-  it('addServiceToClient is DELIBERATELY NOT admin-gated (live user-app case creation must keep working)', () => {
-    const block = cfBlock(servicesSrc, 'addServiceToClient');
-    expect(block).toContain('await checkUserPermissions(context)');
-    const validationIdx = block.indexOf('// Validation');
-    const gateIdx = block.indexOf("user.role !== 'admin'");
-    // No admin gate at the top (between auth and the first validation). If someone adds one,
-    // this fails on purpose — a reminder that the user-app calls this for case creation.
-    const gatedAtTop = gateIdx > -1 && gateIdx < validationIdx;
-    expect(gatedAtTop).toBe(false);
   });
 });

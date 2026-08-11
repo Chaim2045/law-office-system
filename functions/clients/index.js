@@ -66,6 +66,16 @@ exports.createClient = functions.https.onCall(async (data, context) => {
   try {
     const user = await checkUserPermissions(context);
 
+    // PR-SEC-A2: opening a case (client) is an admin-only management action
+    // (Haim 2026-08-10 — verified: management group = role==='admin', which includes
+    // the office manager; no employee holds the isAdmin flag). Lawyers no longer open cases.
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לפתוח תיק חדש'
+      );
+    }
+
     // ✅ Idempotency: אם יש idempotencyKey, בדוק אם כבר עיבדנו את הפעולה
     if (data.idempotencyKey) {
       const idempotencyDoc = await db.collection('processed_operations')
