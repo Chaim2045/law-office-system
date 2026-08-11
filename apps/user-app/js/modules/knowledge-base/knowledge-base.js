@@ -605,7 +605,15 @@ return document.createElement('div');
             }
 
             // Action Button
-            if (article.content.actionButton) {
+            // PR-SEC-A2-frontend: an admin-only action (requiresAdmin — e.g. create-case, backend-gated
+            // by #537) renders ONLY for a Firestore-role admin (window.manager.currentEmployee.role — the
+            // same authoritative source the sidebar's _isAdminNow() and the backend use), fail-closed.
+            // Without this a non-admin could open the case-creation dialog from the KB and hit a raw
+            // permission error — the exact dead-end this PR closes.
+            if (article.content.actionButton
+                && (!article.content.actionButton.requiresAdmin
+                    || (window.manager && window.manager.currentEmployee
+                        && window.manager.currentEmployee.role === 'admin'))) {
                 const btn = document.createElement('button');
                 btn.className = 'kb-action-button';
                 btn.textContent = article.content.actionButton.text;
