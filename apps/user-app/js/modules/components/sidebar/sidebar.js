@@ -38,6 +38,7 @@ export class Sidebar {
     this._injectCSS();
     this.render();
     this._bindEvents();
+    this._initAdminGate();
     // Set default active
     if (this.config.nav.length > 0) {
       const firstNav = this.config.nav[0];
@@ -45,11 +46,57 @@ export class Sidebar {
     }
   }
 
+  // ════════════════════════════════════
+  // Admin gate (PR-SEC-A2-frontend) — case-creation is admin-only (backend #537).
+  // The role is read from `window.manager.currentEmployee.role` — the SAME Firestore `employees`
+  // doc the backend gates on (functions/shared/auth.js checkUserPermissions → employee.role), NOT
+  // the ID-token custom claim (a separate store that can lag: a Firestore-admin without the claim
+  // would wrongly lose the button). `requiresAdmin` nav items start hidden and are revealed only
+  // when that role === 'admin'. Fail-closed: employee not loaded yet / unknown → stays hidden.
+  // ════════════════════════════════════
+
+  _isAdminNow() {
+    try {
+      const emp = window.manager && window.manager.currentEmployee;
+      return !!(emp && emp.role === 'admin');
+    } catch (_e) {
+      return false; // fail-closed
+    }
+  }
+
+  _initAdminGate() {
+    this.applyRoleVisibility();
+    // The sidebar renders BEFORE auth + the employee-doc load. Re-apply on auth changes (logout →
+    // re-hide) AND after the employee loads — Auth.showApp() (authentication.js), which every live
+    // login path calls after setting manager.currentEmployee, calls window.sidebarInstance.applyRoleVisibility().
+    try {
+      if (window.firebase && window.firebase.auth) {
+        this._authUnsub = window.firebase.auth().onAuthStateChanged(() => this.applyRoleVisibility());
+      }
+    } catch (_e) { /* auth not ready — items stay fail-closed hidden */ }
+  }
+
+  applyRoleVisibility() {
+    const isAdmin = this._isAdminNow();
+    if (!this.container) {
+      return;
+    }
+    this.container.querySelectorAll('.gh-sidebar-admin-only').forEach((el) => {
+      el.style.display = isAdmin ? '' : 'none';
+    });
+  }
+
   destroy() {
     this._listeners.forEach(({ el, event, handler }) => {
       el.removeEventListener(event, handler);
     });
     this._listeners = [];
+    if (this._authUnsub) {
+      try {
+ this._authUnsub();
+} catch (_e) { /* noop */ }
+      this._authUnsub = null;
+    }
     this._removeCSS();
     if (this.container) {
       this.container.innerHTML = '';
@@ -104,8 +151,13 @@ export class Sidebar {
       ? this._renderFlyout(item)
       : '';
 
+    // PR-SEC-A2-frontend: admin-only nav items start HIDDEN (fail-closed) and are revealed
+    // by applyRoleVisibility() only once the ID-token claim role==='admin' is confirmed.
+    const adminOnly = item.requiresAdmin ? ' gh-sidebar-admin-only' : '';
+    const adminHidden = item.requiresAdmin ? ' style="display: none;"' : '';
+
     return `
-      <div class="gh-sidebar-item-wrapper">
+      <div class="gh-sidebar-item-wrapper${adminOnly}"${adminHidden}>
         <button class="gh-sidebar-item" data-nav-id="${item.id}" title="${item.label}">
           ${badgeHtml}
           <i class="fas ${item.icon}"></i>
@@ -300,14 +352,32 @@ return;
     this._listeners.push({ el, event, handler });
   }
 
+  _denyNonAdminCase() {
+    // Defense-in-depth: the button is hidden for non-admins, but never open the dialog if it
+    // is somehow triggered. The backend (#537) is the hard gate; this is a fail-closed UI guard.
+    try {
+      if (window.NotificationSystem && typeof window.NotificationSystem.error === 'function') {
+        window.NotificationSystem.error('רק מנהל יכול לפתוח תיק חדש');
+      }
+    } catch (_e) { /* best-effort */ }
+  }
+
   _handleAction(actionType) {
     switch (actionType) {
       case 'new-client':
+        if (!this._isAdminNow()) {
+          this._denyNonAdminCase();
+          break;
+        }
         if (window.CaseCreationDialog) {
           new window.CaseCreationDialog().open({ mode: 'new' });
         }
         break;
       case 'existing-client':
+        if (!this._isAdminNow()) {
+          this._denyNonAdminCase();
+          break;
+        }
         if (window.CaseCreationDialog) {
           new window.CaseCreationDialog().open({ mode: 'existing' });
         }

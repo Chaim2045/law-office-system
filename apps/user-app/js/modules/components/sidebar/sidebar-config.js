@@ -47,6 +47,7 @@ export const SIDEBAR_CONFIG = {
       id: 'new-case',
       label: 'תיק חדש',
       icon: 'fa-folder-plus',
+      requiresAdmin: true, // PR-SEC-A2-frontend: opening a case / adding a service is admin-only (backend #537)
       flyout: [
         { id: 'new-client', label: 'לקוח חדש', icon: 'fa-user-plus', actionType: 'new-client' },
         { id: 'existing-client', label: 'לקוח קיים', icon: 'fa-user-check', actionType: 'existing-client' }

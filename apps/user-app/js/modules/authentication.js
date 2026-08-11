@@ -303,6 +303,12 @@ interfaceElements.classList.remove('hidden');
   if (minimalSidebar) {
 minimalSidebar.classList.remove('hidden');
 }
+
+  // PR-SEC-A2-frontend: the sidebar renders before login (main.js "Sidebar first"). Now that
+  // manager.currentEmployee.role is set (every live login path assigns it before calling showApp),
+  // re-apply the sidebar's admin gate to reveal the case-creation item for admins.
+  window.sidebarInstance?.applyRoleVisibility?.();
+
   if (mainFooter) {
 mainFooter.classList.remove('hidden');
 }
