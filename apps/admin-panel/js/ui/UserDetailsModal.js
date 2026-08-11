@@ -76,7 +76,7 @@
 
             // Create modal
             this.modalId = window.ModalManager.create({
-                title: `פרטי משתמש: ${user.displayName || user.email}`,
+                title: `פרטי משתמש: ${this.escapeHtml(user.displayName || user.email)}`,
                 content: this.renderLoadingState(),
                 footer: this.renderFooter(),
                 size: 'xlarge',
@@ -499,7 +499,7 @@
                                 <span>מידע בסיסי</span>
                             </h4>
                             <div class="info-list">
-                                ${this.renderInfoRow('שם משתמש', user.username || 'לא הוגדר')}
+                                ${this.renderInfoRow('שם משתמש', this.escapeHtml(user.username || 'לא הוגדר'))}
                                 ${this.renderInfoRow('תפקיד', this.getRoleText(user.role))}
                                 ${this.renderInfoRow('סטטוס', this.getStatusText(user.status))}
                                 ${this.renderInfoRow('תאריך יצירה', this.formatDate(user.createdAt))}
@@ -1677,7 +1677,7 @@ return false;
 
         renderUserAvatar(user) {
             if (user.photoURL) {
-                return `<img src="${user.photoURL}" alt="${user.displayName}" class="user-avatar-large">`;
+                return `<img src="${this.escapeHtml(user.photoURL)}" alt="${this.escapeHtml(user.displayName)}" class="user-avatar-large">`;
             }
 
             const initials = this.getInitials(user.displayName || user.username);
@@ -2160,7 +2160,7 @@ return false;
                     <td class="td-client">
                         ${isClientWork
                             ? `<span class="client-badge"><i class="fas fa-briefcase"></i> ${this.escapeHtml(clientName)}</span>`
-                            : `<span class="internal-badge"><i class="fas fa-building"></i> ${clientName}</span>`
+                            : `<span class="internal-badge"><i class="fas fa-building"></i> ${this.escapeHtml(clientName)}</span>`
                         }
                     </td>
                     <td class="td-task" title="${this.escapeHtml(taskDesc)}">${this.escapeHtml(taskDesc)}</td>
@@ -2237,7 +2237,7 @@ return false;
                         <i class="${this.getActivityIcon(log.action)}"></i>
                     </div>
                     <div class="activity-content">
-                        <p class="activity-text">${actionText}</p>
+                        <p class="activity-text">${this.escapeHtml(actionText)}</p>
                         ${detailsText}
                         <span class="activity-time">${this.formatDate(log.timestamp)}</span>
                     </div>
@@ -2362,7 +2362,7 @@ return -1;
                     displayValue = valueTransformers[value];
                 }
 
-                detailsArray.push(`${label}: ${displayValue}`);
+                detailsArray.push(`${this.escapeHtml(label)}: ${this.escapeHtml(displayValue)}`);
             });
 
             // הגבל ל-3 פרטים החשובים ביותר

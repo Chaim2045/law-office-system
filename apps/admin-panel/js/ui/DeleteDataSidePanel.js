@@ -148,7 +148,7 @@
                 <!-- Header -->
                 <div class="delete-panel-header">
                     <div class="delete-panel-title-row">
-                        <h3><i class="fas fa-trash-alt"></i> מחיקת נתונים: ${displayName}</h3>
+                        <h3><i class="fas fa-trash-alt"></i> מחיקת נתונים: ${this.escapeHtml(displayName)}</h3>
                     </div>
                     <button class="delete-panel-close" id="deletePanelClose">
                         <i class="fas fa-times"></i>
