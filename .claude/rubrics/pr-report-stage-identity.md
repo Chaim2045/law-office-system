@@ -51,6 +51,17 @@ wrong**, which is strictly worse. 2026066 has two procedures with byte-identical
 
 ---
 
+## Limit of the claim — "refuses to guess" is scoped to the stage-id clause
+
+Raised by the grader (finding #4) and recorded so a future session does not read the claim as
+absolute: in the ambiguous case `resolveServiceHours` falls through to branch (b), where
+`findServiceByFormData`'s **`(s.stage && target.includes(s.stage))`** clause can still match a
+service by substring containment (e.g. `s.stage === 'ב'` against `formData.service === "שלב ב'"`)
+and return `matchType:'service'` — i.e. the WHOLE procedure's totals rather than the stage's.
+M6 requires preserving that clause's precedence, so this PR deliberately does not touch it. No
+fixture in the suite carries a `.stage` field, so the path is untested. **Not a defect introduced
+here; a pre-existing guess path that survives this fix.**
+
 ## Explicitly OUT of scope (do NOT grade as missing)
 
 - **The `38.00` client-level figure in the report.** It comes from `client.hoursRemaining` (a

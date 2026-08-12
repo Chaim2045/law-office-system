@@ -19,29 +19,26 @@
  * Created: 2026-08-11 — fix/report-stage-identity
  */
 
-import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
+// `_isFixedService` delegates to window.ClientTypeDisplay.isFixedService and is
+// fail-safe: with the helper ABSENT it returns false for everything, so an
+// `isFixed === false` assertion would pass even with the bug present. Import the
+// CANONICAL predicate (never a hand-copied mirror — client-type-display.js carries a
+// "DO NOT EDIT... the sync test enforces parity" contract; a local copy would drift
+// out of that net). Same import the sibling report-generator-null-aggregate suite uses.
+// @ts-ignore — side-effect: registers window.ClientTypeDisplay
+import '../../../apps/admin-panel/js/core/client-type-display.js';
+// @ts-ignore — side-effect: registers window.escapeHtml (renderServiceInfo delegates to it)
+import '../../../apps/admin-panel/js/core/escape-html.js';
 // @ts-ignore — classic admin-panel script, no type declarations
 import '../../../apps/admin-panel/js/managers/ReportGenerator.js';
 
 const reportGenerator: any = (window as any).ReportGenerator;
 
-// `_isFixedService` delegates to window.ClientTypeDisplay.isFixedService and is
-// fail-safe: with the helper ABSENT it returns false for everything. Without this
-// stub an `isFixed === false` assertion would pass even if the fix were reverted —
-// the classifier must be live for the pricing-type assertions to mean anything.
-// Mirrors shared/business-rules/service-classification.isFixedService exactly.
-beforeAll(() => {
-  (window as any).ClientTypeDisplay = {
-    isFixedService(svc: any) {
-      if (!svc || typeof svc !== 'object' || !svc.type) return false;
-      return svc.type === 'fixed' || (svc.type === 'legal_procedure' && svc.pricingType === 'fixed');
-    }
-  };
-});
-
 describe('test harness self-check', () => {
-  it('the fixed-price classifier is live (otherwise every isFixed assertion is vacuous)', () => {
+  it('the CANONICAL fixed-price classifier is live (otherwise every isFixed assertion is vacuous)', () => {
+    expect(typeof (window as any).ClientTypeDisplay?.isFixedService).toBe('function');
     expect(reportGenerator._isFixedService({ type: 'legal_procedure', pricingType: 'fixed' })).toBe(true);
     expect(reportGenerator._isFixedService({ type: 'legal_procedure', pricingType: 'hourly' })).toBe(false);
   });
@@ -180,6 +177,34 @@ describe('resolveServiceHours — stage identity across two procedures', () => {
 
     expect(hours.matchType).not.toBe('stage');
     expect(hours.fixedPrice).toBeNull();
+  });
+});
+
+describe('renderServiceInfo — the rendered report, not just the resolver', () => {
+  // The resolver is the documented SSOT for all three report sections, but the bug
+  // Haim saw was in the RENDERED document: "מחיר קבוע" + 40,000 on an hourly matter.
+  // One render-level assertion closes G4 in its own words (no helper-only coverage).
+  it('an arbitration stage_b report renders NO fixed-price framing and NOT the other matter\'s price', () => {
+    const html: string = reportGenerator.renderServiceInfo(twoProcedureClient(), {
+      serviceId: 'srv_legal_arbitration',
+      service: "שלב ב'",
+      stage: 'stage_b'
+    });
+
+    expect(html).not.toContain('40,000');
+    expect(html).not.toContain('40000');
+    expect(html).not.toContain('פיקס');
+    expect(html).toContain('59.5');   // the arbitration stage's own purchased hours
+  });
+
+  it('the employment stage_b report DOES render its fixed price (the fixed path still works)', () => {
+    const html: string = reportGenerator.renderServiceInfo(twoProcedureClient(), {
+      serviceId: 'srv_legal_employment',
+      service: "שלב ב'",
+      stage: 'stage_b'
+    });
+
+    expect(html).toContain('40,000');
   });
 });
 

@@ -665,6 +665,20 @@ return null;
         }
 
         /**
+         * ONE message for the ambiguous-stage refusal, used by both resolvers.
+         * Wording deliberately says "no unambiguous serviceId RESOLVED" — a serviceId may
+         * well have been supplied and simply not matched any service (a stale id), and a
+         * message claiming it was "not supplied" would send the next debugger the wrong way.
+         * Non-PII by contract: stage id + owner count only — never a client name or an amount.
+         */
+        _warnAmbiguousStage(stage, owners, origin) {
+            console.warn(
+                'ReportGenerator: stage id owned by multiple services and no unambiguous serviceId resolved — refusing to guess.',
+                { stage, owners, origin }
+            );
+        }
+
+        /**
          * איתור השירות לפי נתוני הטופס — לוגיקת התאמה משותפת (SSOT)
          * משמש הן ב-resolveServiceHours והן ב-renderPackagesBreakdown
          */
@@ -685,10 +699,7 @@ return null;
                 ? services.filter(s => Array.isArray(s.stages) && s.stages.some(st => st.id === formData.stage))
                 : [];
             if (stageOwners.length > 1) {
-                console.warn(
-                    'ReportGenerator: stage id owned by multiple services and no serviceId supplied — refusing to guess.',
-                    { stage: formData.stage, owners: stageOwners.length }
-                );
+                this._warnAmbiguousStage(formData.stage, stageOwners.length, 'findServiceByFormData');
             }
             const uniqueStageOwner = stageOwners.length === 1 ? stageOwners[0] : null;
             return services.find(s => {
@@ -729,10 +740,7 @@ return null;
                     parentService = stageOwners[0];
                     selectedStage = parentService.stages.find(st => st.id === formData.stage);
                 } else if (stageOwners.length > 1) {
-                    console.warn(
-                        'ReportGenerator: stage id owned by multiple services and no serviceId supplied — refusing to guess.',
-                        { stage: formData.stage, owners: stageOwners.length }
-                    );
+                    this._warnAmbiguousStage(formData.stage, stageOwners.length, 'resolveServiceHours');
                 }
                 if (selectedStage) {
                     const totalHours = selectedStage.totalHours ?? selectedStage.hours ?? 0;
