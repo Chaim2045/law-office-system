@@ -677,6 +677,20 @@ return null;
                     return byId;
                 }
             }
+            // Stage-id fallback is trustworthy only when exactly ONE service owns the id
+            // (stage_a/b/c are position labels every legal procedure reuses). Two owners
+            // and no serviceId = ambiguous → drop the clause rather than pick whichever
+            // service comes first. Clause order is otherwise preserved.
+            const stageOwners = formData.stage
+                ? services.filter(s => Array.isArray(s.stages) && s.stages.some(st => st.id === formData.stage))
+                : [];
+            if (stageOwners.length > 1) {
+                console.warn(
+                    'ReportGenerator: stage id owned by multiple services and no serviceId supplied — refusing to guess.',
+                    { stage: formData.stage, owners: stageOwners.length }
+                );
+            }
+            const uniqueStageOwner = stageOwners.length === 1 ? stageOwners[0] : null;
             return services.find(s => {
                 const sName = (s.name || '').trim();
                 const sServiceName = (s.serviceName || '').trim();
@@ -685,7 +699,7 @@ return null;
                     sServiceName === target ||
                     sDisplayName === target ||
                     (s.stage && target.includes(s.stage)) ||
-                    (formData.stage && Array.isArray(s.stages) && s.stages.some(st => st.id === formData.stage));
+                    (uniqueStageOwner !== null && uniqueStageOwner === s);
             }) || null;
         }
 
@@ -696,15 +710,29 @@ return null;
             if (formData.stage) {
                 let selectedStage = null;
                 let parentService = null;
-                for (const s of services) {
-                    if (Array.isArray(s.stages)) {
-                        const match = s.stages.find(st => st.id === formData.stage);
-                        if (match) {
-                            selectedStage = match;
-                            parentService = s;
-                            break;
-                        }
-                    }
+                // Stage ids are POSITION LABELS (stage_a/b/c) that every legal procedure
+                // reuses — they are NOT unique within a client. The previous bare scan
+                // took the first service in services[] that happened to own a matching
+                // id, so on a client with two procedures a stage report could carry the
+                // OTHER matter's pricing type, price and hours (report identity bug).
+                // Scope to the service the form selected; scan only when no serviceId
+                // was supplied, and refuse to guess when that scan is ambiguous — the
+                // caller's matchType 'none' branch then derives used-hours from this
+                // service's own timesheet entries and never borrows a foreign total.
+                const scoped = formData.serviceId
+                    ? services.filter(s => s.id === formData.serviceId)
+                    : services;
+                const stageOwners = scoped.filter(s =>
+                    Array.isArray(s.stages) && s.stages.some(st => st.id === formData.stage)
+                );
+                if (stageOwners.length === 1) {
+                    parentService = stageOwners[0];
+                    selectedStage = parentService.stages.find(st => st.id === formData.stage);
+                } else if (stageOwners.length > 1) {
+                    console.warn(
+                        'ReportGenerator: stage id owned by multiple services and no serviceId supplied — refusing to guess.',
+                        { stage: formData.stage, owners: stageOwners.length }
+                    );
                 }
                 if (selectedStage) {
                     const totalHours = selectedStage.totalHours ?? selectedStage.hours ?? 0;
