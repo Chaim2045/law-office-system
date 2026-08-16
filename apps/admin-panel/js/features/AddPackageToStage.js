@@ -37,6 +37,17 @@
     dialogId: 'addPackageToStageDialog'
   };
 
+  // PR-B (closed-service hide-actions): frontend mirror of functions/shared/service-status.js
+  // HOURS_LOCKED_STATUSES. A CLOSED service (archived/completed) never accepts new hours (the backend
+  // #535 gate refuses), so the injected "הוסף שעות" button must not appear on it. on_hold stays OPEN;
+  // completed is hours-locked yet still aggregates. DEFAULT-ACTIVE: no status → 'active'. Pinned to the
+  // backend SSOT (and to the UnifiedServiceCard mirror) by a cross-file drift-guard test.
+  const HOURS_LOCKED_STATUSES = ['archived', 'completed'];
+  function serviceIsClosed(service) {
+    const status = service && service.status ? service.status : 'active';
+    return HOURS_LOCKED_STATUSES.indexOf(status) !== -1;
+  }
+
   // ========================================
   // State
   // ========================================
@@ -568,25 +579,39 @@ return;
     }
 
     const client = window.ClientManagementModal.currentClient;
-    const legalProcedure = client.services?.find(s => s.type === 'legal_procedure');
-
-    if (!legalProcedure || !legalProcedure.stages) {
-      console.log('⚠️ No legal procedure or stages');
-      return;
-    }
-
-    console.log(`📊 Legal procedure has ${legalProcedure.stages.length} stages, pricingType: ${legalProcedure.pricingType}`);
-
-    // Check if legal procedure is hourly (pricingType is at service level, not stage level)
-    if (legalProcedure.pricingType !== 'hourly') {
-      console.log(`⚠️ Legal procedure is not hourly (pricingType: ${legalProcedure.pricingType}), skipping all stages`);
-      return;
-    }
+    // PR-B: resolve each stage to ITS OWN service via the parent card's data-service-id — explicit
+    // identity, NOT a first-match `find(s => s.type === 'legal_procedure')`. The old first-match
+    // processed ONLY the first legal procedure per client: a 2nd active hourly service got NO button,
+    // and a CLOSED first service still got one. Mirrors PR #544 (identity + refuse-to-guess).
+    const services = Array.isArray(client && client.services) ? client.services : [];
 
     stages.forEach((stageElement, domIndex) => {
       // Skip if button already exists
       if (stageElement.querySelector(`.${CONFIG.buttonClass}`)) {
         console.log(`  [DOM ${domIndex}] Already has button, skipping`);
+        return;
+      }
+
+      // PR-B: identify THIS stage's OWN service via its parent card's data-service-id (= service.id).
+      // Refuse to guess when it can't be identified — no cross-service contamination.
+      const cardEl = stageElement.closest('.management-service-card');
+      const serviceId = cardEl && cardEl.dataset ? cardEl.dataset.serviceId : null;
+      const service = serviceId ? services.find(s => String(s.id) === String(serviceId)) : null;
+      if (!service) {
+        console.log(`  [DOM ${domIndex}] No owning service for data-service-id "${serviceId}", skipping`);
+        return;
+      }
+
+      // PR-B: a CLOSED service (archived/completed) never accepts new hours (mirror service-status.js /
+      // the #535 backend gate) → hide the button rather than lead to a dead-end permission error.
+      if (serviceIsClosed(service)) {
+        console.log(`  [DOM ${domIndex}] Service ${service.id} is closed (${service.status}), skipping`);
+        return;
+      }
+
+      // Service-level hourly gate — now scoped to THIS service (not the first legal procedure).
+      if (service.pricingType !== 'hourly') {
+        console.log(`  [DOM ${domIndex}] Service ${service.id} not hourly (${service.pricingType}), skipping`);
         return;
       }
 
@@ -600,17 +625,17 @@ return;
       const stageName = stageNameElement.textContent.trim();
       console.log(`  [DOM ${domIndex}] Found stage name in DOM: "${stageName}"`);
 
-      // Find matching stage in data by name
-      const stage = legalProcedure.stages.find(s => s.name === stageName);
+      // Find the matching stage WITHIN THIS service by name.
+      const stage = Array.isArray(service.stages) ? service.stages.find(s => s.name === stageName) : null;
 
       if (!stage) {
-        console.log(`  [DOM ${domIndex}] No matching stage data for "${stageName}"`);
+        console.log(`  [DOM ${domIndex}] No matching stage data for "${stageName}" in service ${service.id}`);
         return;
       }
 
       console.log(`  [DOM ${domIndex}] Matched to stage: ${stage.id}, status: ${stage.status}`);
 
-      // Only add button to ACTIVE stages (pricingType already checked at service level)
+      // Only add button to ACTIVE stages.
       if (stage.status !== 'active') {
         console.log(`  [DOM ${domIndex}] Skipping (not active, status: ${stage.status})`);
         return;
@@ -630,7 +655,7 @@ return;
       button.addEventListener('click', (e) => {
         e.stopPropagation();
         console.log('🖱️ Button clicked for stage:', stage.id);
-        openDialog(client.caseNumber, legalProcedure.id, stage);
+        openDialog(client.caseNumber, service.id, stage);
       });
 
       // Insert button after stage info

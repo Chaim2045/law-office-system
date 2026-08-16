@@ -367,15 +367,29 @@
                 </div>`;
     }
 
+    // PR-B (closed-service hide-actions): frontend mirror of functions/shared/service-status.js
+    // HOURS_LOCKED_STATUSES. A CLOSED service (archived/completed) must NOT offer add-hours or
+    // stage-advance in the UI — the backend #535 gate already refuses, so the button was a dead-end.
+    // on_hold stays OPEN; completed is hours-locked yet still aggregates. DEFAULT-ACTIVE: no status →
+    // 'active' → open. Pinned to the backend SSOT by a cross-file drift-guard test.
+    const HOURS_LOCKED_STATUSES = ['archived', 'completed'];
+    function serviceIsClosed(card) {
+        const status = card && card.status ? card.status : 'active';
+        return HOURS_LOCKED_STATUSES.indexOf(status) !== -1;
+    }
+
     // getServiceActions — the 5 data-service-action buttons.
     function buildActions(card) {
         const type = card.type || 'hours';
         const id = esc(card.serviceId);
+        const closed = serviceIsClosed(card);
         const buttons = [];
-        if (type === 'hours') {
+        // CLOSED service: hide add-hours ("חדש שעות") + stage-advance ("עבור לשלב הבא"). "שנה סטטוס"
+        // stays (the only reopen path, per service-status.js) and "מחק" stays. Mirrors the #535 lock.
+        if (type === 'hours' && !closed) {
             buttons.push(`<button class="management-service-action-btn primary" data-service-action="renew" data-service-id="${id}"><i class="fas fa-plus"></i> חדש שעות</button>`);
         }
-        if (type === 'legal_procedure' && (Array.isArray(card.stages) ? card.stages : []).some((s) => s.status === 'active')) {
+        if (type === 'legal_procedure' && !closed && (Array.isArray(card.stages) ? card.stages : []).some((s) => s.status === 'active')) {
             buttons.push(`<button class="management-service-action-btn primary" data-service-action="next-stage" data-service-id="${id}"><i class="fas fa-forward"></i> עבור לשלב הבא</button>`);
         }
         buttons.push(`<button class="management-service-action-btn secondary" data-service-action="change-status" data-service-id="${id}"><i class="fas fa-exchange-alt"></i> שנה סטטוס</button>`);
@@ -640,7 +654,9 @@
         buildReportSelectCards: buildReportSelectCards,
         buildManageDetail: buildManageDetail,
         buildRailRow: buildRailRow,
-        buildIdentityBand: buildIdentityBand
+        buildIdentityBand: buildIdentityBand,
+        // Exposed as a test seam (PR-B): the closed-service action gate is unit-tested directly.
+        buildActions: buildActions
     };
 
     if (typeof window !== 'undefined') {
