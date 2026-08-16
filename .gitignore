@@ -100,3 +100,8 @@ apps/user-app/js/scripts/add-employee-phones.js
 scripts/backup-drifted-tasks-2026-04-27.js
 # deep-investigate-* is NOT matched by the scripts/investigate-* rule above (line ~80)
 scripts/deep-investigate-drift-2026-04-27.js
+
+# Script OUTPUT carrying client names — the repo is PUBLIC (MASTER_PLAN §4).
+# The scripts themselves are committed; only their reports are excluded.
+scripts/.capacity-baseline-*.json
+scripts/.reconcile-backup-*.json
