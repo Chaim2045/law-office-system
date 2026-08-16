@@ -573,7 +573,13 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
  *
  * @param {Object} data
  * @param {string} data.caseId - מספר תיק (מזהה הלקוח)
- * @param {string} data.stageId - מזהה השלב (stage_a / stage_b / stage_c)
+ * @param {string} [data.serviceId] - מזהה ההליך המשפטי שאליו מוסיפים.
+ *   PR-A (2026-08-16): טכנית אופציונלי לתאימות לאחור, אך **חובה בפועל** —
+ *   בתיק עם יותר מהליך משפטי אחד, היעדרו נדחה (`failed-precondition`) במקום
+ *   לבחור את הראשון. בתיק עם הליך אחד בלבד הקריאה הישנה עדיין עובדת.
+ * @param {string} data.stageId - מזהה השלב (stage_a / stage_b / stage_c).
+ *   שים לב: מזהי השלבים **אינם ייחודיים** ברמת הלקוח — כל הליך משפטי מחזיק
+ *   stage_a/b/c משלו. לכן `stageId` לבדו אינו זהות, ו-`serviceId` הוא שמכריע.
  * @param {number} data.hours - כמות שעות להוספה
  * @param {string} data.reason - סיבה להוספת השעות
  * @param {string} [data.purchaseDate] - תאריך רכישה (ISO format, אופציונלי)
@@ -583,6 +589,7 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
  * @example
  * const result = await addHoursPackageToStage({
  *   caseId: "2025001",
+ *   serviceId: "srv_1734000000000",
  *   stageId: "stage_a",
  *   hours: 20,
  *   reason: "דיונים נוספים",
@@ -619,6 +626,22 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
         'invalid-argument',
         'מזהה שלב לא תקין (צריך להיות stage_a, stage_b, או stage_c)'
       );
+    }
+
+    // 2b. Validate serviceId — OPTIONAL (a cached admin bundle may omit it), but
+    // when present it must be a usable identity. The ambiguity gate lives inside
+    // the transaction, where the client's services[] is readable.
+    if (data.serviceId !== undefined && data.serviceId !== null) {
+      const sid = typeof data.serviceId === 'string' ? data.serviceId.trim() : '';
+      // Reject the stringified-nothing literals outright: they are exactly what a
+      // frontend emits when an id is missing, and accepting them as a real
+      // identity is how first-match creeps back in through a side door.
+      if (sid === '' || sid === 'undefined' || sid === 'null') {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'מזהה השירות לא תקין'
+        );
+      }
     }
 
     // 3. Validate hours
@@ -720,13 +743,92 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
       const clientData = clientDoc.data();
       const services = clientData.services || [];
 
-      // 🔍 Step 2: מציאת ההליך המשפטי
-      const legalProcedureIndex = services.findIndex(s => s.type === ST.LEGAL_PROCEDURE);
+      // 🔍 Step 2: מציאת ההליך המשפטי — BY EXPLICIT ID, never by first match.
+      //
+      // PR-A (2026-08-16): this used to be
+      //   services.findIndex(s => s.type === ST.LEGAL_PROCEDURE)
+      // — first match on TYPE ALONE, ignoring which procedure the admin actually
+      // selected. A measured probe found 9 clients holding 2-3 legal_procedure
+      // services, every one of them with colliding stage ids (stage_a/b/c on each),
+      // so the lookup silently SUCCEEDED on the wrong matter and the hours landed
+      // on the wrong procedure. Nothing downstream could detect it: the stage and
+      // the service totals are both recomputed on the same (wrong) service, so
+      // every sum check still balances — on the wrong page.
+      //
+      // Same failure class as the report-identity bug fixed in #544: resolve by
+      // explicit id; never let a first-match stand in for an identity.
+      //
+      // `serviceId` is OPTIONAL for backward compatibility (a cached admin bundle
+      // may still post without it), but the ambiguous case is FAIL-CLOSED: with no
+      // id and more than one legal_procedure service, we refuse rather than guess.
+      const legalProcedures = services
+        .map((s, i) => ({ svc: s, index: i }))
+        .filter(({ svc }) => svc && svc.type === ST.LEGAL_PROCEDURE);
 
-      if (legalProcedureIndex === -1) {
+      if (legalProcedures.length === 0) {
         throw new functions.https.HttpsError(
           'not-found',
           'לא נמצא הליך משפטי עבור תיק זה'
+        );
+      }
+
+      // A usable identity is a non-empty string. Anything else is NOT a match
+      // candidate: `String(svc.id)` on a missing id yields the literal
+      // 'undefined', which would let a caller passing the string "undefined"
+      // match an id-less service — first-match restored through a side door.
+      const hasUsableId = (svc) => typeof svc.id === 'string' && svc.id.trim() !== '';
+      const idLessCount = legalProcedures.filter(({ svc }) => !hasUsableId(svc)).length;
+
+      let legalProcedureIndex;
+
+      if (data.serviceId) {
+        const matches = legalProcedures.filter(
+          ({ svc }) => hasUsableId(svc) && svc.id.trim() === data.serviceId.trim()
+        );
+
+        if (matches.length === 0) {
+          // Distinguish "this case has procedures we cannot address" from a
+          // plain wrong id — the first is a data defect, not admin error.
+          if (idLessCount > 0) {
+            console.error(
+              `[addHoursPackageToStage] case ${caseId} holds ${idLessCount} legal_procedure ` +
+              `service(s) with no id — cannot be addressed by identity`
+            );
+            throw new functions.https.HttpsError(
+              'failed-precondition',
+              'אחד מההליכים המשפטיים בתיק זה חסר מזהה ולא ניתן להוסיף לו שעות. פנה לתמיכה.'
+            );
+          }
+          throw new functions.https.HttpsError(
+            'not-found',
+            'ההליך המשפטי שנבחר לא נמצא בתיק זה. רענן את הדף ונסה שוב.'
+          );
+        }
+
+        // Duplicate service ids are a data defect, not a choice we may resolve.
+        if (matches.length > 1) {
+          console.error(
+            `[addHoursPackageToStage] duplicate service id on case ${caseId}: ${data.serviceId}`
+          );
+          throw new functions.https.HttpsError(
+            'failed-precondition',
+            'נמצאו שני הליכים משפטיים עם אותו מזהה בתיק זה. פנה לתמיכה.'
+          );
+        }
+
+        legalProcedureIndex = matches[0].index;
+      } else if (legalProcedures.length === 1) {
+        // Unambiguous — the legacy payload is safe here.
+        legalProcedureIndex = legalProcedures[0].index;
+      } else {
+        console.error(
+          `[addHoursPackageToStage] ambiguous target on case ${caseId}: ` +
+          `${legalProcedures.length} legal_procedure services, no serviceId supplied`
+        );
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'בתיק זה יש יותר מהליך משפטי אחד, ולא צוין לאיזה מהם להוסיף את השעות. ' +
+          'רענן את הדף ונסה שוב.'
         );
       }
 
@@ -943,6 +1045,12 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
         packageId: result.packageId,
         hours: data.hours,
         reason: sanitizedReason,
+        // PR-A: the RESOLVED service id — the only field that identifies which
+        // matter was billed. `procedureName` is NOT an identity: case 2026066
+        // carries two procedures with the same display name, and `packageId`
+        // encodes only the stage, whose ids collide across procedures. Without
+        // this, a mis-targeted add leaves no reconstructable trail.
+        serviceId: result.legalProcedure.id || null,
         procedureName: result.legalProcedure.name,
         stageStatusWasCompleted: result.stageWasCompleted
       });

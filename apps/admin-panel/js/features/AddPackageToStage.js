@@ -780,9 +780,24 @@ return;
     document.getElementById('addPackageSubmitBtn').disabled = true;
 
     try {
+      // PR-A (2026-08-16): serviceId is REQUIRED in the payload. This dialog has
+      // always known which procedure was selected (currentServiceId, set in
+      // openDialog from the card's data-service-id) but never sent it — so the CF
+      // fell back to the first legal_procedure service on the case. On a case with
+      // more than one procedure, the hours landed on the wrong matter silently.
+      // Sending the identity is the whole fix; the CF now refuses to guess.
+      if (!currentServiceId) {
+        // 'danger', not 'error' — only .alert-danger / .alert-success are defined
+        // in this dialog's scoped CSS. 'error' renders the text unstyled, which
+        // reads as a hint rather than a failure.
+        showAlert('לא זוהה השירות שאליו להוסיף שעות. סגור את החלון, רענן את הדף ונסה שוב.', 'danger');
+        return;
+      }
+
       // Call Cloud Function
       console.log('📞 Calling addHoursPackageToStage:', {
         caseId: currentClientId,
+        serviceId: currentServiceId,
         stageId: currentStageId,
         hours,
         reason,
@@ -793,6 +808,7 @@ return;
 
       const result = await addPackageFunc({
         caseId: currentClientId,
+        serviceId: currentServiceId,
         stageId: currentStageId,
         hours: hours,
         reason: reason,
