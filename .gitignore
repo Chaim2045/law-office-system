@@ -106,3 +106,6 @@ scripts/deep-investigate-drift-2026-04-27.js
 scripts/.capacity-baseline-*.json
 scripts/.capacity-materialize-*.json
 scripts/.reconcile-backup-*.json
+
+# Scratch PR body drafts — the body is passed inline to gh, never committed.
+scripts/.pr-body-draft.md
