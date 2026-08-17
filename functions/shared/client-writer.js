@@ -51,6 +51,9 @@ const { getEnforcementMode, VALID_MODES } = require('./enforcement-mode');
 // H.3 PR1: the static Plan layer — derived from services[] alongside the hours
 // aggregates so both intake routes (createClient + this canonical writer) stay in sync.
 const { computeClientPlan } = require('../lib/profitability/client-plan');
+// PR-1 (2026-08-16): the capacity SSOT — "hours actually available" as opposed
+// to "hours contracted". See functions/shared/stage-capacity.js.
+const { computeClientCapacity } = require('./stage-capacity');
 
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
@@ -69,7 +72,8 @@ const RESTRICTED_KEYS = Object.freeze([
   'minutesUsed',
   'minutesRemaining',
   'totalHours', // derived: sum of billable services' totalHours
-  'plan' // H.3 PR1: derived from services[] by computeClientPlan — callers cannot set it
+  'plan', // H.3 PR1: derived from services[] by computeClientPlan — callers cannot set it
+  'hoursCapacity' // PR-1: derived from services[].stages by computeClientCapacity
 ]);
 
 /**
@@ -232,6 +236,31 @@ async function writeClientWithCanonicalAggregates(
     // two intake routes never drift. See functions/src-ts/profitability/client-plan.ts.
     plan: computeClientPlan(services)
   };
+
+  // ─── 7b. Capacity (PR-1, 2026-08-16) — AVAILABLE hours, alongside the total ──
+  //
+  // `totalHours` above stays the CONTRACT figure: the H.3 Plan reads
+  // `svc.totalHours` as the scope agreed at intake and multiplies it by
+  // ratePerHour for expectedRevenue, so redefining it in place would corrupt
+  // the revenue forecast of every hourly client. `hoursCapacity.activeHours`
+  // is the separate, honest "what can actually be worked right now" number.
+  //
+  // 🔴 FAIL-OPEN, deliberately. This runs OUTSIDE every kill switch — the
+  // try/catch and all three enforcement modes below wrap ONLY the invariant
+  // assertion, and the timesheet trigger's `mode:'log_only'` does not reach up
+  // here. A throw would break createQuickLogEntry, addTimeToTask,
+  // moveToNextStage, closeCase and the trigger: an employee could not log 30
+  // minutes. `computeClientCapacity` is total by construction; this wrapper is
+  // the second line of defence. A display field must NEVER block a billing
+  // write, so on failure we omit the field and log, rather than abort.
+  try {
+    finalPayload.hoursCapacity = computeClientCapacity(services);
+  } catch (capacityErr) {
+    functions.logger.error(
+      `[client-writer] hoursCapacity computation failed — field omitted [caller=${caller}]`,
+      { errorCode: capacityErr && capacityErr.code ? capacityErr.code : 'unknown' }
+    );
+  }
 
   if (auditMeta && typeof auditMeta === 'object') {
     finalPayload.lastModifiedAt = admin.firestore.FieldValue.serverTimestamp();

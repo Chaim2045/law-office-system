@@ -137,10 +137,20 @@ service cloud.firestore {
     // Direct browser writes (SimpleClientDialog.js creates new clients with
     // ONLY orthogonal fields: fullName/phone/email/idNumber/address/notes/
     // status/createdAt/createdBy/caseNumber — verified safe under this rule).
+    // Derived fields a browser may never write directly — they are produced
+    // exclusively by writeClientWithCanonicalAggregates and are mirrored in that
+    // file's RESTRICTED_KEYS. The two lists must stay in step; a drift-guard
+    // test pins them.
+    //
+    // 2026-08-16: added `plan` and `hoursCapacity`. `plan` was a pre-existing
+    // gap — H.3 PR1 put it in RESTRICTED_KEYS but never here, so a browser
+    // could set the profitability Plan directly. Same bypass class as the 23
+    // wrongly-blocked clients of the 2026-05-13 audit.
     function clientAggregateKeys() {
       return ['isBlocked', 'isCritical', 'services',
               'totalHours', 'hoursUsed', 'hoursRemaining',
-              'minutesUsed', 'minutesRemaining'];
+              'minutesUsed', 'minutesRemaining',
+              'plan', 'hoursCapacity'];
     }
 
     match /clients/{clientId} {

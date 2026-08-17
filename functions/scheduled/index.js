@@ -10,6 +10,9 @@ const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 // PR-C.1 (2026-05-18): nightly companion to PR-D's on-demand audit.
 const { calcClientAggregates, round2, NON_AGGREGATING_STATUSES } = require('../shared/aggregates');
 const { _recomputeTotalHours } = require('../shared/client-writer');
+// PR-3d: recompute capacity independently of whoever wrote it, so the nightly
+// check can catch a stale or wrong `hoursCapacity`.
+const { computeClientCapacity } = require('../shared/stage-capacity');
 // SHOULD S2 (adversarial-review follow-up, 2026-07-22): status vocabulary
 // centralized so the outbox trigger + any future consumer (PR-IG-B) import
 // rather than re-declare the PASS/FAIL/PARTIAL/ERROR literals.
@@ -48,6 +51,10 @@ function detectAggregateDrift(clientData) {
   const canonicalTotalHours = _recomputeTotalHours(services);
   const canonical = calcClientAggregates(services, canonicalTotalHours);
 
+  // NOTE: capacity drift is NOT checked here — see `detectCapacityDrift` below.
+  // It is deliberately kept off this function's result, because this result
+  // reaches `discrepancies[]` → `status` → the outbox → the bot.
+
   const drifts = [];
   const numericFields = [
     { key: 'totalHours', expected: canonicalTotalHours },
@@ -56,6 +63,7 @@ function detectAggregateDrift(clientData) {
     { key: 'minutesUsed', expected: canonical.minutesUsed },
     { key: 'minutesRemaining', expected: canonical.minutesRemaining }
   ];
+
 
   for (const { key, expected } of numericFields) {
     const stored = typeof clientData[key] === 'number' ? clientData[key] : 0;
@@ -86,6 +94,64 @@ function detectAggregateDrift(clientData) {
   }
 
   return drifts;
+}
+
+/**
+ * Capacity drift — a SEPARATE detector, on purpose.
+ *
+ * 🔴 Why this is not part of `detectAggregateDrift`:
+ *
+ * That function's result flows into `discrepancies[]`; `discrepanciesCount > 0`
+ * forces `status = FAIL`; and the outbox trigger forwards any non-PASS run to
+ * the WhatsApp bot verbatim. PR-IG-C2 set the precedent below — stage-invariant
+ * findings live in their OWN field and NEVER enter `discrepancies[]` or affect
+ * `status`, so the bot and its vocabulary stay untouched until a coordinated
+ * change. A brand-new field must EARN its way onto the alerting path rather
+ * than arrive there by default.
+ *
+ * (A first attempt attached this to the returned array as an extra property.
+ * Six existing tests failed on `toEqual([])` — an array carrying an own
+ * property is not deep-equal to a bare one. The contract of
+ * `detectAggregateDrift` is "returns a plain array", and it stays that way.)
+ *
+ * A MISSING `hoursCapacity` is NOT drift: absent by design on exempt clients
+ * and on every document written before the field existed. Only a
+ * present-but-wrong value is a finding.
+ *
+ * @param {Object} clientData
+ * @returns {Array} findings, empty when the field is absent, malformed, or correct
+ */
+function detectCapacityDrift(clientData) {
+  const services = Array.isArray(clientData && clientData.services)
+    ? clientData.services.filter(Boolean)
+    : [];
+  if (services.length === 0) {
+    return [];
+  }
+
+  const stored = clientData && clientData.hoursCapacity;
+  if (!stored || typeof stored !== 'object') {
+    return [];
+  }
+
+  const canonical = computeClientCapacity(services);
+  const out = [];
+
+  for (const key of ['activeHours', 'contractHours', 'phantomHours']) {
+    const current = typeof stored[key] === 'number' ? stored[key] : 0;
+    const expected = canonical[key];
+    const diff = Math.abs(current - expected);
+    if (diff > AGG_DRIFT_TOLERANCE) {
+      out.push({
+        field: `hoursCapacity.${key}`,
+        current: parseFloat(current.toFixed(2)),
+        canonical: parseFloat(expected.toFixed(2)),
+        diff: parseFloat(diff.toFixed(2))
+      });
+    }
+  }
+
+  return out;
 }
 
 /**
@@ -611,6 +677,12 @@ const dailyInvariantCheck = onSchedule({
   let stageInvariantUnresolved = 0;
   let stageInvariantSkippedDates = 0;
 
+  // PR-3d: capacity-drift findings. Same discipline as the line above — kept
+  // STRICTLY separate from `discrepancies`, never merged into it, so the run
+  // status, the outbox trigger and the bot are untouched by a field they have
+  // never seen.
+  const capacityDriftFindings = [];
+
   try {
     console.log('🔍 Starting daily invariant check...');
 
@@ -915,6 +987,15 @@ const dailyInvariantCheck = onSchedule({
           driftFields
         });
       }
+      // PR-3d: capacity drift travels in its OWN channel — detect-only, never
+      // into `discrepancies[]`, never affecting `status`, never reaching the
+      // outbox or the bot. Mirrors the PR-IG-C2 treatment of stage invariants.
+      // No client name: the field id is enough to look a case up, and this
+      // array is not on the alerting path that already carries names.
+      const capacityFields = detectCapacityDrift(data);
+      if (capacityFields.length > 0) {
+        capacityDriftFindings.push({ clientId, driftFields: capacityFields });
+      }
     });
     checksExecuted += 1; // Check 6
 
@@ -980,6 +1061,17 @@ const dailyInvariantCheck = onSchedule({
       // outbox trigger + the WhatsApp bot (which key off `discrepancies[]`
       // and the vocabulary in `message`) completely untouched. Enforcement
       // + the coordinated bot change are a later PR.
+      // PR-3d: capacity drift — SEPARATE field, same discipline as
+      // stageInvariants below. Never enters `discrepancies[]`, never affects
+      // `status`, never reaches the outbox or the bot. Detect-only: it exists
+      // so a stale or wrong `hoursCapacity` is VISIBLE, not so it pages anyone.
+      // Promoting it to the alerting path is a later, coordinated decision.
+      capacityDrift: {
+        findings: capacityDriftFindings.slice(0, MAX_EMBEDDED_DISCREPANCIES),
+        findingsCount: capacityDriftFindings.length,
+        mode: 'detect_only',
+        schemaVersion: 1
+      },
       stageInvariants: {
         discrepancies: stageInvariantDiscrepancies.slice(0, MAX_EMBEDDED_DISCREPANCIES),
         discrepanciesCount: stageInvariantDiscrepancies.length,
@@ -1111,6 +1203,9 @@ module.exports = {
   // Exported for unit testing only (PR-C.1 + PR-G.1 + PR-DRIFT-1).
   _test: {
     detectAggregateDrift,
+    // PR-3d: the capacity detector is SEPARATE from detectAggregateDrift on
+    // purpose — its findings must never reach `discrepancies[]`/`status`/the bot.
+    detectCapacityDrift,
     detectPackageInvariants,
     computeCardHoursUsed,
     AGG_DRIFT_TOLERANCE,

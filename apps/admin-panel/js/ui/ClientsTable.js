@@ -383,7 +383,22 @@ return;
 
             const totalHours = client.totalHours || 0;
             const remaining = client.hoursRemaining || 0;
-            const percentage = totalHours > 0 ? (remaining / totalHours) * 100 : 0;
+
+            // PR-3c (2026-08-17): the bar shows CONSUMPTION, not remainder.
+            //
+            // It used to be `remaining / total` — a FULLNESS bar, unique in this
+            // codebase; every other hours meter (UnifiedServiceCard, the
+            // management modal, the service card) fills as hours are USED. The
+            // polarity mattered the moment capacity became a moving number: with
+            // the old formula, shrinking a client's real capacity made its bar
+            // fill MORE, so an over-drawn client looked healthier. Exactly
+            // backwards from what this whole change exists to surface.
+            //
+            // Clamped: a negative balance is a full bar, not a >100% overflow.
+            const used = totalHours - remaining;
+            const percentage = totalHours > 0
+                ? Math.max(0, Math.min(100, (used / totalHours) * 100))
+                : 0;
 
             let progressClass = '';
             if (client.isOnHold) {
@@ -397,6 +412,22 @@ return;
             // Get warning icon based on hours remaining
             const warningIcon = this.getHoursWarningIcon(client);
 
+            // PR-3c: the phantom line — the first reader of `hoursCapacity`.
+            //
+            // ADDITIVE ONLY. It reads the server's capacity field and renders a
+            // second line; it does NOT feed the figures above it, the warning
+            // icon, the badges, the counters, the filters, the sort or the CSV.
+            // That restraint is the whole design: `activeHours` is a CAPACITY
+            // figure while `remaining` is a BALANCE, and pairing a stage-filtered
+            // numerator with an unfiltered denominator would drive every client
+            // past stage A negative and block them (plan §4, ruling P4).
+            //
+            // Presence, never `|| 0`: `activeHours: 0` is a legitimate value —
+            // a client whose every service is closed genuinely has nothing
+            // available. Treating an absent field as 0 would put a false red
+            // alert on nearly every client until the materialization script runs.
+            const capacityNote = this.renderCapacityNote(client);
+
             return `
                 <div class="hours-display">
                     <div class="hours-value">
@@ -405,7 +436,50 @@ return;
                     <div class="hours-progress">
                         <div class="hours-progress-bar ${progressClass}" style="width: ${percentage}%"></div>
                     </div>
+                    ${capacityNote}
                 </div>
+            `;
+        }
+
+        /**
+         * The phantom line: hours the system presents as available but which are
+         * locked in stages that were never opened, or on a service that no longer
+         * accepts hours.
+         *
+         * Returns '' — rendering nothing at all — in three cases:
+         *   - the field is absent (not yet materialized). Rendering a placeholder
+         *     on every row would be noise, and rendering 0 would be a lie.
+         *   - there is no phantom. Nothing to say.
+         *   - the shape is malformed. A display extra must never break a row.
+         */
+        renderCapacityNote(client) {
+            const cap = client && client.hoursCapacity;
+            if (!cap || typeof cap !== 'object') {
+                return '';
+            }
+
+            const active = cap.activeHours;
+            const contract = cap.contractHours;
+            const phantom = cap.phantomHours;
+
+            const finite = (v) => typeof v === 'number' && Number.isFinite(v);
+            if (!finite(active) || !finite(contract) || !finite(phantom)) {
+                return '';
+            }
+
+            // Below a tenth of an hour there is nothing meaningful to report.
+            if (phantom <= 0.05) {
+                return '';
+            }
+
+            const title = 'שעות שהוגדרו בשלבים שטרם נפתחו, או בשירות שאינו מקבל '
+                + 'עוד שעות. הן מוצגות בסך הכל אך אינן זמינות לעבודה כעת.';
+
+            return `
+                    <div class="hours-capacity-note" title="${title}">
+                        זמינות כעת ${active.toFixed(1)} מתוך ${contract.toFixed(1)}
+                        <span class="hours-capacity-phantom">· ${phantom.toFixed(1)} נעולות</span>
+                    </div>
             `;
         }
 
