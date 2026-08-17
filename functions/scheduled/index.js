@@ -10,6 +10,9 @@ const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 // PR-C.1 (2026-05-18): nightly companion to PR-D's on-demand audit.
 const { calcClientAggregates, round2, NON_AGGREGATING_STATUSES } = require('../shared/aggregates');
 const { _recomputeTotalHours } = require('../shared/client-writer');
+// PR-3d: recompute capacity independently of whoever wrote it, so the nightly
+// check can catch a stale or wrong `hoursCapacity`.
+const { computeClientCapacity } = require('../shared/stage-capacity');
 // SHOULD S2 (adversarial-review follow-up, 2026-07-22): status vocabulary
 // centralized so the outbox trigger + any future consumer (PR-IG-B) import
 // rather than re-declare the PASS/FAIL/PARTIAL/ERROR literals.
@@ -48,6 +51,17 @@ function detectAggregateDrift(clientData) {
   const canonicalTotalHours = _recomputeTotalHours(services);
   const canonical = calcClientAggregates(services, canonicalTotalHours);
 
+  // PR-3d (2026-08-17): the capacity figure is watched here too.
+  //
+  // Without this it was a derived number with no gate — the exact pattern this
+  // whole track exists to remove. `aggregates.js` declared for a year that
+  // `totalHours` reflects ACTIVE capacity while nothing enforced it, and the
+  // result was 1,804 phantom hours nobody could see. Shipping a replacement
+  // that is equally unwatched would repeat the mistake with a newer field.
+  //
+  // Recomputed from `services[]` here, independently of whoever wrote it.
+  const canonicalCapacity = computeClientCapacity(services);
+
   const drifts = [];
   const numericFields = [
     { key: 'totalHours', expected: canonicalTotalHours },
@@ -56,6 +70,27 @@ function detectAggregateDrift(clientData) {
     { key: 'minutesUsed', expected: canonical.minutesUsed },
     { key: 'minutesRemaining', expected: canonical.minutesRemaining }
   ];
+
+  // Nested under `hoursCapacity`, so it needs its own comparison rather than
+  // riding the flat loop above. A MISSING field is not drift — the field is
+  // absent by design on exempt clients and on any document written before it
+  // existed; only a present-but-wrong value is a finding.
+  const storedCapacity = clientData && clientData.hoursCapacity;
+  if (storedCapacity && typeof storedCapacity === 'object') {
+    for (const key of ['activeHours', 'contractHours', 'phantomHours']) {
+      const stored = typeof storedCapacity[key] === 'number' ? storedCapacity[key] : 0;
+      const expected = canonicalCapacity[key];
+      const diff = Math.abs(stored - expected);
+      if (diff > AGG_DRIFT_TOLERANCE) {
+        drifts.push({
+          field: `hoursCapacity.${key}`,
+          current: parseFloat(stored.toFixed(2)),
+          canonical: parseFloat(expected.toFixed(2)),
+          diff: parseFloat(diff.toFixed(2))
+        });
+      }
+    }
+  }
 
   for (const { key, expected } of numericFields) {
     const stored = typeof clientData[key] === 'number' ? clientData[key] : 0;

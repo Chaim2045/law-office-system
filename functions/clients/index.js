@@ -12,6 +12,9 @@ const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
 // H.3 PR1: the static Plan layer (derived from services[]).
 const { computeClientPlan } = require('../lib/profitability/client-plan');
+// PR-3d: the capacity SSOT — mirrored onto the direct-create intake route so it
+// cannot drift from the canonical writer. See functions/shared/stage-capacity.js.
+const { computeClientCapacity } = require('../shared/stage-capacity');
 
 const db = admin.firestore();
 
@@ -573,6 +576,18 @@ exports.createClient = functions.https.onCall(async (data, context) => {
     // never here). Mirrors writeClientWithCanonicalAggregates so the two intake routes
     // (this .create() + the canonical writer) never drift.
     clientData.plan = computeClientPlan(clientData.services || []);
+
+    // PR-3d (2026-08-17): stamp the capacity figure on the SAME principle, and
+    // for the same reason — this `.create()` is the one intake route that does
+    // NOT go through writeClientWithCanonicalAggregates, so anything the
+    // canonical writer derives has to be mirrored here or the two routes drift.
+    //
+    // This matters most precisely at creation: a new legal_procedure case is
+    // opened with three stages, two of them `pending`, so it carries phantom
+    // capacity from its very first second. Without this line a brand-new case
+    // would be the ONE shape guaranteed to have a gap and guaranteed not to
+    // show it — until something unrelated happened to rewrite the client.
+    clientData.hoursCapacity = computeClientCapacity(clientData.services || []);
 
     // ✅ יצירת המסמך עם מספר תיק כ-Document ID
     // שימוש ב-.create() במקום .set() - מונע דריסה ומבטיח ייחודיות
