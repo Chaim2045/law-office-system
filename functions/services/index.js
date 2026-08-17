@@ -20,6 +20,9 @@ const { round2, isFixedService } = require('../shared/aggregates');
 // reused here too instead of a second hand-written copy.
 const { calcServiceHoursUsedFromStages, recomputeStageHoursUsedPreservingOrphan } = require('../src/modules/aggregation');
 const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
+// PR-2 (2026-08-16): read-only capacity split, used to record what a stage
+// advance does to AVAILABLE hours. See shared/stage-capacity.js.
+const { computeServiceCapacity } = require('../shared/stage-capacity');
 // Server-side gate: a CLOSED service (archived/completed) must not accept new hours/packages.
 const { assertServiceAcceptsHours } = require('../shared/service-status');
 // PR-B-2 (2026-07-21): audit-FIRST-in-txn for the budget_tasks re-point that
@@ -1283,6 +1286,19 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       const updatedService = { ...service, stages: updatedStages };
       const updatedServices = services.map((s, idx) => idx === serviceIndex ? updatedService : s);
 
+      // PR-2 (2026-08-16): a stage advance MOVES AVAILABLE CAPACITY without
+      // anyone adding or removing a single hour — the closing stage's unused
+      // balance stops being available and the opening stage's budget starts.
+      // Nothing recorded that until now: the audit row below lists which stage
+      // closed and which opened, but not what it did to the number the office
+      // makes decisions on. Under the capacity rule this is the moment money
+      // moves, so it belongs in the trail.
+      //
+      // Read-only and total by construction (see shared/stage-capacity.js) —
+      // it cannot affect the write.
+      const capacityBefore = computeServiceCapacity(service);
+      const capacityAfter = computeServiceCapacity(updatedService);
+
       // 3g2. CHANGE 2 (2026-07-22, R3): `completedStageIds` — the set of THIS
       // service's completed stage ids (both the stage just closed above AND
       // any earlier stage already `completed` before this advance). This
@@ -1558,6 +1574,9 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
         updatedStages: updatedStages,
         isLastStage: isLastStage,
         serviceName: service.name || service.serviceName,
+        // PR-2: what the advance did to AVAILABLE capacity on this service.
+        availableHoursBefore: capacityBefore.active,
+        availableHoursAfter: capacityAfter.active,
         // PR-B-2: observability (G3) — how many open budget_tasks were
         // re-pointed to the new stage as part of this stage advance.
         repointedTaskCount: tasksToRepoint.length,
@@ -1583,6 +1602,15 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       toStageId: result.nextStage.id,
       toStageName: result.nextStage.name,
       serviceName: result.serviceName,
+      // PR-2: the capacity delta this advance caused. `availableHoursDelta` is
+      // typically NEGATIVE when the closing stage still held unused hours —
+      // that is the point: those hours were being presented as available and
+      // stop being so at this instant, with no hours added or removed.
+      availableHoursBefore: result.availableHoursBefore,
+      availableHoursAfter: result.availableHoursAfter,
+      availableHoursDelta: Math.round(
+        (result.availableHoursAfter - result.availableHoursBefore) * 100
+      ) / 100,
       repointedTaskCount: result.repointedTaskCount,
       skippedForMissingParentServiceIdCount: result.skippedForMissingParentServiceIdCount,
       strandedOnEarlierStageCount: result.strandedOnEarlierStageCount,

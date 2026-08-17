@@ -1992,7 +1992,29 @@ return;
             const currentStage = service.stages[activeStageIndex];
             const nextStage = service.stages[activeStageIndex + 1];
 
-            if (!confirm(`האם לעבור משלב "${currentStage.name}" לשלב "${nextStage.name}"?`)) {
+            // PR-2 (2026-08-16): a stage advance MOVES available capacity. The
+            // closing stage's unused balance stops counting and the opening
+            // stage's budget starts — without anyone adding or removing an
+            // hour. The old prompt named the stages only, so an admin closing a
+            // stage that still held unused hours had no idea. Say it plainly,
+            // using the numbers already on the stage objects (display-only; the
+            // server recomputes authoritatively).
+            const unusedNow = Number(currentStage.hoursRemaining);
+            const openingBudget = Number(nextStage.totalHours);
+
+            let capacityLine = '';
+            if (Number.isFinite(unusedNow) && unusedNow > 0) {
+                capacityLine =
+                    `\n\nשים לב: בשלב "${currentStage.name}" נותרו ${unusedNow.toFixed(1)} שעות שלא נוצלו. ` +
+                    'הן יפסיקו להיחשב כזמינות ברגע המעבר.';
+            }
+            if (Number.isFinite(openingBudget) && openingBudget > 0) {
+                capacityLine += `\nשלב "${nextStage.name}" ייפתח עם ${openingBudget.toFixed(1)} שעות.`;
+            }
+
+            if (!confirm(
+                `האם לעבור משלב "${currentStage.name}" לשלב "${nextStage.name}"?${capacityLine}`
+            )) {
                 return;
             }
 
