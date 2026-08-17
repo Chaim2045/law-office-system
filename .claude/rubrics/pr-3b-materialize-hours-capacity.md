@@ -50,17 +50,64 @@ run is not approved until that list is read.
 `aggregatesWouldMove` is the line to read first. If it is 0, `--apply` only adds
 the new field and nothing else moves.
 
-## Supervised run order
+## 🔴 DEPLOY ORDER — read this before merging
+
+**The migration was run BEFORE the code shipped, and that ordering has a
+consequence that must be closed at merge time.**
+
+`writeClientWithCanonicalAggregates` ends in `transaction.update` — a PARTIAL
+update. Production functions today do not compute `hoursCapacity` at all, so it
+is simply absent from their payload, and Firestore therefore **leaves the
+existing value in place**. Every client written by any live path since the
+`--apply` run holds a capacity figure that nothing has recomputed.
+
+That is harmless while nothing reads it. It stops being harmless the moment this
+branch merges, because two new consumers wake up at once: the clients-table note
+renders the stale figure, and the nightly `detectCapacityDrift` judges it.
+
+**Therefore the order is: deploy → re-run → re-measure. Not the reverse.**
+
+```bash
+# 1. merge to main → CI deploys functions + rules to PRODUCTION
+#    verify the "Deploy to Production" and "Health Check" jobs are green
+#    (the 2026-06-04 lesson: a red deploy job went unnoticed for six days)
+
+# 2. refresh every client through the NOW-DEPLOYED writer
+node scripts/materialize-hours-capacity-2026-08-17.js            # dry-run first
+node scripts/materialize-hours-capacity-2026-08-17.js --apply
+
+# 3. prove nothing moved
+node scripts/measure-hours-capacity-2026-08-16.js
+#    the office-wide figures must match the frozen baseline exactly:
+#    contract 8274h · active 6470h · phantom 1804h · probes A=0 B=9 C=0
+```
+
+**Do not skip step 2.** Without it the note shows numbers that were correct at
+migration time and have drifted since, and the nightly check reports findings
+that are real but were caused by the ordering rather than by any defect.
+
+`capacityDrift` is `detect_only` — it never enters `discrepancies[]`, never
+affects `status`, and never reaches the outbox or the bot — so even a missed
+step 2 cannot page anyone. That is deliberate, not incidental.
+
+## First run (historical, already executed 2026-08-17)
 
 ```bash
 node scripts/materialize-hours-capacity-2026-08-17.js            # dry-run
-# read the report: aggregatesWouldMove, failures
-node scripts/materialize-hours-capacity-2026-08-17.js --case=2025006   # one client
-node scripts/materialize-hours-capacity-2026-08-17.js --apply    # all
+node scripts/materialize-hours-capacity-2026-08-17.js --case=2025007 --apply
+node scripts/materialize-hours-capacity-2026-08-17.js --apply
 ```
 
-Re-running `scripts/measure-hours-capacity-2026-08-16.js` afterwards confirms
-the field landed and the phantom figure is unchanged.
+Result: 164 scanned · 163 written · 1 skipped (`internal_office`) · 0 deferred ·
+0 failed · 21 movements, all `null → 0` on previously-absent fields. An
+independent re-measurement returned figures identical to the frozen baseline —
+zero hours moved. `lastModifiedBy` was preserved on every document (verified:
+the only documents modified that day carry employee names, not the script).
+
+**🔴 The `--apply` report is the ONLY record of the pre-migration state**, and it
+is gitignored (it carries client names; the repo is PUBLIC). Copy
+`scripts/.capacity-materialize-*.json` somewhere durable before relying on
+rollback: `git revert` restores code, not the 21 aggregate corrections.
 
 ## Rollback
 

@@ -41,7 +41,7 @@ jest.mock('firebase-functions/v2/scheduler', () => ({
 }));
 
 const { _test } = require('../scheduled');
-const { detectAggregateDrift } = _test;
+const { detectAggregateDrift, detectCapacityDrift } = _test;
 
 const { computeClientCapacity } = require('../shared/stage-capacity');
 const { SYSTEM_CONSTANTS } = require('../shared/constants');
@@ -126,13 +126,12 @@ describe('gap 2 — the nightly check watches the capacity field', () => {
 
   test('a CORRECT capacity field reports no drift', () => {
     const correct = computeClientCapacity(staged());
-    const drifts = detectAggregateDrift(client(correct));
+    const drifts = detectCapacityDrift(client(correct));
     expect(drifts.filter((d) => d.field.startsWith('hoursCapacity'))).toEqual([]);
   });
 
   test('a WRONG activeHours is caught, with both values', () => {
-    const drifts = detectAggregateDrift(
-      client({ activeHours: 300, contractHours: 300, phantomHours: 0 })
+    const drifts = detectCapacityDrift(client({ activeHours: 300, contractHours: 300, phantomHours: 0 })
     );
     const found = drifts.find((d) => d.field === 'hoursCapacity.activeHours');
     expect(found).toBeDefined();
@@ -141,8 +140,7 @@ describe('gap 2 — the nightly check watches the capacity field', () => {
   });
 
   test('a WRONG phantomHours is caught — the number the office reads', () => {
-    const drifts = detectAggregateDrift(
-      client({ activeHours: 100, contractHours: 300, phantomHours: 0 })
+    const drifts = detectCapacityDrift(client({ activeHours: 100, contractHours: 300, phantomHours: 0 })
     );
     expect(drifts.some((d) => d.field === 'hoursCapacity.phantomHours')).toBe(true);
   });
@@ -151,14 +149,14 @@ describe('gap 2 — the nightly check watches the capacity field', () => {
     // internal_office is exempt, and any document written before the field
     // existed simply lacks it. Flagging those would produce noise on exactly
     // the clients we deliberately chose not to touch.
-    expect(detectAggregateDrift(client(undefined))).toEqual([]);
-    expect(detectAggregateDrift(client(null))).toEqual([]);
+    expect(detectCapacityDrift(client(undefined))).toEqual([]);
+    expect(detectCapacityDrift(client(null))).toEqual([]);
   });
 
   test('a malformed field is not drift either, and never throws', () => {
-    expect(() => detectAggregateDrift(client('nonsense'))).not.toThrow();
-    expect(detectAggregateDrift(client('nonsense'))).toEqual([]);
-    expect(() => detectAggregateDrift(client({}))).not.toThrow();
+    expect(() => detectCapacityDrift(client('nonsense'))).not.toThrow();
+    expect(detectCapacityDrift(client('nonsense'))).toEqual([]);
+    expect(() => detectCapacityDrift(client({}))).not.toThrow();
   });
 
   test('the existing flat-field drift detection still works, untouched', () => {

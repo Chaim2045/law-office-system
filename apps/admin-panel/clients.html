@@ -71,7 +71,7 @@
     <!-- ===== Master Admin Panel Styles ===== -->
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/clients.css?v=20251127-HOURS-COMPACT">
+    <link rel="stylesheet" href="css/clients.css?v=20260817-capacity-note">
     <!-- flatpickr (vendored/self-hosted 4.6.13) — CSP 'self'; our overrides in clients-modals.css must cascade AFTER this -->
     <link rel="stylesheet" href="vendor/flatpickr/flatpickr.min.css?v=fp-4.6.13">
     <link rel="stylesheet" href="css/clients-modals.css?v=20260809-meter-unify">
@@ -491,14 +491,14 @@
     <script defer src="js/ui/ReportPreview.js?v=20260802-u3"></script>
     <!-- ModalManager (window.ModalManager / window.ModalHelpers) — required by ClientManagementModal's renewServiceHours + _editPackagePurchaseDate dialogs. Was missing on clients.html only, breaking both. -->
     <script defer src="js/ui/Modals.js?v=20260726-modalmanager-fix"></script>
-    <script defer src="js/ui/ClientManagementModal.js?v=20260811-pr-sec-b-xss"></script>
+    <script defer src="js/ui/ClientManagementModal.js?v=20260817-capacity-note"></script>
     <script defer src="js/modules/ServiceCardModel.js?v=20260802-u5b-manage-cutover"></script>
     <script defer src="js/ui/UnifiedServiceCard.js?v=20260816-closed-hide"></script>
     <!-- flatpickr (vendored/self-hosted 4.6.13) + Hebrew locale — MUST load before ReportTab.js (its _initRangePicker reads window.flatpickr); graceful fallback if absent -->
     <script defer src="vendor/flatpickr/flatpickr.min.js?v=fp-4.6.13"></script>
     <script defer src="vendor/flatpickr/l10n/he.js?v=fp-4.6.13"></script>
     <script defer src="js/ui/ReportTab.js?v=20260809-report-stage-name"></script>
-    <script defer src="js/ui/ClientsTable.js?v=20260802-u6-report-button-cutover"></script>
+    <script defer src="js/ui/ClientsTable.js?v=20260817-capacity-note"></script>
 
     <!-- ===== Shared Components ===== -->
     <script defer src="js/ui/Notifications.js?v=20260811-pr-sec-c2"></script>

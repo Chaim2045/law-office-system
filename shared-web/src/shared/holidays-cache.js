@@ -354,6 +354,22 @@
    */
   function _bootWhenAuthReady(attempts) {
     attempts = attempts || 0;
+
+    // No window, nothing to boot. Every line below reaches for `window.*`, so
+    // bailing is the correct behaviour, not a test-only concession.
+    //
+    // Concretely: this poll is bounded at MAX_BOOT_POLL_ATTEMPTS × 100ms = 5s,
+    // but a unit test that loads this module finishes in milliseconds. The
+    // pending tick then fires AFTER the test environment is torn down and
+    // throws `ReferenceError: window is not defined`, which makes the whole
+    // root Vitest run **exit 1** while still printing every test as passed.
+    // Root `npm test` gates `build` gates `deploy-staging` gates
+    // `deploy-production` — so this silently gave every merge to `main` a
+    // roughly one-in-three chance of deploying nothing at all.
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     if (typeof window.firebase === 'undefined' ||
         !window.firebase.apps ||
         window.firebase.apps.length === 0) {

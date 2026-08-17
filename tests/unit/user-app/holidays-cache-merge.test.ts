@@ -13,7 +13,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { describe, it, expect, beforeAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 
 declare global {
 
@@ -29,6 +29,26 @@ declare global {
 let merge: (arrays: Array<Array<any>>) => Map<string, any>;
 
 beforeAll(() => {
+  // FAKE TIMERS — load-bearing, not tidiness.
+  //
+  // Loading this source runs `_bootWhenAuthReady()`. Because `firebase` is
+  // deliberately undefined below, that function schedules `setTimeout(..., 100)`
+  // and re-enters itself up to MAX_BOOT_POLL_ATTEMPTS
+  // (apps/user-app/js/shared/holidays-cache.js:366). Those retries outlive the
+  // test: when one fires after Vitest tears the environment down, `window` no
+  // longer exists and the run reports
+  //   Uncaught Exception: ReferenceError: window is not defined
+  // and — critically — **exits 1**, while still printing every test as passed.
+  //
+  // That made the whole root suite flaky (measured: 2 passes, 1 failure in 3
+  // consecutive runs). Root `npm test` gates `build` gates `deploy-staging`
+  // gates `deploy-production`, so a merge to `main` had roughly a one-in-three
+  // chance of producing a red pipeline and no deploy at all.
+  //
+  // Fake timers capture the retries so they never fire. Nothing else about the
+  // test changes — it only ever exercised the pure merge helper.
+  vi.useFakeTimers();
+
   // Provide a stub firebase global so the IIFE's _init() bails out cleanly
   // (no Firestore subscribe attempt — but _test export still attached).
   (globalThis as any).firebase = undefined;
@@ -43,6 +63,13 @@ beforeAll(() => {
 
   new Function(src)();
   merge = (globalThis as any).WORK_HOURS_HOLIDAYS_CACHE._test.mergeHolidaysArraysToMap;
+});
+
+afterAll(() => {
+  // Discard whatever the module scheduled, then hand the clock back so no later
+  // test file inherits a frozen one.
+  vi.clearAllTimers();
+  vi.useRealTimers();
 });
 
 describe('PR-G.3.1 — _mergeHolidaysArraysToMap', () => {

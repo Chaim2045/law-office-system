@@ -878,11 +878,54 @@ return;
   // ========================================
   // 9. Hook into ClientManagementModal
   // ========================================
-  function hookIntoModal() {
+  // PR-3e (2026-08-17): the wait below is BOUNDED.
+  //
+  // It used to be an unbounded `setTimeout(hookIntoModal, 100)` — on any page
+  // where `ClientManagementModal` never loads, it polled every 100ms forever.
+  // In a browser that is a small permanent leak; in the test environment the
+  // poll outlived the run and threw `ReferenceError: document is not defined`
+  // after teardown, which made the ROOT SUITE EXIT 1 roughly one run in three
+  // while still printing every test as passed. Root `npm test` gates the
+  // production deploy, so a merge had a one-in-three chance of shipping nothing.
+  //
+  // 50 attempts × 100ms = 5s, mirroring MAX_BOOT_POLL_ATTEMPTS in
+  // `apps/user-app/js/shared/holidays-cache.js:46` — the existing house pattern
+  // for exactly this shape. Five seconds is far beyond any real load time; if
+  // the modal has not appeared by then it is not going to.
+  const MAX_HOOK_POLL_ATTEMPTS = 50;
+
+  function hookIntoModal(attempts) {
+    attempts = attempts || 0;
+
+    // No document, nothing to hook. This function reaches for
+    // `document.getElementById` below and cannot do anything useful without
+    // one, so bailing is the correct behaviour rather than a test-only
+    // concession.
+    //
+    // It is also the last hole in the CI flake: bounding the poll (below) was
+    // not sufficient, because the poll can SUCCEED — another module defines
+    // `ClientManagementModal` — and then fall through to the DOM access after
+    // the environment has been torn down. Measured: the bounded-poll fix alone
+    // still left the root suite failing 1 run in 10, with the trace pointing at
+    // the direct call rather than the timer.
+    if (typeof document === 'undefined') {
+      return;
+    }
+
     // Wait for ClientManagementModal to be available
     if (typeof ClientManagementModal === 'undefined') {
+      if (attempts >= MAX_HOOK_POLL_ATTEMPTS) {
+        console.warn(
+          '[AddPackageToStage] ClientManagementModal never appeared after ' +
+          (MAX_HOOK_POLL_ATTEMPTS * 100) + 'ms — giving up. ' +
+          'The add-hours buttons will not be attached on this page.'
+        );
+        return;
+      }
       console.log('⏳ Waiting for ClientManagementModal...');
-      setTimeout(hookIntoModal, 100);
+      setTimeout(function () {
+        hookIntoModal(attempts + 1);
+      }, 100);
       return;
     }
 
