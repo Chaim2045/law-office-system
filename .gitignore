@@ -104,4 +104,5 @@ scripts/deep-investigate-drift-2026-04-27.js
 # Script OUTPUT carrying client names — the repo is PUBLIC (MASTER_PLAN §4).
 # The scripts themselves are committed; only their reports are excluded.
 scripts/.capacity-baseline-*.json
+scripts/.capacity-materialize-*.json
 scripts/.reconcile-backup-*.json
