@@ -41,6 +41,17 @@ would have repeated the mistake with a newer field.
 | M6 | 🔴 Capacity findings **never** enter `discrepancies[]`, never affect `status`, never reach the outbox or the bot | separate `capacityDrift` field, `mode: 'detect_only'` |
 | M7 | Suites green | functions 1763 |
 
+> **⚠️ Which commit satisfies which MUST** (corrected 2026-08-17 after an
+> independent re-grade). PR-3d itself is commit `5792b8f`. **M2, M5 and M6 are
+> satisfied by `468bf11` (PR-3e), one commit later** — and graded against
+> `5792b8f` alone, **PR-3d FAILS its own M6**, because that commit pushed
+> capacity findings straight into the array that becomes `discrepancies[]`.
+>
+> That is the honest sequence: PR-3d shipped the gap fixes with the detector
+> wired onto the alerting path; an outcomes-grader returned FAIL; PR-3e moved it
+> off. The rubric is written at branch tip, and without this note it reads as
+> though the separation were designed in from the start. It was not.
+
 ## M6 is the one that was wrong first, and matters most
 
 The first implementation pushed capacity findings into `discrepancies[]`.
