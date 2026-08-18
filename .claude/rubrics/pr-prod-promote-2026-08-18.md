@@ -6,12 +6,12 @@ already deploy from `main` and are live)
 **Environment:** PROD
 **Branch:** `promote/main-to-production-stable-2026-08-18` → `production-stable`
 **Rebuilt:** 2026-08-18, off `main` at `d7aa94e` (post-PR #547)
-**Scope:** 239 commits. `production-stable` tip was `8c869d4`, dated 2026-07-24.
+**Scope:** 241 commits (was 239 before PR #547 added two). `production-stable` tip was `8c869d4`, dated 2026-07-24.
 
 ## Why this PR exists
 
 Netlify serves both PROD sites from `production-stable`; `main` is DEV. The branch
-had drifted 239 commits, so partners were working against a build from 2026-07-24.
+had drifted 241 commits, so partners were working against a build from 2026-07-24.
 Notably, the hours-capacity work (PR #546) shipped to `main` and its data migration
 already ran in production — 163/164 client docs carry `hoursCapacity` — but the
 display that reads it was never promoted.
@@ -24,7 +24,7 @@ display that reads it was never promoted.
 | M2 | No PROD-only commit has substance absent from `main` | Enumerate `git log origin/production-stable ^origin/main` and account for each |
 | M3 | No executable file in the merge tree differs from the CI-green `main` tree | `git diff origin/main --name-only` filtered to `js\|ts\|html\|json\|rules\|yml` returns 0 |
 | M4 | G2 rollback survives the promotion | A regression must be revertable by `git revert` + redeploy within 5 minutes |
-| M5 | Nothing newly reachable in PROD activates a write path that has not been through supervised promotion | Verify the live setting each new admin surface controls |
+| M5 | Nothing newly reachable in PROD activates a write path that has not been through supervised promotion | Verify EVERY newly-reachable admin surface — all four, named, not one generalised to the class |
 | M6 | Deviation from "resolve everything to `main`" is explicit, justified in-file, and reversible | Comment at the deviation site naming the gate it protects |
 
 ## SHOULD
@@ -61,7 +61,7 @@ ancestors of `main` (squash-merged), so ancestry was not used as evidence. Inste
 substance is absent.
 
 **M3 — PASS.** `git diff origin/main --name-only` filtered to executable extensions
-returns **0**. The four differing files are the two PROD-only rubric docs (kept,
+returns **0**. The five differing files are this rubric itself, the two PROD-only rubric docs (kept,
 additive) and the two `netlify.toml` files under M6.
 
 **M4 — PASS, and it is the reason for M6.** Live PROD serves
@@ -118,6 +118,67 @@ re-applied.
 but nobody followed the `pricingType` *branch*. Verifying that a ported fix EXISTS is
 not the same as verifying that every BRANCH of it exists.
 
+## The two-definitions landmine (devils-advocate 🔴 #1) — declared, measured, NOT blocking
+
+`ClientsDataManager.loadClients()` **overwrites** the server's `client.totalHours` with
+its own frontend recomputation (`:265`). That recomputation excludes only `archived`
+services (`_isServiceCountedForClientAggregate`, `:148-154`). The server's capacity rule
+excludes `['archived', 'completed']` (`functions/shared/service-status.js:35`).
+
+So the hours figure and the NEW phantom line beneath it are computed on **different
+definitions**, one row apart. The divergence fires for a service that is `completed`
+while still holding an `active` stage carrying hours — a shape that genuinely occurs in
+this system's design, because stage ג' is never marked `completed` and `completeService`
+does not touch `stages[]`.
+
+**Measured against live production, two independent ways (2026-08-18, read-only):**
+
+| Check | Result |
+|---|---|
+| Rows where the frontend total disagrees with `hoursCapacity.activeHours` | **0 of 163** |
+| Services that are `completed` AND hold an active stage with hours | **0** |
+| Service statuses in production | `active: 190`, `archived: 12`, `completed: 6` |
+
+The condition is **structurally real and empirically dormant**. Blocking the promotion
+on a contradiction that renders on zero rows would trade a certain benefit for a
+hypothetical one — so it is declared here rather than used as a gate.
+
+**Trigger to watch:** the first time a service is set to `completed` while one of its
+stages is still `active` with hours on it, that client's row will show a total that
+includes hours the phantom line says are unavailable. **PR-4 (retire the parallel
+frontend recomputations) is the fix and is already on the plan** — this measurement is
+the argument for its priority, not a reason to hold the promotion.
+
+## Newly-reachable admin surfaces — all four (M5)
+
+The promotion opens four admin pages that `production-stable` does not have. Each was
+checked individually; generalising from one to the class is the exact reasoning shape
+that made attempt 1 fail, so it is not used here.
+
+| Page | Write reachable? | Gate |
+|---|---|---|
+| `reconciliation.html` | Yes — `enforce` writes to live client docs | Fail-closed `claims.role==='admin'` render gate; `enforce` requires typing `תיקון` in the UI **and** a backend `confirmToken==='enforce'`. Live setting probed: `mode = "dry_run"`, so nothing is armed |
+| `pending-clients.html` | Yes — `createClientFromSalesRecord` creates real client docs; `releaseClientFromPendingSignature` egresses a fee-agreement PDF to Anthropic, then flips the client to `active` | Fail-closed admin gate; Hebrew confirm dialog before each call; page load calls only the read-only `listUnlinkedSalesRecords`. Both CFs already deploy from `main` and are LIVE in PROD today — the promotion adds the UI, not the capability. DPA basis resolved 2026-07-01 (MASTER_PLAN §8.8) |
+| `employee-costs.html` | Yes — `setEmployeeCost` | Fail-closed admin gate; nothing fires on load |
+| `profitability.html` | Yes — `recomputeProfitability` | Fail-closed admin gate; nothing fires on load |
+
+## Partner-visible display changes beyond the phantom line (G6, declared)
+
+Neither is a count, filter, sort, or CSV change — but both land on partners on day one:
+
+1. **Progress-bar polarity flips.** `ClientsTable.js` filled the bar with `remaining/total`,
+   so a client whose real capacity shrank appeared *healthier*. It now fills with
+   `used/total`, clamped 0-100. **Every client's bar renders differently after this
+   promotion.** Deliberate (PR-3c) and correct, but it is a visual change on every row.
+2. **A new status label** `ממתין לחתימה` takes precedence over the derived
+   `חסום (אין שעות)` for `status==='pending_signature'`. Display precedence only — the
+   status filter is unchanged.
+
+**Four admin pages are REMOVED** by the promotion: `tasks.html`, `timesheet.html`,
+`feature-flags.html`, `debug-firebase-init.html`. Verified safe: a `git grep` across
+`origin/production-stable`'s admin HTML and JS finds **zero** references to any of
+them — they are orphans, reachable only by a direct bookmark.
+
 ## Adversarial review
 
 `devils-advocate` (mandatory, CLAUDE.md §3.8.4 — merge to `production-stable`)
@@ -168,8 +229,10 @@ not have reached already-cached browsers.
 
 1. Confirm both Netlify PROD deploys go green.
 2. Open the admin panel PROD URL, hard-refresh once.
-3. `clients.html` — confirm the clients table renders and the phantom-capacity
-   line appears on an affected client.
+3. `clients.html` — confirm the clients table renders, the phantom-capacity line
+   appears on an affected client, AND that a client's progress bar reads sensibly:
+   it now fills with hours USED, so a heavily-used client shows a FULLER bar than
+   before, not an emptier one.
 4. Confirm the nav shows the new tabs and that "סנכרון שעות" reports `dry_run`.
 5. Open the user app PROD URL and confirm time entry still saves.
 6. Any console error = deployment FAIL, per the root CLAUDE.md deployment rules.
