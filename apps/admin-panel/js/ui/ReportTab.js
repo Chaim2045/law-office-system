@@ -99,6 +99,28 @@
         return Number.isFinite(n) ? n : 0;
     }
 
+    /**
+     * Worked hours for a stage, pricing-aware — the report tab's stage picker is a
+     * partner-facing surface, so a FIXED stage must show `totalHoursWorked`, not the
+     * permanently-zero `hoursUsed`. Canonical rule: js/core/stage-hours.js.
+     * The fallback runs only if that script did not load.
+     */
+    function stageWorkedHours(stage) {
+        if (typeof window !== 'undefined' && window.StageHours) {
+            return window.StageHours.stageEffectiveHoursUsed(stage);
+        }
+        if (!stage || typeof stage !== 'object') {
+            return 0;
+        }
+        // Number.isFinite, NOT this file's num(): num() coerces, so a stored '5'
+        // would yield 5 here and 0 from the helper. The fallback must be
+        // behaviourally identical to the helper, not merely similar.
+        if (stage.pricingType === 'fixed' && Number.isFinite(stage.totalHoursWorked)) {
+            return stage.totalHoursWorked;
+        }
+        return Number.isFinite(stage.hoursUsed) ? stage.hoursUsed : 0;
+    }
+
     function mins(entry) {
         const n = Number(entry && entry.minutes);
         return Number.isFinite(n) ? n : 0;
@@ -421,7 +443,7 @@
                     '<span class="report-stage-name" title="' + esc(getStageName(stage.id)) + '">' + esc(stageShortName(stage.id)) + '</span>' +
                     '<div class="report-stage-meta">' +
                         statusHtml +
-                        '<span class="report-stage-hours">' + num(stage.hoursUsed).toFixed(1) + ' / ' + num(stage.totalHours).toFixed(1) + '</span>' +
+                        '<span class="report-stage-hours">' + stageWorkedHours(stage).toFixed(1) + ' / ' + num(stage.totalHours).toFixed(1) + '</span>' +
                     '</div>' +
                 '</div>' +
                 '</div>';

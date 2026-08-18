@@ -884,7 +884,17 @@ return '';
                 // תצוגת שעות - בדיקת כל השדות האפשריים
                 let hoursInfo = '';
                 const stageHours = stage.hours || stage.totalHours || stage.allocatedHours || stage.estimatedHours || 0;
-                const hoursUsed = stage.hoursUsed || 0;
+                // Pricing-aware: a FIXED stage records its work in `totalHoursWorked` and
+                // leaves `hoursUsed` at 0, so subtracting `hoursUsed` reported a stage with
+                // real work on it as fully untouched. Canonical rule: js/core/stage-hours.js.
+                const hoursUsed = (typeof window !== 'undefined' && window.StageHours)
+                    ? window.StageHours.stageEffectiveHoursUsed(stage)
+                    // Fallback runs only if stage-hours.js did not load. Uses
+                    // Number.isFinite, not `|| 0`, so it is behaviourally identical to
+                    // the helper (`|| 0` would pass a string '5' straight through).
+                    : (stage.pricingType === 'fixed' && Number.isFinite(stage.totalHoursWorked)
+                        ? stage.totalHoursWorked
+                        : (Number.isFinite(stage.hoursUsed) ? stage.hoursUsed : 0));
                 // Number.isFinite (not `!== undefined`): a stored `null` stage aggregate
                 // must fall through to the recompute, not slip past and crash at .toFixed().
                 const hoursRemaining = Number.isFinite(stage.hoursRemaining)

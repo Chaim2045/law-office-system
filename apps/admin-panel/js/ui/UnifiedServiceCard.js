@@ -32,6 +32,32 @@
         return Number.isFinite(v) ? v : 0;
     }
 
+    /**
+     * Worked hours for a stage, pricing-aware. THE ONLY place in this file that
+     * decides it — every stage surface below routes here.
+     *
+     * A FIXED stage keeps its work in `totalHoursWorked` and leaves `hoursUsed` at
+     * the 0 it was created with, so reading `hoursUsed` renders real work as zero.
+     * Canonical rule + rationale: js/core/stage-hours.js (mirrors the backend
+     * calcStageEffectiveHoursUsed). The fallback below runs only if that script did
+     * not load, and is behaviourally identical to it.
+     */
+    function stageWorkedHours(stage) {
+        if (typeof window !== 'undefined' && window.StageHours) {
+            return window.StageHours.stageEffectiveHoursUsed(stage);
+        }
+        if (!stage || typeof stage !== 'object') {
+            return 0;
+        }
+        if (stage.pricingType === 'fixed') {
+            if (Number.isFinite(stage.totalHoursWorked)) {
+                return stage.totalHoursWorked;
+            }
+            return num(stage.hoursUsed);
+        }
+        return num(stage.hoursUsed);
+    }
+
     // Legacy `||`-chain (mirrors renderStages/getServiceInfo) — first truthy finite, else 0.
     function pickHours() {
         for (let i = 0; i < arguments.length; i++) {
@@ -142,7 +168,7 @@
                 const ds = { serviceId: card.serviceId, stage: stage.id, type: 'legal_procedure', name };
                 return {
                     el: buildCard({
-                        name, badge, totalHours: stage.totalHours, hoursUsed: stage.hoursUsed,
+                        name, badge, totalHours: stage.totalHours, hoursUsed: stageWorkedHours(stage),
                         variantClasses: card.nonAggregating ? ['archived'] : [], selectable: true
                     }, ds),
                     selection: { service: name, serviceId: card.serviceId, stage: stage.id, type: 'legal_procedure' }
@@ -331,7 +357,11 @@
                 stageClass = 'active';
             }
             const stageHours = pickHours(stage.hours, stage.totalHours, stage.allocatedHours, stage.estimatedHours);
-            const stageUsed = num(stage.hoursUsed);
+            // The backend sets hoursRemaining = null on every FIXED stage
+            // (functions/services/index.js:909), so this fallback ALWAYS fires there.
+            // With a raw `hoursUsed` read it subtracted 0 and painted a stage with real
+            // work on it as fully untouched (e.g. "100.0/100.0" on 30.5h worked).
+            const stageUsed = stageWorkedHours(stage);
             const stageRemaining = Number.isFinite(stage.hoursRemaining)
                 ? stage.hoursRemaining
                 : (stageHours - stageUsed);
@@ -452,7 +482,9 @@
             const stages = Array.isArray(card.stages) ? card.stages : [];
             if (stages.length > 0) {
                 total = stages.reduce((sum, s) => sum + num(s.totalHours), 0);
-                used = stages.reduce((sum, s) => sum + num(s.hoursUsed), 0);
+                // Pricing-aware, or this DISPLAYED AGGREGATE stays 0 on a fixed
+                // procedure and disagrees with the per-stage figures above it.
+                used = stages.reduce((sum, s) => sum + stageWorkedHours(s), 0);
             }
         }
         if (!(total > 0)) {

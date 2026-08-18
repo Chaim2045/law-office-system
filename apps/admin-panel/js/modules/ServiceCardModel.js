@@ -98,18 +98,46 @@
     /**
      * One stage of a legal-procedure service → a stage view-model. Carries BOTH the
      * hourly aggregate (`hoursUsed`) and the fixed-price counter (`totalHoursWorked`)
-     * raw, so the renderer picks per pricingType (ClientReportModal.js:378-380) without
-     * the model deciding. Legacy total fallback mirrors the management stage branch.
+     * raw, PLUS `pricingType` so the renderer can pick between them without the model
+     * deciding. Legacy total fallback mirrors the management stage branch.
+     *
+     * `pricingType` used to be dropped here, which made the "renderer picks" contract
+     * unfulfillable — no consumer could tell a fixed stage from an hourly one, so every
+     * one of them read `hoursUsed` and rendered a fixed stage's real work as 0.
+     * The canonical pick is `window.StageHours.stageEffectiveHoursUsed`
+     * (`js/core/stage-hours.js`), mirroring the backend `calcStageEffectiveHoursUsed`.
+     *
+     * The global is used with an identical inline fallback, exactly as this module
+     * already does for `window.ClientTypeDisplay.isFixedService` — the model stays
+     * fully testable with no page globals loaded. Both copies are pinned by
+     * `stage-hours.drift.test.ts`.
      */
+    function effectiveWorked(stage) {
+        if (typeof window !== 'undefined' && window.StageHours &&
+            typeof window.StageHours.stageEffectiveHoursUsed === 'function') {
+            return window.StageHours.stageEffectiveHoursUsed(stage);
+        }
+        // Inline fallback — must stay behaviour-equivalent to the helper's rule.
+        if (stage.pricingType === 'fixed') {
+            if (Number.isFinite(stage.totalHoursWorked)) {
+                return stage.totalHoursWorked;
+            }
+            return Number.isFinite(stage.hoursUsed) ? stage.hoursUsed : 0;
+        }
+        return Number.isFinite(stage.hoursUsed) ? stage.hoursUsed : 0;
+    }
+
     function buildStage(stage, getStageName) {
         const totalHours = pickHours(
             stage.totalHours, stage.hours, stage.allocatedHours, stage.estimatedHours
         );
         const hoursUsed = Number.isFinite(stage.hoursUsed) ? stage.hoursUsed : 0;
         const totalHoursWorked = Number.isFinite(stage.totalHoursWorked) ? stage.totalHoursWorked : 0;
+        // Pricing-aware: on a fixed stage `hoursUsed` is a permanent 0, so subtracting it
+        // reported a worked-on stage as untouched.
         const hoursRemaining = Number.isFinite(stage.hoursRemaining)
             ? stage.hoursRemaining
-            : (totalHours - hoursUsed);
+            : (totalHours - effectiveWorked(stage));
         const name = stage.name
             || (typeof getStageName === 'function' ? getStageName(stage.id) : null)
             || stage.description
@@ -118,6 +146,9 @@
             id: stage.id,
             name: name,
             status: stage.status || 'pending',
+            // The selector between the two counters below. Without it a renderer cannot
+            // apply the canonical rule — see the docblock above.
+            pricingType: stage.pricingType || null,
             totalHours: totalHours,
             hoursUsed: hoursUsed,
             hoursRemaining: hoursRemaining,

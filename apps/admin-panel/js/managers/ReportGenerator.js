@@ -747,12 +747,41 @@ return null;
                     // Number.isFinite (not `!== undefined`): a stored `null` aggregate
                     // (legacy/uninitialized stage) must fall through to the recompute,
                     // not slip past the guard and crash later at `.toFixed()`.
+                    // PRICING-AWARE worked hours. A FIXED stage keeps its figure in
+                    // `totalHoursWorked`; `hoursUsed` is initialised to 0 and the backend
+                    // never touches it (functions/services/index.js:899-909 says so
+                    // explicitly). So `Number.isFinite(hoursUsed)` was TRUE-with-0 on a
+                    // fixed stage: the guard passed, the fallback never ran, and a report
+                    // sent to the client printed 0.0 worked hours. Measured on live data
+                    // 2026-08-18: 26 stages affected, worst case 120.09h shown as 22.5h.
+                    // Canonical rule: js/core/stage-hours.js == backend
+                    // calcStageEffectiveHoursUsed. pricingType is inherited from the parent
+                    // service when the stage predates the field.
+                    const stageForPricing = selectedStage.pricingType
+                        ? selectedStage
+                        : Object.assign({}, selectedStage, {
+                            pricingType: this._isFixedService(parentService) ? 'fixed' : null
+                        });
+                    const SH = (typeof window !== 'undefined' && window.StageHours) ? window.StageHours : null;
+                    const storedWorked = SH
+                        ? SH.stageEffectiveHoursUsed(stageForPricing)
+                        : (stageForPricing.pricingType === 'fixed'
+                            ? (Number.isFinite(selectedStage.totalHoursWorked)
+                                ? selectedStage.totalHoursWorked
+                                : (Number.isFinite(selectedStage.hoursUsed) ? selectedStage.hoursUsed : 0))
+                            : (Number.isFinite(selectedStage.hoursUsed) ? selectedStage.hoursUsed : 0));
+                    const hasStoredWorked = SH
+                        ? SH.stageHasStoredWorkedHours(stageForPricing)
+                        : (stageForPricing.pricingType === 'fixed'
+                            ? (Number.isFinite(selectedStage.totalHoursWorked) || Number.isFinite(selectedStage.hoursUsed))
+                            : Number.isFinite(selectedStage.hoursUsed));
                     const remainingHours = Number.isFinite(selectedStage.hoursRemaining)
                         ? selectedStage.hoursRemaining
-                        : (totalHours - (selectedStage.hoursUsed ?? 0));
-                    const usedHours = Number.isFinite(selectedStage.hoursUsed)
-                        ? selectedStage.hoursUsed
-                        : (totalHours - remainingHours);
+                        : (totalHours - storedWorked);
+                    // PRESERVED: when the stage stores NO worked counter at all, the figure
+                    // is still derived from total - remaining. A 0 there would mean
+                    // "unknown", not "none". Only the SOURCE of the counter changed.
+                    const usedHours = hasStoredWorked ? storedWorked : (totalHours - remainingHours);
                     return {
                         totalHours, usedHours, remainingHours, matchType: 'stage',
                         isFixed: this._isFixedService(parentService),
@@ -760,8 +789,13 @@ return null;
                         totalFixedPrice: (parentService && Number.isFinite(parentService.totalFixedPrice)) ? parentService.totalFixedPrice : null,
                         // Stored worked-hours: stage `hoursUsed`, else the parent service's; `null`
                         // (legacy/uninitialised) -> the fixed renderer derives it from the ledger.
-                        storedUsedHours: Number.isFinite(selectedStage.hoursUsed)
-                            ? selectedStage.hoursUsed
+                        // Pricing-aware, and still `null` when the stage carries NEITHER
+                        // counter — that null is what lets resolveFixedWorkedHours fall
+                        // back to the ledger for a legacy/uninitialised stage. Reading
+                        // `hoursUsed` alone made a fixed stage look "stored as 0", which
+                        // both printed 0 and suppressed that fallback.
+                        storedUsedHours: hasStoredWorked
+                            ? storedWorked
                             : ((parentService && Number.isFinite(parentService.hoursUsed)) ? parentService.hoursUsed : null)
                     };
                 }
