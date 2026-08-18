@@ -213,17 +213,56 @@ here — each is pre-existing in `main` and none is introduced by this promotion
    Equivalence to the CI-green `main` tree (M3) is the substitute evidence. Worth
    deciding whether the target branch should get its own gate.
 
-## Rollback
+## Rollback — READ THIS BEFORE TYPING ANYTHING
+
+**The command is:**
 
 ```
-git revert -m 1 <merge-commit-sha>
+git revert 37f95a1
 ```
 
-then let Netlify redeploy both sites. This is a frontend-only promotion —
-`functions/` and `firestore.rules` are untouched by it and already live from
-`main`, so no Cloud Function delete step is needed. The revert is effective
-because M6 kept assets revalidating; had `immutable` been promoted, revert would
-not have reached already-cached browsers.
+`37f95a1` is the promotion. Plain revert, **no `-m 1`** — PR #548 was merged with
+SQUASH, so it has a single parent.
+
+### Do NOT use `git revert -m 1 <latest merge commit>`
+
+That was the original instruction here and it is now actively dangerous. The newest
+merge commit on `production-stable` is the **ancestry-repair merge**, which changes
+no files. Reverting it prints:
+
+```
+On branch ...
+nothing to commit, working tree clean
+```
+
+— a no-op that reads as success. Netlify redeploys nothing, PROD stays broken, and
+the operator believes the rollback worked. It is a decoy. Revert `37f95a1` by name.
+
+### After a rollback, re-promotion needs one extra step
+
+The ancestry repair makes git believe `main` is already an ancestor. So once you have
+reverted:
+
+```
+git merge origin/main     # -> "Already up to date."  DOES NOTHING
+```
+
+To get the promotion back, revert the revert:
+
+```
+git revert <sha-of-the-revert-commit>
+```
+
+That restores tree `8da879d`. Verified by execution in an isolated clone, not reasoned.
+
+### Why the revert reaches browsers at all
+
+Because the cache deviation held assets at `no-cache`. Had `immutable` been promoted,
+a revert + redeploy would **not** have reached already-cached browsers — it would have
+needed a filename change. That is the G2 gate this promotion protected.
+
+Frontend-only: `functions/` and `firestore.rules` are untouched and already live from
+`main`, so no Cloud Function delete step is needed.
 
 ## Post-merge smoke (Haim's hands)
 
