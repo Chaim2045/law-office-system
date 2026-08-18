@@ -122,7 +122,16 @@ describe('resolveServiceHours — stage identity across two procedures', () => {
     expect(hours.matchType).toBe('stage');
     expect(hours.isFixed).toBe(true);
     expect(hours.fixedPrice).toBe(40000);
-    expect(hours.usedHours).toBe(2.17);
+    // CHANGED 2026-08-18 (was 2.17). This assertion encoded the fixed-price
+    // stage-hours bug, using this file's real fixture numbers.
+    // On a FIXED stage the backend keeps worked hours in `totalHoursWorked` and
+    // leaves `hoursUsed` at its created 0 — see functions/services/index.js:899-909
+    // and the SSOT calcStageEffectiveHoursUsed. This fixture's own service-level
+    // aggregate (line 58) already says 37.24; only the stage-level read was wrong.
+    // 37.24 remains a valid identity discriminator here: the arbitration matter's
+    // stage_b resolves to 67.74 (asserted in the test above), so a cross-procedure
+    // mismatch would still fail this test — which is what it is for.
+    expect(hours.usedHours).toBe(37.24);
   });
 
   it('stage_a of the arbitration returns the closed stage, not the employment stage_a', () => {
