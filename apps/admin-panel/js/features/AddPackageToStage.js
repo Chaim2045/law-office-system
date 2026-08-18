@@ -37,6 +37,17 @@
     dialogId: 'addPackageToStageDialog'
   };
 
+  // PR-B (closed-service hide-actions): frontend mirror of functions/shared/service-status.js
+  // HOURS_LOCKED_STATUSES. A CLOSED service (archived/completed) never accepts new hours (the backend
+  // #535 gate refuses), so the injected "הוסף שעות" button must not appear on it. on_hold stays OPEN;
+  // completed is hours-locked yet still aggregates. DEFAULT-ACTIVE: no status → 'active'. Pinned to the
+  // backend SSOT (and to the UnifiedServiceCard mirror) by a cross-file drift-guard test.
+  const HOURS_LOCKED_STATUSES = ['archived', 'completed'];
+  function serviceIsClosed(service) {
+    const status = service && service.status ? service.status : 'active';
+    return HOURS_LOCKED_STATUSES.indexOf(status) !== -1;
+  }
+
   // ========================================
   // State
   // ========================================
@@ -568,25 +579,39 @@ return;
     }
 
     const client = window.ClientManagementModal.currentClient;
-    const legalProcedure = client.services?.find(s => s.type === 'legal_procedure');
-
-    if (!legalProcedure || !legalProcedure.stages) {
-      console.log('⚠️ No legal procedure or stages');
-      return;
-    }
-
-    console.log(`📊 Legal procedure has ${legalProcedure.stages.length} stages, pricingType: ${legalProcedure.pricingType}`);
-
-    // Check if legal procedure is hourly (pricingType is at service level, not stage level)
-    if (legalProcedure.pricingType !== 'hourly') {
-      console.log(`⚠️ Legal procedure is not hourly (pricingType: ${legalProcedure.pricingType}), skipping all stages`);
-      return;
-    }
+    // PR-B: resolve each stage to ITS OWN service via the parent card's data-service-id — explicit
+    // identity, NOT a first-match `find(s => s.type === 'legal_procedure')`. The old first-match
+    // processed ONLY the first legal procedure per client: a 2nd active hourly service got NO button,
+    // and a CLOSED first service still got one. Mirrors PR #544 (identity + refuse-to-guess).
+    const services = Array.isArray(client && client.services) ? client.services : [];
 
     stages.forEach((stageElement, domIndex) => {
       // Skip if button already exists
       if (stageElement.querySelector(`.${CONFIG.buttonClass}`)) {
         console.log(`  [DOM ${domIndex}] Already has button, skipping`);
+        return;
+      }
+
+      // PR-B: identify THIS stage's OWN service via its parent card's data-service-id (= service.id).
+      // Refuse to guess when it can't be identified — no cross-service contamination.
+      const cardEl = stageElement.closest('.management-service-card');
+      const serviceId = cardEl && cardEl.dataset ? cardEl.dataset.serviceId : null;
+      const service = serviceId ? services.find(s => String(s.id) === String(serviceId)) : null;
+      if (!service) {
+        console.log(`  [DOM ${domIndex}] No owning service for data-service-id "${serviceId}", skipping`);
+        return;
+      }
+
+      // PR-B: a CLOSED service (archived/completed) never accepts new hours (mirror service-status.js /
+      // the #535 backend gate) → hide the button rather than lead to a dead-end permission error.
+      if (serviceIsClosed(service)) {
+        console.log(`  [DOM ${domIndex}] Service ${service.id} is closed (${service.status}), skipping`);
+        return;
+      }
+
+      // Service-level hourly gate — now scoped to THIS service (not the first legal procedure).
+      if (service.pricingType !== 'hourly') {
+        console.log(`  [DOM ${domIndex}] Service ${service.id} not hourly (${service.pricingType}), skipping`);
         return;
       }
 
@@ -600,17 +625,17 @@ return;
       const stageName = stageNameElement.textContent.trim();
       console.log(`  [DOM ${domIndex}] Found stage name in DOM: "${stageName}"`);
 
-      // Find matching stage in data by name
-      const stage = legalProcedure.stages.find(s => s.name === stageName);
+      // Find the matching stage WITHIN THIS service by name.
+      const stage = Array.isArray(service.stages) ? service.stages.find(s => s.name === stageName) : null;
 
       if (!stage) {
-        console.log(`  [DOM ${domIndex}] No matching stage data for "${stageName}"`);
+        console.log(`  [DOM ${domIndex}] No matching stage data for "${stageName}" in service ${service.id}`);
         return;
       }
 
       console.log(`  [DOM ${domIndex}] Matched to stage: ${stage.id}, status: ${stage.status}`);
 
-      // Only add button to ACTIVE stages (pricingType already checked at service level)
+      // Only add button to ACTIVE stages.
       if (stage.status !== 'active') {
         console.log(`  [DOM ${domIndex}] Skipping (not active, status: ${stage.status})`);
         return;
@@ -630,7 +655,7 @@ return;
       button.addEventListener('click', (e) => {
         e.stopPropagation();
         console.log('🖱️ Button clicked for stage:', stage.id);
-        openDialog(client.caseNumber, legalProcedure.id, stage);
+        openDialog(client.caseNumber, service.id, stage);
       });
 
       // Insert button after stage info
@@ -755,9 +780,24 @@ return;
     document.getElementById('addPackageSubmitBtn').disabled = true;
 
     try {
+      // PR-A (2026-08-16): serviceId is REQUIRED in the payload. This dialog has
+      // always known which procedure was selected (currentServiceId, set in
+      // openDialog from the card's data-service-id) but never sent it — so the CF
+      // fell back to the first legal_procedure service on the case. On a case with
+      // more than one procedure, the hours landed on the wrong matter silently.
+      // Sending the identity is the whole fix; the CF now refuses to guess.
+      if (!currentServiceId) {
+        // 'danger', not 'error' — only .alert-danger / .alert-success are defined
+        // in this dialog's scoped CSS. 'error' renders the text unstyled, which
+        // reads as a hint rather than a failure.
+        showAlert('לא זוהה השירות שאליו להוסיף שעות. סגור את החלון, רענן את הדף ונסה שוב.', 'danger');
+        return;
+      }
+
       // Call Cloud Function
       console.log('📞 Calling addHoursPackageToStage:', {
         caseId: currentClientId,
+        serviceId: currentServiceId,
         stageId: currentStageId,
         hours,
         reason,
@@ -768,6 +808,7 @@ return;
 
       const result = await addPackageFunc({
         caseId: currentClientId,
+        serviceId: currentServiceId,
         stageId: currentStageId,
         hours: hours,
         reason: reason,
@@ -837,11 +878,54 @@ return;
   // ========================================
   // 9. Hook into ClientManagementModal
   // ========================================
-  function hookIntoModal() {
+  // PR-3e (2026-08-17): the wait below is BOUNDED.
+  //
+  // It used to be an unbounded `setTimeout(hookIntoModal, 100)` — on any page
+  // where `ClientManagementModal` never loads, it polled every 100ms forever.
+  // In a browser that is a small permanent leak; in the test environment the
+  // poll outlived the run and threw `ReferenceError: document is not defined`
+  // after teardown, which made the ROOT SUITE EXIT 1 roughly one run in three
+  // while still printing every test as passed. Root `npm test` gates the
+  // production deploy, so a merge had a one-in-three chance of shipping nothing.
+  //
+  // 50 attempts × 100ms = 5s, mirroring MAX_BOOT_POLL_ATTEMPTS in
+  // `apps/user-app/js/shared/holidays-cache.js:46` — the existing house pattern
+  // for exactly this shape. Five seconds is far beyond any real load time; if
+  // the modal has not appeared by then it is not going to.
+  const MAX_HOOK_POLL_ATTEMPTS = 50;
+
+  function hookIntoModal(attempts) {
+    attempts = attempts || 0;
+
+    // No document, nothing to hook. This function reaches for
+    // `document.getElementById` below and cannot do anything useful without
+    // one, so bailing is the correct behaviour rather than a test-only
+    // concession.
+    //
+    // It is also the last hole in the CI flake: bounding the poll (below) was
+    // not sufficient, because the poll can SUCCEED — another module defines
+    // `ClientManagementModal` — and then fall through to the DOM access after
+    // the environment has been torn down. Measured: the bounded-poll fix alone
+    // still left the root suite failing 1 run in 10, with the trace pointing at
+    // the direct call rather than the timer.
+    if (typeof document === 'undefined') {
+      return;
+    }
+
     // Wait for ClientManagementModal to be available
     if (typeof ClientManagementModal === 'undefined') {
+      if (attempts >= MAX_HOOK_POLL_ATTEMPTS) {
+        console.warn(
+          '[AddPackageToStage] ClientManagementModal never appeared after ' +
+          (MAX_HOOK_POLL_ATTEMPTS * 100) + 'ms — giving up. ' +
+          'The add-hours buttons will not be attached on this page.'
+        );
+        return;
+      }
       console.log('⏳ Waiting for ClientManagementModal...');
-      setTimeout(hookIntoModal, 100);
+      setTimeout(function () {
+        hookIntoModal(attempts + 1);
+      }, 100);
       return;
     }
 

@@ -10,6 +10,11 @@ const { SYSTEM_CONSTANTS, isValidServiceType, isValidPricingType } = require('..
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
+// H.3 PR1: the static Plan layer (derived from services[]).
+const { computeClientPlan } = require('../lib/profitability/client-plan');
+// PR-3d: the capacity SSOT — mirrored onto the direct-create intake route so it
+// cannot drift from the canonical writer. See functions/shared/stage-capacity.js.
+const { computeClientCapacity } = require('../shared/stage-capacity');
 
 const db = admin.firestore();
 
@@ -63,6 +68,16 @@ exports.getNextCaseNumber = functions.https.onCall(async (data, context) => {
 exports.createClient = functions.https.onCall(async (data, context) => {
   try {
     const user = await checkUserPermissions(context);
+
+    // PR-SEC-A2: opening a case (client) is an admin-only management action
+    // (Haim 2026-08-10 — verified: management group = role==='admin', which includes
+    // the office manager; no employee holds the isAdmin flag). Lawyers no longer open cases.
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לפתוח תיק חדש'
+      );
+    }
 
     // ✅ Idempotency: אם יש idempotencyKey, בדוק אם כבר עיבדנו את הפעולה
     if (data.idempotencyKey) {
@@ -148,6 +163,21 @@ exports.createClient = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError(
           'invalid-argument',
           'סוג תמחור חייב להיות "hourly" (שעתי) או "fixed" (מחיר פיקס)'
+        );
+      }
+
+      // H.3 D-B (2026-06-11): תעריף שעתי אופציונלי נבחר (legal-hourly בלבד).
+      // Validate-if-present — תעריף נבחר פגום נדחה (לא מושמט בשקט). כשאינו מסופק,
+      // לא מיושמת ברירת מחדל (ראה בניית השירות למטה — אין יותר `|| 800`).
+      if (
+        data.pricingType === PT.HOURLY &&
+        data.ratePerHour !== undefined &&
+        data.ratePerHour !== null &&
+        (typeof data.ratePerHour !== 'number' || !Number.isFinite(data.ratePerHour) || data.ratePerHour <= 0)
+      ) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'תעריף שעתי חייב להיות מספר חיובי'
         );
       }
 
@@ -417,7 +447,14 @@ exports.createClient = functions.https.onCall(async (data, context) => {
             type: 'legal_procedure',
             name: sanitizeString(data.legalProcedureName || 'הליך משפטי'),
             pricingType: PT.HOURLY,
-            ratePerHour: data.ratePerHour || 800,
+            // H.3 D-B (2026-06-11): store an hourly rate ONLY when one was explicitly
+            // elected (a positive number). The legacy `|| 800` silent default is REMOVED —
+            // an un-elected rate stays absent so the Plan reports pricing_missing (never a
+            // fabricated 800×hours; mirrors addServiceToClient). Real source: tofes
+            // amountBeforeVat at H.6 (§8.2.5 D1).
+            ...(typeof data.ratePerHour === 'number' && data.ratePerHour > 0
+              ? { ratePerHour: data.ratePerHour }
+              : {}),
             status: 'active',
             stages: stages,
 
@@ -534,6 +571,24 @@ exports.createClient = functions.https.onCall(async (data, context) => {
       }
     }
 
+    // H.3 PR1: stamp the static Plan (expectedHours/expectedRevenue, derived from
+    // services[]; NON-confidential — cost/profit live CF-only in client_profitability,
+    // never here). Mirrors writeClientWithCanonicalAggregates so the two intake routes
+    // (this .create() + the canonical writer) never drift.
+    clientData.plan = computeClientPlan(clientData.services || []);
+
+    // PR-3d (2026-08-17): stamp the capacity figure on the SAME principle, and
+    // for the same reason — this `.create()` is the one intake route that does
+    // NOT go through writeClientWithCanonicalAggregates, so anything the
+    // canonical writer derives has to be mirrored here or the two routes drift.
+    //
+    // This matters most precisely at creation: a new legal_procedure case is
+    // opened with three stages, two of them `pending`, so it carries phantom
+    // capacity from its very first second. Without this line a brand-new case
+    // would be the ONE shape guaranteed to have a gap and guaranteed not to
+    // show it — until something unrelated happened to rewrite the client.
+    clientData.hoursCapacity = computeClientCapacity(clientData.services || []);
+
     // ✅ יצירת המסמך עם מספר תיק כ-Document ID
     // שימוש ב-.create() במקום .set() - מונע דריסה ומבטיח ייחודיות
     await db.collection('clients').doc(caseNumber).create(clientData);
@@ -613,6 +668,13 @@ exports.changeClientStatus = functions.https.onCall(async (data, context) => {
   try {
     // 1. Auth
     const user = await checkUserPermissions(context);
+
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לשנות סטטוס לקוח'
+      );
+    }
 
     // 2. Validation — reject derived-field inputs
     if (!data.clientId || typeof data.clientId !== 'string') {
@@ -779,6 +841,13 @@ exports.closeCase = functions.https.onCall(async (data, context) => {
     // 1. AUTH — only admin
     // ═══════════════════════════════════════
     const user = await checkUserPermissions(context);
+
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לסגור תיק'
+      );
+    }
 
     // ═══════════════════════════════════════
     // 2. VALIDATION

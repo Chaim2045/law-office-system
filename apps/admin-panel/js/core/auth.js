@@ -369,12 +369,6 @@
                     window.DataManager.cleanup();
                 }
 
-                // ✅ Cleanup NotificationBell listeners
-                if (window.notificationBell) {
-                    console.log('🔔 [Admin Panel] Cleaning up NotificationBell listeners');
-                    window.notificationBell.cleanup();
-                }
-
                 await this.auth.signOut();
 
                 console.log('✅ Logout successful');
@@ -553,24 +547,6 @@ this.passwordInput.value = '';
             if (this.adminName && this.currentUser) {
                 const displayName = this.currentUser.displayName || this.currentUser.email.split('@')[0];
                 this.adminName.textContent = displayName;
-            }
-
-            // ✅ NEW: Start listening to admin messages (for admins who are also users)
-            // This allows admins to receive notifications when they are in admin panel
-            if (window.notificationBell && this.currentUser && window.firebaseDB) {
-                console.log('🔔 [Admin Panel] Starting NotificationBell listener for', this.currentUser.email);
-                try {
-                    window.notificationBell.startListeningToAdminMessages(this.currentUser, window.firebaseDB);
-                    console.log('✅ [Admin Panel] NotificationBell listener started successfully');
-                } catch (error) {
-                    console.error('❌ [Admin Panel] Failed to start NotificationBell listener:', error);
-                }
-            } else {
-                console.warn('⚠️ [Admin Panel] Cannot start NotificationBell listener:', {
-                    hasNotificationBell: !!window.notificationBell,
-                    hasCurrentUser: !!this.currentUser,
-                    hasFirebaseDB: !!window.firebaseDB
-                });
             }
 
             // ✅ NEW: Initialize Idle Timeout for Admin Panel

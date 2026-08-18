@@ -53,7 +53,7 @@
 
             // Set content based on page
             button.innerHTML = `
-                <i class="fas fa-plus"></i>
+                <i class="fas ${this.getButtonIcon()}"></i>
                 <span class="fab-tooltip">${this.getButtonLabel()}</span>
             `;
 
@@ -79,7 +79,7 @@
                 case 'users':
                     return 'הוסף עובד חדש';
                 case 'clients':
-                    return 'הוסף לקוח חדש';
+                    return 'לקוחות ממתינים';
                 default:
                     return 'הוסף חדש';
             }
@@ -94,7 +94,7 @@
                 case 'users':
                     return 'fa-user-plus';
                 case 'clients':
-                    return 'fa-user-tie';
+                    return 'fa-hourglass-half';
                 default:
                     return 'fa-plus';
             }
@@ -110,7 +110,7 @@ return;
 }
 
             this.button.innerHTML = `
-                <i class="fas fa-plus"></i>
+                <i class="fas ${this.getButtonIcon()}"></i>
                 <span class="fab-tooltip">${this.getButtonLabel()}</span>
             `;
             this.button.setAttribute('aria-label', this.getButtonLabel());
@@ -178,22 +178,11 @@ return;
         }
 
         /**
-         * Open Add Client Modal
-         * פתיחת חלון הוספת לקוח
+         * Navigate to Pending Clients page
+         * ניווט לדף לקוחות ממתינים (H.6.c-5: replaced old manual create)
          */
         openAddClientModal() {
-            // ✅ Case Creation System v1.0 - Using new organized component
-            if (window.CaseCreationSystem?.show) {
-                console.log('📝 Opening Case Creation System v1.0...');
-                window.CaseCreationSystem.show('new-client');
-            } else if (window.caseCreationDialog?.show) {
-                // Fallback to global instance
-                console.log('📝 Opening Case Creation Dialog (global)...');
-                window.caseCreationDialog.show('new-client');
-            } else {
-                console.error('❌ Case Creation System not found');
-                alert('מערכת הוספת לקוחות לא זמינה');
-            }
+            window.location.href = 'pending-clients.html';
         }
 
         /**

@@ -3,6 +3,43 @@
 > Generated: 2026-02-26 16:35:28  
 > Git commit: `ff71201`
 
+> **⚠️ STALE SNAPSHOT (auto-generated 2026-02-26).** This is a point-in-time scan,
+> not a live inventory — it predates the entire H-phase and omits many current
+> Cloud Functions (e.g. `setEmployeeCost`, `getEmployeeCost`, `getProfitability`,
+> `recomputeProfitability`, `aggregateClientProfitability`, `validateSalesRecordExists`,
+> `exportSalesToBigQuery`). Treat it as historical until regenerated.
+>
+> **Correction (H.4, 2026-06-15):** the `approveTaskBudget` / `rejectTaskBudget`
+> entries in §2 (Frontend Calls) below were **never real Cloud Functions** — they
+> are absent from §1 (Backend Functions) because they were never implemented. The
+> frontend call-sites that referenced them (the dead task-approval gate) have been
+> removed: the admin copy was retired in H.4 PR-a (#376) and the user-app
+> `components/task-approval-system/` folder was deleted in H.4 PR-b. Model A (smart
+> budget meter) replaced the approval gate — see `docs/MASTER_PLAN.md` §8.6.
+>
+> **Correction (cleanup גל-3ד, 2026-07-30):** the **WhatsApp / Twilio surface is GONE.**
+> `functions/whatsapp/index.js` and its 4 CFs — `whatsappWebhook`, `sendBroadcastMessage`,
+> `sendWhatsAppApprovalNotification`, `onApprovalCreated` (listed in §1/§2 below) — were
+> deleted and removed from prod in PR #474 (frontend) + #475 (backend). The
+> `function_monitor_*` POC (its `function-monitor*.js` modules + the
+> `function-monitor-analytics.html` dashboard, referenced below) was likewise retired
+> (S1 #477 locked `function_monitor_logs` → `if false`; S3 #479 deleted the modules).
+> The collections `whatsapp_approval_notifications` / `whatsapp_bot_interactions` /
+> `function_monitor_logs` have no live reader/writer. Treat every WhatsApp/Twilio and
+> function-monitor row below as HISTORICAL.
+>
+> **Correction (security red-team, 2026-08-10):** the management Cloud Functions listed
+> in §1 — `addPackageToService`, `addHoursPackageToStage`, `moveToNextStage`,
+> `completeService`, `changeServiceStatus`, `deleteService`, `updatePackagePurchaseDate`
+> (services/index.js) + `changeClientStatus`, `closeCase` (clients/index.js) — now carry
+> an explicit `if (user.role !== 'admin') throw permission-denied` gate immediately after
+> `checkUserPermissions` (PR #536, merged + deployed 2026-08-10). Before #536 these
+> verified authentication but NOT role, so a non-admin employee with a valid token could
+> invoke them directly (bypassing the UI) — an authorization-bypass class closed by #536.
+> `addServiceToClient` + `createClient` are NOT in that set yet (user-app case-creation
+> path) — their admin-only lockdown is **PR-SEC-A2 (PR #537, open — not yet merged/deployed)**.
+> See `docs/MASTER_PLAN.md` §14 (the 2026-08-10 Security red-team entry) for the full picture.
+
 ---
 
 ## 1. Backend Functions

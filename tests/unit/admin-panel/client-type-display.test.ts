@@ -10,6 +10,12 @@
 
 import { describe, it, expect } from 'vitest';
 
+// renderTypeTooltip's leaf-text escaper now delegates to the shared SSOT
+// window.escapeHtml (escapeHtml-dedup PR1) — import it first so the global is
+// defined when the tooltip renders.
+// @ts-ignore — classic admin-panel script, no type declarations
+import '../../../apps/admin-panel/js/core/escape-html.js';
+
 // @ts-ignore — CommonJS require from TypeScript ESM test
 import {
   computeClientTypeDisplay,

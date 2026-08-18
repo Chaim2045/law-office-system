@@ -1,0 +1,32 @@
+# Rubric — PR-GOLDENS-1: characterization tests for `completeTask` + `cancelBudgetTask` (budget-tasks)
+
+**Scope:** First package of the **financial-correctness "goldens" track** decided at the post-cleanup REASSESS (2026-07-31): after the TS-safe-tier closed, the Lead-Agent recommended + Haim agreed to CLOSE the mechanical TS-financial-core migration (low value / high risk) and instead do the two REAL correctness moves — **(1) OWN-2 → enforce [DONE, 2026-07-31]** + **(2) characterization goldens on the under-tested financial writers**. A read-only test-coverage sweep found `functions/budget-tasks/index.js` is the biggest hole (5/7 CFs have ZERO behavior tests). This PR pins the two highest-blast-radius state-transition CFs: `completeTask` + `cancelBudgetTask`. **Test-only, additive — zero production-code change.**
+
+**What "characterization goldens" are:** tests that pin the CURRENT behavior AS-IS (quirks included), so any future change (esp. a JS→TS rewrite of this module) that silently alters the transition logic, the gap math, the side-effects, the auth gates, or the money-protection blocks is caught. They assert what the code DOES today, NOT what it "should" do. A characterization test that does not pass against the current code is WRONG by definition.
+
+## MUST
+- **M1 — pins CURRENT behavior + verified green.** All assertions match the actual source (`budget-tasks/index.js` `completeTask` :538-703, `cancelBudgetTask` :741-903), verified by the Lead-Agent reading both CFs line-by-line. **18/18 pass locally** against this repo's code (legacy-js jest, borrowing a sibling clone's full `node_modules` via `modulePaths` because this repo's `functions/node_modules` is partial — no jest/firebase-functions; same limitation as the existing budget-task suites, which also only run in CI). Runs in CI under the `legacy-js` jest project (`testMatch` `<rootDir>/**/*.test.js`).
+- **M2 — no production-code change.** The PR adds exactly ONE file: `functions/tests/budget-task-complete-cancel.test.js`. No `functions/**/*.js` (non-test) touched, no rules/schema/config. Inherently prod-safe (a test file cannot affect the deployed CF).
+- **M3 — the high-value quirks are pinned** (with explicit inline comments so a future editor knows they're intentional characterizations, not accidental):
+  - `completeTask` has **NO already-completed guard → RE-RUNNABLE** on a `'הושלם'` task (contrast adjustTaskBudget/cancelBudgetTask which block by status).
+  - `completeTask` writes a `task_completion_alerts` doc **ONLY when gapPercent ≥ 50** (isCritical); the alert `gapMinutes` uses the double-`Math.abs` re-derivation; status `'pending'`.
+  - `completeTask` gapPercent = `est>0 ? Math.abs((actual-est)/est*100) : 0` (forced 0 when est≤0, not NaN/Infinity); `Math.round` on persist + return.
+  - `cancelBudgetTask` **dual auth**: `employee.isAdmin===true OR role==='admin' OR owner` (differs from completeTask's role-only check).
+  - `cancelBudgetTask` blocks cancel when `actualMinutes>0` (money-protection, hours in the Hebrew message via `.toFixed(2)`).
+  - `cancelBudgetTask` `return.cancelledAt` is a fresh JS ISO string that **diverges** from the `serverTimestamp` sentinel persisted on the doc.
+- **M4 — harness mirrors the repo's canonical fake.** Copies the SDK-boundary mock + order-keyed `transaction.get` + `_collection`-tagged write filters from `tests/budget-task-idempotency.test.js`; the two extensions (the non-txn `pending_task_approvals` `where().limit().get()` query for cancel; the `collection('task_completion_alerts').add()` spy for complete's critical path) are documented in-file. `../shared/*` + `../addTimeToTask_v2` mocked at the same boundaries; `test/setup.js` (the sacred console mock) untouched.
+- **M5 — characterization discipline.** Every assertion pins observed behavior; NO test asserts a "corrected" value or fixes a quirk. Covers, per CF: the validation/auth/precondition reject paths (exact Hebrew + HttpsError code), the happy-path write payloads, the side-effect docs (alert / approval-update), the audit call, and the return shape.
+
+## PRODUCT-GRADE GATES
+- **G1 (errors):** N/A — test-only; no customer-facing code path added.
+- **G2 (rollback):** `git revert <sha>` (or delete the one test file). Trivial, no deploy, no data.
+- **G3 (monitoring):** N/A — no data mutation (the tests mock the SDK boundary; nothing writes to Firestore).
+- **G4 (test proves the scenario):** PASS — this PR **is** the test. It exercises the real CF handlers end-to-end (input → validation → transaction body → writes → return), mocking only the SDK boundary (not the logic) — exactly the §2.3 "integration-level, mock the SDK boundary not the logic" bar. 18 scenarios mirroring what an admin/employee actually does (complete a task, cancel a task, the reject paths).
+- **G5 (Hebrew UI):** N/A — no new customer-facing strings; the Hebrew literals in assertions are PINNED from the existing code (contract anchors), not authored here.
+- **G6 (breaking change):** none — additive test file; no schema/API/route/default change.
+- **G7 (security):** N/A-with-note — the tests PIN the authorization gates (completeTask owner-or-admin; cancelBudgetTask dual-admin-or-owner) + the money-protection block, adding a regression safety net for that logic, but change NO auth code. Not a §3.8.4 trigger.
+
+## Anti-premature-closure
+- **devils-advocate declared-skip (justified):** test-only, additive, zero production-code change → not a §3.8.4 high-stakes trigger (no schema/rules/claim/migration/refactor-of-prod-code). The residual risk (a mis-captured assertion) is caught by the tests themselves failing against current code — and they were run green (18/18). The grader + CI are the gates.
+- **Decomposition (per the coverage-sweep recommendation):** PR #1 = completeTask + cancelBudgetTask (this — the two highest-blast-radius state-transition mutators, reusing the existing txn-get harness). PR #2 = createBudgetTask doc-shape/approval + adjustTaskBudget budget-semantics + getBudgetTasks. PR #3 = extendTaskDeadline (direct-get/direct-update harness + the audit-throws-fails-call quirk) + the addTimeToTask wrapper. Then the next writer (timesheet/helpers — 0 tests) as its own package.
+- **Why goldens BEFORE any rewrite:** these tests are the prerequisite safety net for the deferred financial-core TS migration (`docs/PLAN-TS-FINANCIAL-CORE-2026-07.md`, DRAFT) AND immediately valuable standalone — they close a real §2.3 test-coverage gap on live financial CFs regardless of whether the rewrite ever happens.

@@ -12,35 +12,76 @@
  * נמנעת code duplication בין מודולים שונים
  *
  * ════════════════════════════════════════════════════════════════════
- * CHANGELOG | יומן שינויים
+ * SSOT: shared-web/src/modules/service-card-renderer.js — NEVER edit the
+ * emitted copies under apps/admin-panel/js/modules/ or apps/user-app/js/modules/.
+ * Edit HERE and run `npm run emit:shared` (see shared-web/README.md).
+ *
+ * Per-app parameterization via the emit-injected APP_CONTEXT constant
+ * (PR-SHARE-6, docs/PLAN-SHARED-CODE-MECHANISM.md §2.3 / §7.6):
+ *   SHOW_FINANCIALS = (APP_CONTEXT === 'admin')  — FAIL-SECURE, default-deny.
+ *   'admin' → the fixed-price card renders financials (price + hours-worked +
+ *             entries). Management-only surface.
+ *   'user'  → the fixed-price card renders ONLY the "שירות קבוע" badge — no ₪,
+ *             no price, no hours-worked, no entries. Staff surface.
+ * A mis-stamped / empty / unexpected APP_CONTEXT yields SHOW_FINANCIALS=false →
+ * the staff-safe render. There is NO code path where a wrong flag reveals price.
+ * The confidentiality invariant is enforced mechanically by the drift-guard
+ * (tests/unit/shared/shared-web-emit.sync.test.ts) which renders a fixed-price
+ * fixture through the USER emitted copy and asserts the output has no financials.
+ *
  * ════════════════════════════════════════════════════════════════════
- *
- * v1.1.0 - 19/01/2025
- * -------------------
- * 🔄 רפקטורינג: שימוש ב-safeText גלובלי
- * ✅ REFACTORED: משתמש ב-window.safeText במקום יישום מקומי (lines 22-29)
- * 🎯 מטרה: Single Source of Truth להגנת XSS
- *
- * שינויים:
- * - מחק יישום מקומי של escapeHtml
- * - משתמש ב-window.safeText מ-core-utils.js
- * - שומר על fallback לבטיחות
+ * 4-HUNK UNIFY (PR-SHARE-6) — how the two prior copies were reconciled:
+ *   H1 (escape)  — canonical uses the shared SSOT `window.escapeHtml`, with an
+ *                  INLINE 5-entity fallback (& < > " ') so it adds NO new
+ *                  load-order dependency. admin loads escape-html.js → uses the
+ *                  SSOT; user-app has no escape-html.js → uses the inline
+ *                  fallback (an UPGRADE from its former 3-entity temp-div).
+ *   H2 (hours)   — remaining-hours adopts ADMIN behavior: when a service has
+ *                  packages but none active → 0 (do NOT fall back to the
+ *                  service-level `hoursRemaining`). The no-packages path
+ *                  (`entity.hoursRemaining || 0`) was identical in both — kept.
+ *   H3 (title)   — hours-service title adopts USER behavior (wrong-service
+ *                  prevention): `service.name || 'שירות שעות · נותרו X ש''`,
+ *                  subtitle 'תוכנית שעות'. Hours are computed BEFORE the title so
+ *                  the no-name fallback can use `hoursRemaining`.
+ *   H4 (fixed)   — §7.6 confidentiality via SHOW_FINANCIALS (above).
+ * ════════════════════════════════════════════════════════════════════
  */
 
 (function() {
   'use strict';
 
+  // APP_CONTEXT is injected per target by shared-web/emit.js:
+  //   'admin' when emitted into apps/admin-panel/js/…
+  //   'user'  when emitted into apps/user-app/js/…
+  // The sentinel comment below is the injection anchor. The default 'user' is the
+  // fail-secure non-privileged value: anything other than the exact literal 'admin'
+  // keeps financials OFF (staff-safe). See shared-web/README.md + check-6.
+  const APP_CONTEXT = /*__APP_CONTEXT__*/ 'admin';
+
+  // §7.6 confidentiality — default-DENY. Financials (price/cost/hours-worked/
+  // entries) render ONLY for the exact literal 'admin'. Any other value → false →
+  // staff-safe render. This is the crux invariant the drift-guard enforces.
+  const SHOW_FINANCIALS = (APP_CONTEXT === 'admin');
+
   /**
-   * ✅ Use global safeText from core-utils.js (Single Source of Truth)
-   * Aliased as escapeHtml for backward compatibility
+   * HTML-escape (H1). Prefer the shared SSOT window.escapeHtml (admin loads
+   * apps/admin-panel/js/core/escape-html.js before this script — 5-entity,
+   * attribute-safe). Fall back to an INLINE 5-entity escaper so this module adds
+   * NO new load-order dependency: the user app has NO escape-html.js and NO
+   * window.escapeHtml, so it uses the inline fallback below — which escapes all
+   * five entities (& < > " '), an upgrade from the previous 3-entity temp-div.
    */
-  const escapeHtml = window.safeText || function(text) {
-    if (!text) {
+  const escapeHtml = window.escapeHtml || function(text) {
+    if (text === null || text === undefined) {
 return '';
 }
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   };
 
   /**
@@ -74,7 +115,8 @@ return 0;
         }, 0);
     }
 
-    // Regular service with packages
+    // Regular service with packages (H2 — adopt admin behavior: packages but none
+    // active → 0, NO fallback to the service-level hoursRemaining).
     if (entity.packages && Array.isArray(entity.packages) && entity.packages.length > 0) {
       return entity.packages
         .filter(pkg => pkg.status === 'active' || !pkg.status)
@@ -141,14 +183,19 @@ window.calculateHoursUsed = calculateHoursUsed;
     if (type === 'hours') {
       // תוכנית שעות
       iconClass = 'fa-briefcase';
-      title = 'תוכנית שעות';
-      subtitle = service.name;
 
-      // חישוב שעות
+      // חישוב שעות (computed before the title so the no-name fallback below can use it)
       const totalHours = window.calculateTotalHours ? window.calculateTotalHours(service) : (service.totalHours || 0);
       const hoursUsed = window.calculateHoursUsed ? window.calculateHoursUsed(service) : 0;
       const hoursRemaining = window.calculateRemainingHours ? window.calculateRemainingHours(service) : 0;
       const progressPercent = totalHours > 0 ? Math.round((hoursUsed / totalHours) * 100) : 0;
+
+      // ✅ Wrong-service-prevention (H3): the card title MUST be the service's
+      // real name — never the generic constant, or two hours services on the same
+      // client render identical, indistinguishable cards. Fallback (no name) uses a
+      // distinguishing descriptor, never a bare shared constant.
+      title = service.name || `שירות שעות · נותרו ${hoursRemaining.toFixed(1)} ש'`;
+      subtitle = 'תוכנית שעות';
 
       statsHtml = `
         <div style="margin-top: 12px;">
@@ -264,37 +311,62 @@ window.calculateHoursUsed = calculateHoursUsed;
         `;
       }
     } else if (type === 'fixed') {
-      // שירות במחיר קבוע
-      iconClass = 'fa-shekel-sign';
-      title = service.name || 'שירות קבוע';
-      subtitle = service.description || 'שירות במחיר קבוע';
+      if (SHOW_FINANCIALS) {
+        // שירות במחיר קבוע — MANAGEMENT surface (§7.6): price + hours-worked + entries.
+        iconClass = 'fa-shekel-sign';
+        title = service.name || 'שירות קבוע';
+        subtitle = service.description || 'שירות במחיר קבוע';
 
-      const price = service.fixedPrice !== null && service.fixedPrice !== undefined ? `₪${Number(service.fixedPrice).toLocaleString()}` : '';
-      const minutesWorked = service.work?.totalMinutesWorked || 0;
-      const hoursWorked = (minutesWorked / 60).toFixed(1);
-      const entriesCount = service.work?.entriesCount || 0;
+        const price = service.fixedPrice !== null && service.fixedPrice !== undefined ? `₪${Number(service.fixedPrice).toLocaleString()}` : '';
+        const minutesWorked = service.work?.totalMinutesWorked || 0;
+        const hoursWorked = (minutesWorked / 60).toFixed(1);
+        const entriesCount = service.work?.entriesCount || 0;
 
-      statsHtml = `
-        <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
-          <div style="
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 10px;
-            background: #f0fdf4;
-            border-radius: 6px;
-            border: 1px solid #86efac;
-          ">
-            <i class="fas fa-shekel-sign" style="color: #22c55e; font-size: 12px;"></i>
-            <span style="color: #166534; font-weight: 500; font-size: 12px;">פיקס ${price}</span>
+        statsHtml = `
+          <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="
+              display: inline-flex;
+              align-items: center;
+              gap: 6px;
+              padding: 8px 10px;
+              background: #f0fdf4;
+              border-radius: 6px;
+              border: 1px solid #86efac;
+            ">
+              <i class="fas fa-shekel-sign" style="color: #22c55e; font-size: 12px;"></i>
+              <span style="color: #166534; font-weight: 500; font-size: 12px;">פיקס ${price}</span>
+            </div>
+            ${minutesWorked > 0 ? `
+            <div style="font-size: 11px; color: #6b7280;">
+              <i class="fas fa-clock" style="margin-left: 4px;"></i>
+              ${hoursWorked} שעות עבודה (${entriesCount} רשומות)
+            </div>` : ''}
           </div>
-          ${minutesWorked > 0 ? `
-          <div style="font-size: 11px; color: #6b7280;">
-            <i class="fas fa-clock" style="margin-left: 4px;"></i>
-            ${hoursWorked} שעות עבודה (${entriesCount} רשומות)
-          </div>` : ''}
-        </div>
-      `;
+        `;
+      } else {
+        // שירות במחיר קבוע — STAFF surface: ONLY the badge. No financial data
+        // (no price/cost/hours-worked/entries) — fail-secure default under §7.6.
+        iconClass = 'fa-file-contract';
+        title = service.name || 'שירות קבוע';
+        subtitle = service.description || '';
+
+        statsHtml = `
+          <div style="margin-top: 12px;">
+            <div style="
+              display: inline-flex;
+              align-items: center;
+              gap: 6px;
+              padding: 8px 10px;
+              background: #f0fdf4;
+              border-radius: 6px;
+              border: 1px solid #86efac;
+            ">
+              <i class="fas fa-check-circle" style="color: #22c55e; font-size: 12px;"></i>
+              <span style="color: #166534; font-weight: 500; font-size: 12px;">שירות קבוע</span>
+            </div>
+          </div>
+        `;
+      }
     }
 
     // 🎯 Stage Badge להליכים משפטיים - קומפקטי וקל

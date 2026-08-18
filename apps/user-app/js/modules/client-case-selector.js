@@ -400,6 +400,13 @@
               בחר שירות
               ${this.options.required ? '<span style="color: #ef4444;">*</span>' : ''}
             </label>
+            <div id="${this.containerId}_serviceHint" style="
+              display: none;
+              font-size: 12px;
+              color: #64748b;
+              margin-top: 4px;
+              text-align: right;
+            "></div>
             <div id="${this.containerId}_servicesCards" style="
               display: grid;
               grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -594,10 +601,10 @@ return false;
             onmouseout="this.style.background='white'"
           >
             <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">
-              ${client.fullName}
+              ${this.escapeHtml(client.fullName)}
             </div>
             <div style="font-size: 12px; color: #6b7280;">
-              ${client.id || ''} ${client.phone ? '• ' + client.phone : ''}
+              ${this.escapeHtml(client.id || '')} ${client.phone ? '• ' + this.escapeHtml(client.phone) : ''}
             </div>
           </div>
         `).join('');
@@ -806,12 +813,12 @@ return false;
         const hoursInfo = caseItem.procedureType === 'hours'
           ? `${caseItem.hoursRemaining || 0} שעות נותרות`
           : caseItem.procedureType === 'legal_procedure'
-          ? `שלב ${caseItem.currentStage || 'א'}`
+          ? `שלב ${this.escapeHtml(caseItem.currentStage || 'א')}`
           : '';
 
         return `
           <option value="${caseItem.id}">
-            ${icon} ${caseItem.caseNumber} - ${caseItem.caseTitle || 'ללא כותרת'} ${hoursInfo ? '(' + hoursInfo + ')' : ''}
+            ${icon} ${this.escapeHtml(caseItem.caseNumber)} - ${this.escapeHtml(caseItem.caseTitle || 'ללא כותרת')} ${hoursInfo ? '(' + hoursInfo + ')' : ''}
           </option>
         `;
       }).join('');
@@ -955,7 +962,7 @@ return;
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
           <i class="fas fa-check-circle" style="color: #3b82f6;"></i>
           <span style="font-weight: 600; color: #1e40af;">
-            ${icon} ${caseItem.caseNumber} - ${caseItem.caseTitle}
+            ${icon} ${this.escapeHtml(caseItem.caseNumber)} - ${this.escapeHtml(caseItem.caseTitle)}
           </span>
         </div>
       `;
@@ -969,7 +976,7 @@ return;
       } else if (caseItem.procedureType === 'legal_procedure') {
         infoHtml += `
           <div style="font-size: 13px; color: #0369a1;">
-            📋 שלב נוכחי: ${caseItem.currentStage || 'שלב א'}
+            📋 שלב נוכחי: ${this.escapeHtml(caseItem.currentStage || 'שלב א')}
           </div>
         `;
       }
@@ -1139,6 +1146,20 @@ return;
       // סה"כ שירותים/שלבים פעילים (כולל fixed)
       const totalActive = activeServices.length + allActiveStages.length + activeFixedServices.length;
 
+      // ✅ Wrong-service-prevention spec §4.6: when the client has ≥2 services the
+      // choice is genuinely ambiguous (no auto-select) — show a persistent, low-contrast
+      // hint in the reading path so the user notices there IS a choice to make.
+      const serviceHint = document.getElementById(`${this.containerId}_serviceHint`);
+      if (serviceHint) {
+        if (!isLegacyCase && totalActive >= 2) {
+          serviceHint.textContent = 'ללקוח הזה יש כמה שירותים — בחר את זה שהעבודה שייכת אליו.';
+          serviceHint.style.display = 'block';
+        } else {
+          serviceHint.textContent = '';
+          serviceHint.style.display = 'none';
+        }
+      }
+
       if (isLegacyCase) {
         // תיק ישן - בחירה אוטומטית
         this.selectService(caseItem.id, 'hours');
@@ -1274,6 +1295,13 @@ return;
 return;
 }
 
+      // ✅ once a service is selected the multi-service hint (§4.6) no longer applies —
+      // the persistent banner below takes over as the recognition cue (§4.2)
+      const serviceHint = document.getElementById(`${this.containerId}_serviceHint`);
+      if (serviceHint) {
+        serviceHint.style.display = 'none';
+      }
+
       // ✅ אם hideServiceCards מופעל - אל תציג את הכרטיסייה
       if (this.options.hideServiceCards) {
         servicesCards.innerHTML = ''; // ריקון הכרטיסייה
@@ -1285,14 +1313,20 @@ return;
 
       if (type === 'hours') {
         iconClass = 'fa-briefcase';
-        title = 'תוכנית שעות';
-        subtitle = serviceData.name;
 
-        // ✅ Calculate from packages (Single Source of Truth)
+        // ✅ Calculate from packages (Single Source of Truth) — moved above the
+        // title so the no-name fallback (below) can use hoursRemaining.
         const totalHours = window.calculateTotalHours ? window.calculateTotalHours(serviceData) : (serviceData.totalHours || 90);
         const hoursUsed = window.calculateHoursUsed ? window.calculateHoursUsed(serviceData) : 0;
         const hoursRemaining = window.calculateRemainingHours ? window.calculateRemainingHours(serviceData) : 0;
         const progressPercent = totalHours > 0 ? Math.round((hoursUsed / totalHours) * 100) : 0;
+
+        // ✅ Wrong-service-prevention spec §4.1 (adversarial-review Finding 2,
+        // 2026-07-26): the post-selection card title must stay the real service
+        // name the user just confirmed — never fall back to the generic constant,
+        // same fallback rule as service-card-renderer.js's multi-card view.
+        title = serviceData.name || `שירות שעות · נותרו ${hoursRemaining.toFixed(1)} ש'`;
+        subtitle = 'תוכנית שעות';
 
         statsHtml = `
           <div style="margin-top: 12px;">
@@ -1449,13 +1483,27 @@ return;
       // 🏷️ מספר תיק - Removed (redundant in selected state)
       const caseNumberBadge = ''; // ✅ FIXED: Don't show case number badge when service is selected
 
-      // תצוגה נקייה - Tech Minimalist selected state
-      servicesCards.innerHTML = `
-        <div style="
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        ">
+      // ✅ Wrong-service-prevention spec §4.2: persistent "רושם על: [שירות]" banner —
+      // always visible while a service is selected, reading the LIVE hidden-field
+      // values (getSelectedValues, the same values that will be submitted) so the
+      // user never has to remember what they picked (recognition-over-recall).
+      const bannerValues = this.getSelectedValues();
+      const bannerStageName = type === 'legal_procedure'
+        ? (window.SystemConstantsHelpers?.getStageName?.(serviceData.id) || serviceData.name || '')
+        : null;
+      // Adversarial-review Finding 4 (2026-07-26): never render a dangling
+      // "רושם על: " label with no value. Resolve a name from getSelectedValues()
+      // first (the SSOT for what will be submitted), falling back to serviceData
+      // itself; if BOTH are empty, suppress the whole banner — matching how
+      // dialogs.js:~169 already suppresses its banner when task.serviceName is absent.
+      const resolvedServiceName = bannerValues.serviceName || (serviceData && serviceData.name) || '';
+      const bannerText = resolvedServiceName
+        ? (bannerStageName
+          ? `רושם על: ${resolvedServiceName} · שלב ${bannerStageName}`
+          : `רושם על: ${resolvedServiceName}`)
+        : '';
+      const bannerHtml = bannerText
+        ? `
           <div style="
             display: flex;
             align-items: center;
@@ -1463,10 +1511,22 @@ return;
             color: #10b981;
             font-weight: 600;
             font-size: 14px;
+            text-align: right;
           ">
             <i class="fas fa-check-circle"></i>
-            <span>שירות נבחר:</span>
+            <span>${this.escapeHtml(bannerText)}</span>
           </div>
+        `
+        : '';
+
+      // תצוגה נקייה - Tech Minimalist selected state
+      servicesCards.innerHTML = `
+        <div style="
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        ">
+          ${bannerHtml}
 
           <div style="
             padding: 15px;

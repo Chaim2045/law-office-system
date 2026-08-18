@@ -1,0 +1,523 @@
+/* ═══════════════════════════════════════════
+   Employee Costs Page (H.3 PR2)
+   ───────────────────────────────────────────
+   New page — clears the Design Bar from day one.
+   - design-system.css tokens ONLY (no hex/px literals, no parallel tokens)
+   - RTL Hebrew
+   - :focus-visible on every interactive element (--blue ring)
+   - WCAG AA: --blue used only as a ring / background-with-white-text,
+     never as a normal-size text color (3.7:1 on white fails AA).
+   - Motion via --transition-* tokens (reduced-motion-safe), never literals.
+   ═══════════════════════════════════════════ */
+
+.ec-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4);
+}
+
+/* ── Header ─────────────────────────────────── */
+
+.ec-header {
+  margin-bottom: var(--space-6);
+}
+
+.ec-header h1 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--gray-900);
+  margin: 0 0 var(--space-1);
+}
+
+.ec-header h1 i {
+  color: var(--gray-500);
+  font-size: var(--text-2xl);
+}
+
+.ec-subtitle {
+  font-size: var(--text-base);
+  color: var(--gray-600);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Toolbar (search + count) ───────────────── */
+
+.ec-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.ec-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 220px;
+}
+
+.ec-search > i {
+  position: absolute;
+  inset-inline-start: var(--space-3);
+  color: var(--gray-400);
+  font-size: var(--text-base);
+  pointer-events: none;
+}
+
+.ec-search-input {
+  width: 100%;
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-3);
+  padding-inline-start: var(--space-9);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--gray-900);
+  font-size: var(--text-base);
+  font-family: inherit;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.ec-search-input:hover {
+  border-color: var(--gray-400);
+}
+
+.ec-search-input:focus-visible {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 25%);
+}
+
+.ec-count {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--gray-600);
+  white-space: nowrap;
+}
+
+/* ── Table ──────────────────────────────────── */
+
+.ec-list-wrap {
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.ec-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-base);
+}
+
+.ec-table thead th {
+  text-align: start;
+  padding: var(--space-3) var(--space-4);
+  background: var(--gray-50);
+  color: var(--gray-700);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+  border-bottom: 1px solid var(--gray-200);
+  white-space: nowrap;
+}
+
+.ec-table tbody td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--gray-100);
+  color: var(--gray-900);
+  vertical-align: middle;
+}
+
+.ec-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ec-table tbody tr:hover td {
+  background: var(--gray-50);
+}
+
+.ec-name-cell {
+  font-weight: var(--font-semibold);
+}
+
+.ec-email-cell {
+  color: var(--gray-600);
+  font-size: var(--text-sm);
+}
+
+.ec-actions-col {
+  text-align: end;
+  white-space: nowrap;
+  width: 1%;
+}
+
+/* ── Set-cost button (table row) ────────────── */
+
+.ec-set-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  color: var(--gray-900);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.ec-set-btn:hover {
+  background: #fff;
+  border-color: var(--gray-400);
+  box-shadow: var(--shadow-sm);
+}
+
+.ec-set-btn:focus-visible {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 25%);
+}
+
+/* ── Empty state (no employees / no search match) ── */
+
+.ec-empty-row td {
+  padding: 0;
+}
+
+.ec-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-10) var(--space-4);
+  color: var(--gray-500);
+  text-align: center;
+}
+
+.ec-empty i {
+  font-size: var(--text-3xl);
+  color: var(--gray-300);
+}
+
+.ec-empty p {
+  margin: 0;
+  font-size: var(--text-base);
+}
+
+/* ═══════════════════════════════════════════
+   Modal form (rendered inside ModalManager)
+   ═══════════════════════════════════════════ */
+
+.ec-modal-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--gray-600);
+}
+
+.ec-modal-state p {
+  margin: 0;
+  font-size: var(--text-base);
+}
+
+.ec-modal-state--error i {
+  font-size: var(--text-2xl);
+  color: var(--red-dark);
+}
+
+.ec-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--gray-200);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: ec-spin var(--transition-slow) linear infinite;
+}
+
+.ec-spinner--inline {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+  display: inline-block;
+  vertical-align: -2px;
+}
+
+@keyframes ec-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-spinner {
+    animation-duration: 1200ms;
+  }
+}
+
+.ec-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Current cost block (existing value) */
+.ec-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+}
+
+.ec-current--empty {
+  justify-content: flex-start;
+  color: var(--gray-600);
+  font-size: var(--text-sm);
+}
+
+.ec-current--empty i {
+  color: var(--gray-400);
+}
+
+.ec-current-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--gray-600);
+}
+
+.ec-current-value {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--gray-900);
+  font-variant-numeric: tabular-nums;
+}
+
+.ec-currency {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--gray-500);
+}
+
+/* Field */
+.ec-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ec-field label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--gray-700);
+}
+
+.ec-req {
+  color: var(--red-dark);
+}
+
+.ec-cost-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ec-input {
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--gray-900);
+  font-size: var(--text-base);
+  font-family: inherit;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.ec-cost-input-wrap .ec-input {
+  padding-inline-end: var(--space-11);
+}
+
+.ec-input:hover {
+  border-color: var(--gray-400);
+}
+
+.ec-input:focus-visible {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 25%);
+}
+
+.ec-input:disabled {
+  background: var(--gray-100);
+  color: var(--gray-500);
+  cursor: not-allowed;
+}
+
+.ec-input-suffix {
+  position: absolute;
+  inset-inline-end: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--gray-500);
+  pointer-events: none;
+}
+
+.ec-select {
+  appearance: none;
+  cursor: pointer;
+}
+
+.ec-hint {
+  font-size: var(--text-xs);
+  color: var(--gray-500);
+}
+
+.ec-currency-note {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--gray-500);
+}
+
+/* Inline form error.
+   Background = an 8% tint of --red (#ef4444), derived the same way
+   design-system.css derives its blue focus ring (rgb(59 130 246 / 10%)) —
+   no `--red-bg` token exists, so the tint is expressed from the red channel
+   values rather than introducing a parallel token. */
+.ec-form-error {
+  display: none;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: rgb(239 68 68 / 8%);
+  border: 1px solid var(--red-light);
+  color: var(--red-dark);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
+
+.ec-form-error--show {
+  display: block;
+}
+
+/* Form actions */
+.ec-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+/* ── Buttons (modal + states) ───────────────── */
+
+.ec-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.ec-btn--primary {
+  background: var(--blue-dark);
+  color: #fff;
+}
+
+.ec-btn--primary:hover {
+  background: var(--blue);
+}
+
+.ec-btn--primary:disabled {
+  background: var(--gray-300);
+  color: var(--gray-500);
+  cursor: not-allowed;
+}
+
+.ec-btn--secondary {
+  background: var(--gray-50);
+  color: var(--gray-900);
+  border-color: var(--gray-300);
+}
+
+.ec-btn--secondary:hover {
+  background: #fff;
+  border-color: var(--gray-400);
+  box-shadow: var(--shadow-sm);
+}
+
+.ec-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 25%);
+}
+
+/* ═══════════════════════════════════════════
+   Access-denied + load-error states
+   ═══════════════════════════════════════════ */
+
+.ec-access-denied,
+.ec-load-error {
+  max-width: 480px;
+  margin: var(--space-12) auto;
+  padding: var(--space-8) var(--space-6);
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+}
+
+.ec-access-denied i,
+.ec-load-error i {
+  font-size: var(--text-3xl);
+  color: var(--gray-400);
+  margin-bottom: var(--space-3);
+}
+
+.ec-load-error i {
+  color: var(--orange-dark);
+}
+
+.ec-access-denied h1,
+.ec-load-error h1 {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--gray-900);
+  margin: 0 0 var(--space-2);
+}
+
+.ec-access-denied p,
+.ec-load-error p {
+  font-size: var(--text-base);
+  color: var(--gray-600);
+  line-height: 1.5;
+  margin: 0 0 var(--space-5);
+}
+
+/* ── Responsive ─────────────────────────────── */
+
+@media (width <= 640px) {
+  .ec-email-cell {
+    display: none;
+  }
+
+  .ec-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

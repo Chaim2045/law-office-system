@@ -5,8 +5,14 @@ rules_version = '2';
  * FIREBASE STORAGE SECURITY RULES
  * ════════════════════════════════════════════════════════════════════════════
  *
- * Last Updated: 2025-12-09
- * Purpose: Secure storage for client fee agreements (PDF/Images)
+ * Last Updated: 2026-06-16
+ * Purpose: Secure storage for fee agreements (PDF/Images) on clients/ AND cases/
+ *
+ * NOTE: signed agreement objects are accessed via short-lived signed URLs minted
+ * by the admin-gated `getFeeAgreementUrl` Cloud Function (Admin SDK signs,
+ * bypassing these rules by design). These rules are the defense-in-depth backstop
+ * for any direct client-SDK access — the actual access control is admin-gated CF +
+ * private object ACLs (the legacy public ACLs are revoked by a one-time migration).
  *
  * ════════════════════════════════════════════════════════════════════════════
  */
@@ -45,6 +51,25 @@ service firebase.storage {
     // Client Fee Agreements
     // Path: /clients/{clientId}/agreements/{fileName}
     match /clients/{clientId}/agreements/{fileName} {
+      // Read: Admin only
+      allow read: if isAdmin();
+
+      // Write: Admin only + file validation
+      allow write: if isAdmin() &&
+                      isValidFileSize() &&
+                      isValidFileType();
+
+      // Delete: Admin only
+      allow delete: if isAdmin();
+    }
+
+    // Case Fee Agreements
+    // Path: /cases/{caseId}/agreements/{fileName}
+    // Added 2026-06-16 (security remediation) — the WhatsApp upload path writes
+    // agreements to cases/ as well as clients/ (WhatsAppBot.js entityType==='case').
+    // Mirrors the clients/ block above so the cases/ path expresses admin-only
+    // intent explicitly instead of relying on the catch-all default-deny.
+    match /cases/{caseId}/agreements/{fileName} {
       // Read: Admin only
       allow read: if isAdmin();
 

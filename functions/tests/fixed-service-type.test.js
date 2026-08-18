@@ -147,7 +147,7 @@ jest.mock('../shared/auth', () => ({
     uid: 'user1',
     email: 'test@test.com',
     username: 'testuser',
-    role: 'manager'
+    role: 'admin'
   }))
 }));
 

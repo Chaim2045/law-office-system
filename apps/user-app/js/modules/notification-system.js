@@ -485,7 +485,12 @@ return;
     const {
       title = 'הודעה',
       okText = 'הבנתי',
-      type = 'success'
+      type = 'success',
+      // Optional overrides (additive — callers that omit them keep the type-based
+      // default). Lets a caller pick a specific icon/color, e.g. a calm gray cloud
+      // for the "no internet" popup, without editing the shared type→icon map.
+      icon: iconOverride = null,
+      color: colorOverride = null
     } = options;
 
     // Create overlay
@@ -496,9 +501,9 @@ return;
     overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-labelledby', 'alert-title');
 
-    const icon = NotificationIcons[type];
+    const icon = iconOverride || NotificationIcons[type];
     // Use blue color for success instead of green
-    const color = type === 'success' ? '#3b82f6' : NotificationColors[type];
+    const color = colorOverride || (type === 'success' ? '#3b82f6' : NotificationColors[type]);
 
     // Parse structured message (detect lines with specific patterns)
     const messageHtml = this.parseStructuredAlertMessage(message);

@@ -1,14 +1,31 @@
 /**
- * Tests for Quick Log idempotency protection.
+ * PR-2 — atomic exactly-once idempotency for createQuickLogEntry.
  *
- * Covers:
- * A. Backend — createQuickLogEntry idempotency flow
- *    - No idempotencyKey → normal execution (backward compat)
- *    - New idempotencyKey → executes + registers
- *    - Existing idempotencyKey → returns cached result (skips transaction)
- *    - Failed transaction → does NOT register idempotency
+ * Retired: this suite used to test the NON-ATOMIC helpers.checkIdempotency()
+ * (read BEFORE the transaction) / helpers.registerIdempotency() (write AFTER
+ * the transaction committed) pair. That pattern left a gap — a lost-ack retry
+ * on a weak network could slip between the check and the register and re-run
+ * the write (a duplicate quick-log entry / duplicate hours).
  *
- * B. Frontend — generateQuickLogIdempotencyKey
+ * PR-2 moved createQuickLogEntry onto the SAME atomic, transaction-scoped
+ * primitive functions/addTimeToTask_v2.js uses (PR-1), via the shared
+ * functions/shared/idempotency.js module. This suite now pins:
+ *
+ * A. Backend — createQuickLogEntry idempotency flow (atomic)
+ *    - No idempotencyKey → normal execution (backward compat), no
+ *      processed_operations doc created.
+ *    - New idempotencyKey → executes transaction + records processed_operations
+ *      via transaction.create() (NOT .set()), in the SAME transaction as the
+ *      real writes.
+ *    - Existing idempotencyKey (Phase-1 read finds it) → returns the stored
+ *      result, performs NO client write / NO timesheet entry / NO cost write /
+ *      NO audit log.
+ *    - Concurrent already-exists (a sibling call won the transaction.create()
+ *      race) → returns the sibling's stored result, does NOT throw, does NOT
+ *      retry into a duplicate write.
+ *
+ * B. Frontend — generateQuickLogIdempotencyKey (unchanged — key-generation
+ *    algorithm is a pure frontend concern, not touched by PR-2)
  *    - Deterministic: same input → same key
  *    - Different inputs → different keys
  *    - Uses dateValue (YYYY-MM-DD), not dateISO
@@ -19,18 +36,36 @@
 // Mocks — must precede require()
 // ═══════════════════════════════════════════════════════════════
 
+const mockCallOrder = [];
+function mockRecordCall(name, args) {
+  mockCallOrder.push({ name, args });
+}
+
 const mockTransaction = {
   get: jest.fn(),
-  set: jest.fn(),
-  update: jest.fn()
+  set: jest.fn((...args) => mockRecordCall('transaction.set', args)),
+  update: jest.fn((...args) => mockRecordCall('transaction.update', args)),
+  create: jest.fn((...args) => mockRecordCall('transaction.create', args))
 };
 
 const mockRunTransaction = jest.fn(async (fn) => fn(mockTransaction));
 
+// The post-catch concurrent-replay path does a DIRECT (non-transaction) read
+// of processed_operations/{key}. Route .get() by collection so it never
+// collides with a queued transaction.get() value.
+const mockProcessedOpsGet = jest.fn(async () => ({ exists: false }));
+
+function routedDirectGet(collectionName) {
+  if (collectionName === 'processed_operations') return mockProcessedOpsGet();
+  return Promise.resolve({ exists: false });
+}
+
 const mockDb = {
   collection: jest.fn((name) => ({
     doc: jest.fn((id) => ({
-      id,
+      id: id || `auto_${Date.now()}`,
+      _collection: name,
+      get: () => routedDirectGet(name),
       collection: jest.fn(() => ({
         doc: jest.fn(() => ({ id: 'auto_id' }))
       }))
@@ -104,26 +139,10 @@ jest.mock('../shared/validators', () => ({
   getDescriptionLimit: jest.fn().mockResolvedValue(500)
 }));
 
-jest.mock('../src/modules/deduction', () => ({
-  getActivePackage: jest.fn().mockResolvedValue(null)
-}));
-
-jest.mock('../src/modules/aggregation', () => ({
-  round2: jest.fn((n) => Math.round(n * 100) / 100),
-  applyHoursDelta: jest.fn().mockReturnValue(undefined),
-  applyHoursDeltaServiceOnly: jest.fn().mockReturnValue(undefined),
-  applyLegalProcedureDelta: jest.fn().mockReturnValue(undefined),
-  applyLegalProcedureDeltaStageOnly: jest.fn().mockReturnValue(undefined),
-  calcClientAggregates: jest.fn().mockReturnValue(undefined)
-}));
-
-const mockCheckIdempotency = jest.fn().mockResolvedValue(null);
-const mockRegisterIdempotency = jest.fn().mockResolvedValue(undefined);
-
+// PR-2: no more checkIdempotency/registerIdempotency in ./helpers — the atomic
+// primitive lives in ../shared/idempotency (used directly by timesheet/index.js).
 jest.mock('../timesheet/helpers', () => ({
   createTimeEvent: jest.fn(),
-  checkIdempotency: mockCheckIdempotency,
-  registerIdempotency: mockRegisterIdempotency,
   createReservation: jest.fn().mockResolvedValue(undefined),
   commitReservation: jest.fn().mockResolvedValue(undefined),
   rollbackReservation: jest.fn().mockResolvedValue(undefined)
@@ -135,9 +154,15 @@ jest.mock('../timesheet/internal-case', () => ({
 
 // ═══════════════════════════════════════════════════════════════
 // Require the module under test
+// (deduction/aggregation modules are NOT mocked — real logic runs, mirroring
+// tests/create-quick-log-canonical-helper.test.js, so the canonical helper's
+// internal transaction.get(clientRef) + aggregate math behave exactly as in
+// production.)
 // ═══════════════════════════════════════════════════════════════
 
 const { createQuickLogEntry } = require('../timesheet/index');
+const { SYSTEM_CONSTANTS } = require('../shared/constants');
+const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 
 // ═══════════════════════════════════════════════════════════════
 // Helpers
@@ -150,142 +175,259 @@ function makeData(overrides = {}) {
     date: '2026-04-02T00:00:00.000Z',
     minutes: 30,
     description: 'Test entry',
+    serviceId: 'svc_1',
     ...overrides
   };
 }
 
-function setupHappyPath() {
-  const clientDoc = {
-    exists: true,
-    data: () => ({
-      clientName: 'Test Client',
-      services: [{
-        id: 'svc_1',
-        name: 'Service A',
-        type: 'hours',
-        parentServiceId: null,
-        isBlocked: false,
-        hoursRemaining: 10,
-        packages: [{
-          id: 'pkg_1',
-          hoursRemaining: 10,
-          status: 'active'
-        }]
-      }]
-    })
+function makeHoursService(id, { totalHours = 10, hoursUsed = 0 } = {}) {
+  return {
+    id,
+    type: ST.HOURS,
+    name: `שירות ${id}`,
+    totalHours,
+    hoursUsed,
+    hoursRemaining: totalHours - hoursUsed,
+    packages: [{
+      id: `${id}_pkg_1`,
+      type: 'initial',
+      hours: totalHours,
+      hoursUsed,
+      hoursRemaining: totalHours - hoursUsed,
+      status: 'active'
+    }],
+    status: 'active'
   };
-
-  mockTransaction.get.mockResolvedValue(clientDoc);
-  mockTransaction.set.mockReturnValue(undefined);
-  mockTransaction.update.mockReturnValue(undefined);
 }
 
-const mockContext = { auth: { uid: 'user1' } };
+function makeClientDoc(services = [makeHoursService('svc_1')]) {
+  const totalHours = services
+    .filter(s => s.type === ST.HOURS)
+    .reduce((sum, s) => sum + (s.totalHours || 0), 0);
+  return {
+    exists: true,
+    data: () => ({
+      fullName: 'לקוח טסט',
+      clientName: 'Test Client',
+      status: 'active',
+      services,
+      totalHours,
+      totalServices: services.length,
+      activeServices: services.filter(s => s.status === 'active').length
+    })
+  };
+}
+
+const mockContext = { auth: { uid: 'user1', token: { email: 'manager@test.com', role: 'manager' } } };
+
+// Count only the writes that constitute the "real" mutation (client helper
+// write happens via transaction.update in the canonical helper; the timesheet
+// entry + cost doc + audit log are transaction.set calls on distinct collections).
+function timesheetEntryWrites() {
+  return mockTransaction.set.mock.calls.filter(
+    ([ref]) => ref && ref._collection === 'timesheet_entries'
+  );
+}
+function auditLogWrites() {
+  return mockTransaction.set.mock.calls.filter(
+    ([ref]) => ref && ref._collection === 'audit_log'
+  );
+}
+function idempotencyCreates() {
+  return mockTransaction.create.mock.calls.filter(
+    ([ref]) => ref && ref._collection === 'processed_operations'
+  );
+}
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockCallOrder.length = 0;
+  mockTransaction.get.mockReset();
+  mockRunTransaction.mockImplementation(async (fn) => fn(mockTransaction));
+  mockProcessedOpsGet.mockReset();
+  mockProcessedOpsGet.mockResolvedValue({ exists: false });
+});
 
 // ═══════════════════════════════════════════════════════════════
-// A. Backend — createQuickLogEntry Idempotency
+// A. Backend — createQuickLogEntry Idempotency (ATOMIC, PR-2)
 // ═══════════════════════════════════════════════════════════════
 
-describe('createQuickLogEntry — idempotency', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    setupHappyPath();
-    mockCheckIdempotency.mockResolvedValue(null);
-    mockRegisterIdempotency.mockResolvedValue(undefined);
-  });
+describe('createQuickLogEntry — atomic idempotency (PR-2)', () => {
 
   // ───────────────────────────────────────────────────────────
   // Backward compatibility: no key → normal execution
   // ───────────────────────────────────────────────────────────
 
-  test('no idempotencyKey → executes normally, does NOT call check or register', async () => {
+  test('no idempotencyKey → executes normally, no processed_operations doc created', async () => {
+    const clientDoc = makeClientDoc();
+    // Phase 1: client read (no idempotency read — no key supplied). The
+    // canonical writeClientWithCanonicalAggregates helper does its OWN
+    // internal transaction.get(clientRef) in Phase 3 (cache hit in prod;
+    // mocked here as a second resolved value).
+    mockTransaction.get
+      .mockResolvedValueOnce(clientDoc)
+      .mockResolvedValueOnce(clientDoc);
+
     const data = makeData(); // no idempotencyKey
-
     const result = await createQuickLogEntry(data, mockContext);
 
     expect(result.success).toBe(true);
-    // checkIdempotency may be called with undefined → returns null (null guard in helpers)
-    // registerIdempotency should NOT be called (no key provided)
-    expect(mockRegisterIdempotency).not.toHaveBeenCalled();
+    expect(timesheetEntryWrites()).toHaveLength(1);
+    expect(idempotencyCreates()).toHaveLength(0);
   });
 
   // ───────────────────────────────────────────────────────────
-  // New key → executes + registers
+  // New key → executes transaction + records via transaction.create()
   // ───────────────────────────────────────────────────────────
 
-  test('new idempotencyKey → executes transaction + registers result', async () => {
+  test('new idempotencyKey → executes transaction + records processed_operations via create()', async () => {
+    const clientDoc = makeClientDoc();
+    // Phase 1: client read, THEN idempotency read (not found → fresh key).
+    // Phase 3: canonical helper's internal client re-read (cache hit in prod).
+    mockTransaction.get
+      .mockResolvedValueOnce(clientDoc)
+      .mockResolvedValueOnce({ exists: false })
+      .mockResolvedValueOnce(clientDoc);
+
     const data = makeData({ idempotencyKey: 'quicklog_test_key_123' });
-    mockCheckIdempotency.mockResolvedValue(null); // not found
-
     const result = await createQuickLogEntry(data, mockContext);
 
-    // Should check
-    expect(mockCheckIdempotency).toHaveBeenCalledWith('quicklog_test_key_123');
-
-    // Should execute transaction
-    expect(mockRunTransaction).toHaveBeenCalled();
-
-    // Should register after success
-    expect(mockRegisterIdempotency).toHaveBeenCalledWith(
-      'quicklog_test_key_123',
-      expect.objectContaining({ success: true })
-    );
-
     expect(result.success).toBe(true);
+    expect(mockRunTransaction).toHaveBeenCalled();
+    expect(timesheetEntryWrites()).toHaveLength(1);
+    expect(auditLogWrites()).toHaveLength(1);
+
+    const creates = idempotencyCreates();
+    expect(creates).toHaveLength(1);
+    const [ref, doc] = creates[0];
+    expect(ref.id).toBe('quicklog_test_key_123');
+    expect(doc.idempotencyKey).toBe('quicklog_test_key_123');
+    expect(doc.status).toBe('completed');
+    expect(doc.result).toEqual(result); // same object persisted verbatim
   });
 
   // ───────────────────────────────────────────────────────────
-  // Existing key → returns cached, skips transaction
+  // Existing key (Phase-1 read finds it) → returns cached, skips ALL writes
   // ───────────────────────────────────────────────────────────
 
-  test('existing idempotencyKey → returns cached result, skips transaction', async () => {
+  test('existing idempotencyKey → Phase-1 read finds it, returns stored result, NO writes', async () => {
     const cachedResult = {
       success: true,
       entryId: 'cached_entry_123',
       message: 'רישום נוצר בהצלחה'
     };
-    mockCheckIdempotency.mockResolvedValue(cachedResult);
+    const clientDoc = makeClientDoc();
+
+    // Phase 1: client read, THEN idempotency read (found → short-circuit).
+    mockTransaction.get
+      .mockResolvedValueOnce(clientDoc)
+      .mockResolvedValueOnce({ exists: true, data: () => ({ result: cachedResult }) });
 
     const data = makeData({ idempotencyKey: 'quicklog_already_done' });
-
     const result = await createQuickLogEntry(data, mockContext);
 
-    // Should check
-    expect(mockCheckIdempotency).toHaveBeenCalledWith('quicklog_already_done');
-
-    // Should NOT run transaction
-    expect(mockRunTransaction).not.toHaveBeenCalled();
-
-    // Should NOT register again
-    expect(mockRegisterIdempotency).not.toHaveBeenCalled();
-
-    // Should return the cached result
     expect(result).toEqual(cachedResult);
+    // No mutation at all — the duplicate is blocked inside the transaction.
+    expect(timesheetEntryWrites()).toHaveLength(0);
+    expect(auditLogWrites()).toHaveLength(0);
+    expect(idempotencyCreates()).toHaveLength(0);
   });
 
   // ───────────────────────────────────────────────────────────
-  // Failed transaction → does NOT register
+  // Transaction failure (non-idempotency error) → propagates, no partial state
   // ───────────────────────────────────────────────────────────
 
-  test('transaction failure → does NOT register idempotency', async () => {
+  test('transaction failure (non already-exists) → propagates error, no retry', async () => {
     mockRunTransaction.mockRejectedValueOnce(new Error('Firestore unavailable'));
 
     const data = makeData({ idempotencyKey: 'quicklog_will_fail' });
 
     await expect(createQuickLogEntry(data, mockContext)).rejects.toThrow();
+    expect(mockRunTransaction).toHaveBeenCalledTimes(1); // no retry for a generic error
+  });
 
-    // Should check (before transaction)
-    expect(mockCheckIdempotency).toHaveBeenCalledWith('quicklog_will_fail');
+  // ───────────────────────────────────────────────────────────
+  // Concurrent already-exists → post-catch read finds winner doc → replay
+  // ───────────────────────────────────────────────────────────
 
-    // Should NOT register (transaction failed)
-    expect(mockRegisterIdempotency).not.toHaveBeenCalled();
+  test('concurrent already-exists → post-catch read finds winner doc → returns stored result (no throw)', async () => {
+    const storedResult = {
+      success: true,
+      entryId: 'entry_from_winner',
+      message: 'רישום נוצר בהצלחה'
+    };
+    const clientDoc = makeClientDoc();
+
+    // The transaction runs (idempotency read = not-yet-present), does its
+    // writes, then transaction.create throws ALREADY_EXISTS at commit
+    // (sibling won the race).
+    mockRunTransaction.mockImplementationOnce(async (fn) => {
+      mockTransaction.get
+        .mockResolvedValueOnce(clientDoc)
+        .mockResolvedValueOnce({ exists: false }) // idempotency: not visible in-txn yet
+        .mockResolvedValueOnce(clientDoc); // helper's internal client re-read
+      await fn(mockTransaction); // runs the body (writes recorded)
+      const err = new Error('already exists');
+      err.code = 'already-exists';
+      throw err; // commit-time race loss
+    });
+
+    // Post-catch direct read: the winner's committed doc is now visible.
+    mockProcessedOpsGet.mockResolvedValueOnce({ exists: true, data: () => ({ result: storedResult }) });
+
+    const data = makeData({ idempotencyKey: 'quicklog_concurrent' });
+    const result = await createQuickLogEntry(data, mockContext);
+
+    expect(result).toEqual(storedResult);
+    expect(mockProcessedOpsGet).toHaveBeenCalledTimes(1);
+    expect(mockRunTransaction).toHaveBeenCalledTimes(1); // no second attempt
+  });
+
+  // ───────────────────────────────────────────────────────────
+  // Exhausted retries on already-exists (winner never visible) → Hebrew abort
+  // (G1: never leak the raw English SDK 'already exists' string; never surface
+  // a false failure that would push a fresh-key re-submit = a real duplicate)
+  // ───────────────────────────────────────────────────────────
+
+  test('exhausted already-exists retries (winner never visible) → Hebrew aborted error, no raw SDK string', async () => {
+    const clientDoc = makeClientDoc();
+
+    // EVERY attempt: body runs, create() throws already-exists at commit, and
+    // the winner's committed doc is NEVER visible to the post-catch replay read.
+    mockRunTransaction.mockImplementation(async (fn) => {
+      mockTransaction.get
+        .mockResolvedValueOnce(clientDoc)
+        .mockResolvedValueOnce({ exists: false })
+        .mockResolvedValueOnce(clientDoc);
+      await fn(mockTransaction);
+      const err = new Error('already exists');
+      err.code = 'already-exists';
+      throw err;
+    });
+    mockProcessedOpsGet.mockResolvedValue({ exists: false }); // never visible
+
+    const data = makeData({ idempotencyKey: 'quicklog_never_visible' });
+
+    let caught;
+    try {
+      await createQuickLogEntry(data, mockContext);
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(caught).toBeDefined();
+    expect(caught.code).toBe('aborted');
+    expect(caught.message).toMatch(/נקלט/);        // Hebrew "was recorded"
+    expect(caught.message).not.toMatch(/already exists/); // no raw SDK leak
+    // Exactly MAX_IDEMPOTENCY_RETRIES (3) attempts before giving up.
+    expect(mockRunTransaction).toHaveBeenCalledTimes(3);
   });
 
   // ───────────────────────────────────────────────────────────
   // Idempotency check runs AFTER authorization
   // ───────────────────────────────────────────────────────────
 
-  test('non-manager user → permission error before idempotency check', async () => {
+  test('non-manager user → permission error before any transaction / idempotency check', async () => {
     const { checkUserPermissions } = require('../shared/auth');
     checkUserPermissions.mockResolvedValueOnce({
       uid: 'user2',
@@ -298,8 +440,7 @@ describe('createQuickLogEntry — idempotency', () => {
 
     await expect(createQuickLogEntry(data, mockContext)).rejects.toThrow('רק מנהלים');
 
-    // Should NOT check idempotency (authorization failed first)
-    expect(mockCheckIdempotency).not.toHaveBeenCalled();
+    expect(mockRunTransaction).not.toHaveBeenCalled();
   });
 });
 

@@ -10,7 +10,48 @@ const { logAction } = require('../shared/audit');
 const { sanitizeString } = require('../shared/validators');
 
 const { round2, isFixedService } = require('../shared/aggregates');
+// PR-STAGE-OWN (2026-07-23): canonical pricing-aware stage→service hoursUsed
+// rule, single-sourced in src/modules/aggregation (see calcStageEffectiveHoursUsed
+// there for why a FIXED stage/service reads totalHoursWorked instead of hoursUsed).
+// Reused here instead of hand-copying the ternary — see addHoursPackageToStage.
+// recomputeStageHoursUsedPreservingOrphan (extended 2026-07-23) is the SAME
+// stage-level orphan-preservation rule used at aggregation/index.js's
+// applyLegalProcedureDelta (the package-backed timesheet deduction path) —
+// reused here too instead of a second hand-written copy.
+const { calcServiceHoursUsedFromStages, recomputeStageHoursUsedPreservingOrphan } = require('../src/modules/aggregation');
 const { writeClientWithCanonicalAggregates } = require('../shared/client-writer');
+// PR-2 (2026-08-16): read-only capacity split, used to record what a stage
+// advance does to AVAILABLE hours. See shared/stage-capacity.js.
+const { computeServiceCapacity } = require('../shared/stage-capacity');
+// Server-side gate: a CLOSED service (archived/completed) must not accept new hours/packages.
+const { assertServiceAcceptsHours } = require('../shared/service-status');
+// PR-B-2 (2026-07-21): audit-FIRST-in-txn for the budget_tasks re-point that
+// happens inside moveToNextStage. Compiled TS output — see functions/src-ts/
+// audit-critical.ts + functions/lib/audit-critical.js (committed per
+// PR-META-6 convention; already required this way by reconciliation/index.js,
+// scheduled/reconcile-package-drift.js, scripts/repair-package-aggregates.js).
+const { logCriticalActionInTxn } = require('../lib/audit-critical');
+
+// PR-B-2: the literal open-task status used at task creation
+// (functions/budget-tasks/index.js:193 `status: 'פעיל'`). No shared enum
+// constant exists for budget_tasks statuses (createBudgetTask/cancelTask/
+// completeTask all use the raw Hebrew literals directly — see
+// budget-tasks/index.js:193,545,767). Introducing one would mean editing the
+// canonical shared/system-constants.js PLUS both frontend adapters (see
+// tests/sync-constants.test.js) to keep them in sync — a cross-app change
+// out of scope for this backend-only PR. Mirrors the existing repo
+// convention of using the literal directly.
+const OPEN_TASK_STATUS = 'פעיל';
+
+// PR-B-2 R2 FIX 3 (2026-07-22): Firestore caps a single transaction at 500
+// writes. Each re-pointed task costs TWO writes in this transaction (the
+// task's own transaction.update + its logCriticalActionInTxn audit doc
+// transaction.set). 200 tasks * 2 writes/task = 400 writes, leaving headroom
+// under the 500 cap for the client-doc write performed by
+// writeClientWithCanonicalAggregates (+1) and any other incidental writes,
+// without cutting so close that a slightly larger cohort silently trips the
+// real Firestore ceiling instead of this named guard.
+const MAX_REPOINT_TASKS = 200;
 
 const db = admin.firestore();
 
@@ -26,6 +67,16 @@ const db = admin.firestore();
 exports.addServiceToClient = functions.https.onCall(async (data, context) => {
   try {
     const user = await checkUserPermissions(context);
+
+    // PR-SEC-A2: adding a service to a case is an admin-only management action
+    // (Haim 2026-08-10). Closes the billing-IDOR (was: any employee could add a service
+    // with an arbitrary fixedPrice to ANY client). Management group = role==='admin'.
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול להוסיף שירות לתיק'
+      );
+    }
 
     // Validation
     if (!data.clientId || typeof data.clientId !== 'string') {
@@ -68,6 +119,20 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError(
           'invalid-argument',
           'סוג תמחור חייב להיות "hourly" או "fixed"'
+        );
+      }
+      // H.3 D-B (2026-06-11): תעריף שעתי אופציונלי נבחר (legal-hourly בלבד).
+      // Validate-if-present; כשאינו מסופק — אין ברירת מחדל (השירות נשמר ללא
+      // ratePerHour → ה-Plan מדווח pricing_missing). מסונכרן עם createClient.
+      if (
+        data.pricingType === PT.HOURLY &&
+        data.ratePerHour !== undefined &&
+        data.ratePerHour !== null &&
+        (typeof data.ratePerHour !== 'number' || !Number.isFinite(data.ratePerHour) || data.ratePerHour <= 0)
+      ) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'תעריף שעתי חייב להיות מספר חיובי'
         );
       }
     } else if (data.serviceType === ST.FIXED) {
@@ -174,6 +239,12 @@ exports.addServiceToClient = functions.https.onCall(async (data, context) => {
           newService.totalHours = newService.stages.reduce((sum, s) => sum + (s.totalHours || 0), 0);
           newService.hoursUsed = 0;
           newService.hoursRemaining = newService.totalHours;
+          // H.3 D-B (2026-06-11): store an elected hourly rate when supplied (validated
+          // above). No silent 800 default — absent rate → Plan reports pricing_missing
+          // (mirrors createClient; real rate from tofes amountBeforeVat at H.6).
+          if (typeof data.ratePerHour === 'number' && data.ratePerHour > 0) {
+            newService.ratePerHour = data.ratePerHour;
+          }
         } else {
           newService.totalPrice = newService.stages.reduce((sum, s) => sum + (s.fixedPrice || 0), 0);
           newService.totalPaid = 0;
@@ -259,6 +330,13 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
   try {
     const user = await checkUserPermissions(context);
 
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול להוסיף חבילת שעות לשירות'
+      );
+    }
+
     // Validation
     const clientId = data.clientId || data.caseId;  // ✅ תמיכה בשני השמות
 
@@ -283,31 +361,55 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       );
     }
 
+    // Validate purchaseDate (type + range + format) — mirrors addHoursPackageToStage
+    let purchaseDate;
+
+    if (data.purchaseDate) {
+      const parsed = new Date(data.purchaseDate);
+
+      if (isNaN(parsed.getTime())) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'תאריך רכישה לא תקין. פורמט צריך להיות: YYYY-MM-DD'
+        );
+      }
+
+      if (parsed > new Date()) {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'תאריך רכישה לא יכול להיות בעתיד'
+        );
+      }
+
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+      if (parsed < oneYearAgo) {
+        console.warn(`⚠️ Purchase date is more than 1 year old: ${parsed.toISOString()}`);
+      }
+
+      purchaseDate = parsed.toISOString();
+    }
+
     // ── Generate IDs OUTSIDE Transaction (retry-safe) ──
     const now = new Date().toISOString();
+    if (!purchaseDate) {
+      purchaseDate = now;
+    }
     const packageId = `pkg_${Date.now()}`;
     const clientRef = db.collection('clients').doc(clientId);
 
-    // ── Backfill: query orphan entries OUTSIDE Transaction ──
-    // (Firestore TX supports only doc gets, not collection queries)
-    const orphanSnap = await db.collection('timesheet_entries')
-      .where('clientId', '==', clientId)
-      .where('serviceId', '==', data.serviceId)
-      .get();
-
-    const orphanEntries = [];
-    let orphanMinutes = 0;
-    orphanSnap.forEach(doc => {
-      const entry = doc.data();
-      if (!entry.packageId) {
-        orphanEntries.push(doc.ref);
-        orphanMinutes += (entry.minutes || 0);
-      }
-    });
-
-    const orphanHours = round2(orphanMinutes / 60);
-
-    console.log(`📦 [addPackageToService] Backfill: ${orphanEntries.length} entries (${orphanHours}h) → ${packageId}`);
+    // ── OWN-0(c) (2026-06-24): orphan-reseed REMOVED. ──
+    // Historically this function scanned `packageId:null` entries on the service
+    // and seeded the new package's hoursUsed from them (+ backfilled their
+    // packageId). That re-counted "package-counted-null" orphans — entries whose
+    // hours were ALREADY counted into a fallback package by the trigger/create
+    // paths — into the new package = the +874h double-count detonator
+    // (see project_package_hours_drift / DRIFT-2). A new package now starts EMPTY
+    // (hoursUsed=0) and existing `service.hoursUsed` is PRESERVED (NOT recomputed
+    // from Σpackages, which would drop legitimately service-level hours = the
+    // PR #174 under-count). Re-attribution of LEGACY orphans is the supervised
+    // forward-replay repair's job (package-repair-core), not this hot write path.
 
     // ── Transaction: read client → build package → write atomically ──
     const result = await db.runTransaction(async (transaction) => {
@@ -343,18 +445,19 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
         );
       }
 
-      // יצירת חבילה חדשה
-      const newHoursUsed = orphanHours;
-      const newHoursRemaining = round2(data.hours - newHoursUsed);
+      // Status gate (A1): a CLOSED service (archived/completed) refuses new hour
+      // packages, regardless of overrideActive. Throw aborts the txn before any write.
+      assertServiceAcceptsHours(service);
 
+      // יצירת חבילה חדשה — מתחילה ריקה (OWN-0(c): אין reseed מ-יתומים)
       const newPackage = {
         id: packageId,
         type: 'additional',
         hours: data.hours,
-        hoursUsed: newHoursUsed,
-        hoursRemaining: newHoursRemaining,
-        purchaseDate: now,
-        status: newHoursRemaining <= 0 ? 'depleted' : 'active',
+        hoursUsed: 0,
+        hoursRemaining: round2(data.hours),
+        purchaseDate: purchaseDate,
+        status: 'active',
         description: data.description ? sanitizeString(data.description.trim()) : `חבילה נוספת - ${new Date().toLocaleDateString('he-IL')}`
       };
 
@@ -362,13 +465,21 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       service.packages = service.packages || [];
       service.packages.push(newPackage);
 
-      // עדכון סיכומי השירות — חישוב מחדש מכל ה-packages
+      // עדכון סיכומי השירות — מוסיפים קיבולת בלבד.
+      // OWN-0(c): service.hoursUsed נשמר כפי שהוא (NOT recomputed = Σpackages),
+      // אחרת שעות שנמנו רק ברמת-השירות (service-only orphans) היו נמחקות = ה-under-count
+      // של PR #174. החבילה החדשה ריקה ⇒ אינה משנה את הצריכה הקיימת.
+      //
+      // ⚠️ השימור הוא point-in-time. service-only orphans (שעות ב-svc.hoursUsed שאינן
+      // באף package) נשארים שבירים — ה-recompute הבא ב-applyHoursDelta (svc.hoursUsed =
+      // Σpackages) ישמיט אותם. התיקון העמיד הוא ה-forward-replay repair שחותם את אותן
+      // רשומות לתוך package (כך Σpackages "מתעדכן" וה-recompute הבא הוא no-op). #174 עשה
+      // זאת אד-הוק כאן תוך ספירה-כפולה של package-counted-null orphans — OWN-0(c) מסיר
+      // את הגרסה הבאגית ונשען על ה-repair (+ ה-single-owner ב-OWN-1) כמנגנון העמיד.
       service.totalHours = (service.totalHours || 0) + data.hours;
-      const svcHoursUsed = round2(
-        service.packages.reduce((sum, pkg) => sum + (pkg.hoursUsed || 0), 0)
-      );
-      service.hoursUsed = svcHoursUsed;
-      service.hoursRemaining = round2(service.totalHours - svcHoursUsed);
+      const preservedHoursUsed = round2(service.hoursUsed || 0);
+      service.hoursUsed = preservedHoursUsed;
+      service.hoursRemaining = round2(service.totalHours - preservedHoursUsed);
 
       // ── Invariant guard: prevent drift between service.totalHours and Σ(packages.hours) ──
       // Drift happened historically (pre-2026-02-19) when renewServiceHours updated totalHours
@@ -417,19 +528,10 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
       };
     });
 
-    // ── Backfill: כתיבת packageId על entries יתומים (batches of 500) ──
-    // (מחוץ ל-Transaction — eventual consistency, best-effort)
-    if (orphanEntries.length > 0) {
-      for (let i = 0; i < orphanEntries.length; i += 500) {
-        const chunk = orphanEntries.slice(i, i + 500);
-        const batch = db.batch();
-        for (const ref of chunk) {
-          batch.update(ref, { packageId: packageId });
-        }
-        await batch.commit();
-      }
-      console.log(`✅ [addPackageToService] Backfill committed: ${orphanEntries.length} entries → ${packageId}`);
-    }
+    // ── OWN-0(c): orphan packageId-backfill REMOVED (rationale at top of function). ──
+    // The old best-effort batch re-stamped `packageId:null` entries onto the new
+    // package — both the double-count vector and a packageId-only entry UPDATE that
+    // re-fired the trigger. Gone.
 
     // Audit log (מחוץ ל-Transaction — מסמך נפרד)
     await logAction('ADD_PACKAGE_TO_SERVICE', user.uid, user.username, {
@@ -474,7 +576,13 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
  *
  * @param {Object} data
  * @param {string} data.caseId - מספר תיק (מזהה הלקוח)
- * @param {string} data.stageId - מזהה השלב (stage_a / stage_b / stage_c)
+ * @param {string} [data.serviceId] - מזהה ההליך המשפטי שאליו מוסיפים.
+ *   PR-A (2026-08-16): טכנית אופציונלי לתאימות לאחור, אך **חובה בפועל** —
+ *   בתיק עם יותר מהליך משפטי אחד, היעדרו נדחה (`failed-precondition`) במקום
+ *   לבחור את הראשון. בתיק עם הליך אחד בלבד הקריאה הישנה עדיין עובדת.
+ * @param {string} data.stageId - מזהה השלב (stage_a / stage_b / stage_c).
+ *   שים לב: מזהי השלבים **אינם ייחודיים** ברמת הלקוח — כל הליך משפטי מחזיק
+ *   stage_a/b/c משלו. לכן `stageId` לבדו אינו זהות, ו-`serviceId` הוא שמכריע.
  * @param {number} data.hours - כמות שעות להוספה
  * @param {string} data.reason - סיבה להוספת השעות
  * @param {string} [data.purchaseDate] - תאריך רכישה (ISO format, אופציונלי)
@@ -484,6 +592,7 @@ exports.addPackageToService = functions.https.onCall(async (data, context) => {
  * @example
  * const result = await addHoursPackageToStage({
  *   caseId: "2025001",
+ *   serviceId: "srv_1734000000000",
  *   stageId: "stage_a",
  *   hours: 20,
  *   reason: "דיונים נוספים",
@@ -494,6 +603,13 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
   try {
     // 🛡️ Authentication & Authorization
     const user = await checkUserPermissions(context);
+
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול להוסיף שעות לשלב'
+      );
+    }
 
     // ============ Validation ============
 
@@ -513,6 +629,22 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
         'invalid-argument',
         'מזהה שלב לא תקין (צריך להיות stage_a, stage_b, או stage_c)'
       );
+    }
+
+    // 2b. Validate serviceId — OPTIONAL (a cached admin bundle may omit it), but
+    // when present it must be a usable identity. The ambiguity gate lives inside
+    // the transaction, where the client's services[] is readable.
+    if (data.serviceId !== undefined && data.serviceId !== null) {
+      const sid = typeof data.serviceId === 'string' ? data.serviceId.trim() : '';
+      // Reject the stringified-nothing literals outright: they are exactly what a
+      // frontend emits when an id is missing, and accepting them as a real
+      // identity is how first-match creeps back in through a side door.
+      if (sid === '' || sid === 'undefined' || sid === 'null') {
+        throw new functions.https.HttpsError(
+          'invalid-argument',
+          'מזהה השירות לא תקין'
+        );
+      }
     }
 
     // 3. Validate hours
@@ -614,13 +746,92 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
       const clientData = clientDoc.data();
       const services = clientData.services || [];
 
-      // 🔍 Step 2: מציאת ההליך המשפטי
-      const legalProcedureIndex = services.findIndex(s => s.type === ST.LEGAL_PROCEDURE);
+      // 🔍 Step 2: מציאת ההליך המשפטי — BY EXPLICIT ID, never by first match.
+      //
+      // PR-A (2026-08-16): this used to be
+      //   services.findIndex(s => s.type === ST.LEGAL_PROCEDURE)
+      // — first match on TYPE ALONE, ignoring which procedure the admin actually
+      // selected. A measured probe found 9 clients holding 2-3 legal_procedure
+      // services, every one of them with colliding stage ids (stage_a/b/c on each),
+      // so the lookup silently SUCCEEDED on the wrong matter and the hours landed
+      // on the wrong procedure. Nothing downstream could detect it: the stage and
+      // the service totals are both recomputed on the same (wrong) service, so
+      // every sum check still balances — on the wrong page.
+      //
+      // Same failure class as the report-identity bug fixed in #544: resolve by
+      // explicit id; never let a first-match stand in for an identity.
+      //
+      // `serviceId` is OPTIONAL for backward compatibility (a cached admin bundle
+      // may still post without it), but the ambiguous case is FAIL-CLOSED: with no
+      // id and more than one legal_procedure service, we refuse rather than guess.
+      const legalProcedures = services
+        .map((s, i) => ({ svc: s, index: i }))
+        .filter(({ svc }) => svc && svc.type === ST.LEGAL_PROCEDURE);
 
-      if (legalProcedureIndex === -1) {
+      if (legalProcedures.length === 0) {
         throw new functions.https.HttpsError(
           'not-found',
           'לא נמצא הליך משפטי עבור תיק זה'
+        );
+      }
+
+      // A usable identity is a non-empty string. Anything else is NOT a match
+      // candidate: `String(svc.id)` on a missing id yields the literal
+      // 'undefined', which would let a caller passing the string "undefined"
+      // match an id-less service — first-match restored through a side door.
+      const hasUsableId = (svc) => typeof svc.id === 'string' && svc.id.trim() !== '';
+      const idLessCount = legalProcedures.filter(({ svc }) => !hasUsableId(svc)).length;
+
+      let legalProcedureIndex;
+
+      if (data.serviceId) {
+        const matches = legalProcedures.filter(
+          ({ svc }) => hasUsableId(svc) && svc.id.trim() === data.serviceId.trim()
+        );
+
+        if (matches.length === 0) {
+          // Distinguish "this case has procedures we cannot address" from a
+          // plain wrong id — the first is a data defect, not admin error.
+          if (idLessCount > 0) {
+            console.error(
+              `[addHoursPackageToStage] case ${caseId} holds ${idLessCount} legal_procedure ` +
+              `service(s) with no id — cannot be addressed by identity`
+            );
+            throw new functions.https.HttpsError(
+              'failed-precondition',
+              'אחד מההליכים המשפטיים בתיק זה חסר מזהה ולא ניתן להוסיף לו שעות. פנה לתמיכה.'
+            );
+          }
+          throw new functions.https.HttpsError(
+            'not-found',
+            'ההליך המשפטי שנבחר לא נמצא בתיק זה. רענן את הדף ונסה שוב.'
+          );
+        }
+
+        // Duplicate service ids are a data defect, not a choice we may resolve.
+        if (matches.length > 1) {
+          console.error(
+            `[addHoursPackageToStage] duplicate service id on case ${caseId}: ${data.serviceId}`
+          );
+          throw new functions.https.HttpsError(
+            'failed-precondition',
+            'נמצאו שני הליכים משפטיים עם אותו מזהה בתיק זה. פנה לתמיכה.'
+          );
+        }
+
+        legalProcedureIndex = matches[0].index;
+      } else if (legalProcedures.length === 1) {
+        // Unambiguous — the legacy payload is safe here.
+        legalProcedureIndex = legalProcedures[0].index;
+      } else {
+        console.error(
+          `[addHoursPackageToStage] ambiguous target on case ${caseId}: ` +
+          `${legalProcedures.length} legal_procedure services, no serviceId supplied`
+        );
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'בתיק זה יש יותר מהליך משפטי אחד, ולא צוין לאיזה מהם להוסיף את השעות. ' +
+          'רענן את הדף ונסה שוב.'
         );
       }
 
@@ -639,7 +850,16 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
 
       const targetStage = stages[stageIndex];
 
-      // ⚠️ Step 4: בדיקה אם השלב completed
+      // Status gate (A1) — SERVICE level (the LOCKED requirement): a CLOSED
+      // legal-procedure service (archived/completed) refuses new hours, regardless
+      // of overrideActive. Throw aborts the txn before any write.
+      assertServiceAcceptsHours(legalProcedure);
+
+      // ⚠️ Step 4: a COMPLETED STAGE is observed but deliberately NOT blocked here.
+      // Stage-level locking is DEFERRED (Haim, 2026-08-10: this PR is SERVICE-level
+      // only). Rationale: the office legitimately tops-up hours on completed stages
+      // (documented drift), and no reopen-STAGE path exists yet — a hard throw would
+      // be a one-way lock. Warn-and-proceed preserved for observability.
       const stageWasCompleted = targetStage.status === 'completed';
       if (stageWasCompleted) {
         console.warn(`⚠️ Adding hours to COMPLETED stage ${data.stageId} for case ${caseId}`);
@@ -669,30 +889,119 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
 
       targetStage.packages.push(newPackage);
 
-      // ✅ CRITICAL: חישוב כל ה-aggregates מה-packages (Single Source of Truth)
+      // ✅ Capacity (totalHours) is always recomputed from packages — packages
+      // define capacity, this is safe for both pricing types.
       targetStage.totalHours = targetStage.packages.reduce((sum, pkg) =>
         sum + (pkg.hours || 0), 0);
 
-      targetStage.hoursUsed = targetStage.packages.reduce((sum, pkg) =>
-        sum + (pkg.hoursUsed || 0), 0);
+      const isFixedStage = targetStage.pricingType === PT.FIXED;
 
-      targetStage.hoursRemaining = targetStage.packages.reduce((sum, pkg) =>
-        sum + (pkg.hoursRemaining || 0), 0);
+      if (isFixedStage) {
+        // PR-STAGE-OWN fix 1b (2026-07-23): a FIXED-pricing stage tracks worked
+        // hours in totalHoursWorked (canonical rule — src/modules/aggregation
+        // calcStageEffectiveHoursUsed), NOT in hoursUsed recomputed from
+        // packages, and hoursRemaining is DELIBERATELY null for fixed pricing
+        // (87 of 150 stages in prod are fixed). This function only adds
+        // capacity (a package) to the stage — it never adds worked hours —
+        // so totalHoursWorked and hoursUsed are intentionally left untouched
+        // here. Never write hoursRemaining: 0 in place of null, and never
+        // zero totalHoursWorked.
+        targetStage.hoursRemaining = null;
+      } else {
+        // PR-STAGE-OWN fix 1a (2026-07-23, corrected 2026-07-23 review round):
+        // hoursUsed must NEVER be recomputed as a pure Σ(packages.hoursUsed).
+        // applyLegalProcedureDeltaStageOnly (src/modules/aggregation)
+        // increments stage.hoursUsed DIRECTLY whenever a deduction finds no
+        // active package for this stage (addTimeToTask_v2.js "No active
+        // package for stage" fallback, also timesheet/index.js +
+        // triggers/timesheet-trigger.js). That stage-only-counted work has
+        // no package backing at all. Recomputing hoursUsed = Σpackages here
+        // would silently ERASE it the instant any package is added to the
+        // stage — measured live case: client 2025366/stage_a,
+        // stage.hoursUsed=67.58h vs Σpackages=65.58h (2h would be destroyed
+        // by the unpatched version of this exact code path).
+        //
+        // CORRECTED RULE: originally shipped as a naive floor
+        // (hoursUsed = max(Σpackages, current stage.hoursUsed)). A 2026-07-23
+        // adversarial review found that floor breaks the moment packages
+        // themselves can move in EITHER direction (which happens at
+        // aggregation/index.js's applyLegalProcedureDelta — ordinary
+        // timesheet entries AND entry edit/delete reversal, both routed
+        // through that function, not this one) — a floor undercounts growth
+        // and FREEZES the value forever on any decrease, since
+        // oldStage.hoursUsed already contains the orphan and is therefore
+        // always >= a lowered Σpackages. Verified numerically before fixing
+        // (see the commit message). The canonical rule is now the SAME
+        // orphan-preserving additive recompute used at that other call site:
+        // recomputeStageHoursUsedPreservingOrphan (src/modules/aggregation)
+        // — orphan = max(0, oldHoursUsed - ΣoldPackages), new hoursUsed =
+        // orphan + ΣnewPackages. This function only ever ADDS a package
+        // (never removes one), so oldPackages = the array immediately before
+        // the push above = packages.slice(0, -1) (push always appends
+        // exactly one). Reused via the shared helper — not hand-copied here
+        // — so both call sites (this one, and the ordinary-entry deduction
+        // path) can never silently diverge again.
+        const oldPackagesBeforePush = targetStage.packages.slice(0, -1);
+        const oldStageSnapshot = { hoursUsed: targetStage.hoursUsed, packages: oldPackagesBeforePush };
+        const { hoursUsed: newStageHoursUsed, orphan } = recomputeStageHoursUsedPreservingOrphan(
+          oldStageSnapshot,
+          targetStage.packages
+        );
+
+        if (orphan > 0) {
+          // Observability: the guard actually engaged — Σpackages alone
+          // would have lowered hoursUsed. Ids/counts only, no PII.
+          //
+          // ASYMMETRY (disclosed, not a regression — identical to
+          // pre-2026-07-23 behavior): this warns only when the orphan is
+          // POSITIVE (Σpackages < stage.hoursUsed). The opposite case —
+          // Σpackages > stage.hoursUsed, which the trigger can legitimately
+          // produce after an entry-delete lowers the orphan-only portion
+          // below zero (floored to 0 here) — silently RAISES the value with
+          // no signal. That silent-raise behavior is unchanged from before
+          // this fix existed; it is not introduced by this rule.
+          console.warn(
+            `[OWN-STAGE-GUARD] preserved stage-level hoursUsed — case=${caseId} ` +
+            `stage=${data.stageId} orphanHours=${orphan} newStageHoursUsed=${newStageHoursUsed}`
+          );
+        }
+
+        targetStage.hoursUsed = newStageHoursUsed;
+        targetStage.hoursRemaining = round2(targetStage.totalHours - targetStage.hoursUsed);
+      }
 
       stages[stageIndex] = targetStage;
 
       // 🔄 Step 7: עדכון ה-service
       legalProcedure.stages = stages;
 
-      // ✅ חישוב aggregates של service מחדש מה-stages
+      // ✅ קיבולת (totalHours) — Σ מה-stages, ללא תלות ב-pricing type.
       legalProcedure.totalHours = stages.reduce((sum, stage) =>
         sum + (stage.totalHours || 0), 0);
 
-      legalProcedure.hoursUsed = stages.reduce((sum, stage) =>
-        sum + (stage.hoursUsed || 0), 0);
+      // PR-STAGE-OWN fix 2 (2026-07-23): pricing-aware Σ via the canonical
+      // helper (src/modules/aggregation.calcServiceHoursUsedFromStages) —
+      // replaces the old plain Σ(stage.hoursUsed), which silently ignored
+      // FIXED stages' totalHoursWorked and could disagree with
+      // aggregation/index.js's own service-level recompute (a second,
+      // independent drift door on top of collision #1 above).
+      //
+      // DISCLOSED PERSISTED-VALUE CHANGE (2026-07-23 review — do not lose
+      // this the way the original commit message did): for a legal_procedure
+      // that contains one of the 23 fossil-`hoursUsed` FIXED stages (out of
+      // scope to repair — see "Explicitly NOT in scope"), this line will
+      // produce a DIFFERENT number than the old plain-Σ(stage.hoursUsed) the
+      // next time ANY package is added anywhere in that procedure — because
+      // the fossil stage's `hoursUsed` field is now correctly excluded and
+      // its `totalHoursWorked` used instead (calcStageEffectiveHoursUsed).
+      // This is the CORRECT number, not a bug, but it is a real change to a
+      // persisted value on next write, same class of disclosure as the
+      // fixed-stage hoursRemaining→null change already noted above.
+      legalProcedure.hoursUsed = calcServiceHoursUsedFromStages(stages);
 
-      legalProcedure.hoursRemaining = stages.reduce((sum, stage) =>
-        sum + (stage.hoursRemaining || 0), 0);
+      legalProcedure.hoursRemaining = legalProcedure.pricingType === PT.FIXED
+        ? null
+        : round2(legalProcedure.totalHours - legalProcedure.hoursUsed);
 
       services[legalProcedureIndex] = legalProcedure;
 
@@ -739,6 +1048,12 @@ exports.addHoursPackageToStage = functions.https.onCall(async (data, context) =>
         packageId: result.packageId,
         hours: data.hours,
         reason: sanitizedReason,
+        // PR-A: the RESOLVED service id — the only field that identifies which
+        // matter was billed. `procedureName` is NOT an identity: case 2026066
+        // carries two procedures with the same display name, and `packageId`
+        // encodes only the stage, whose ids collide across procedures. Without
+        // this, a mis-targeted add leaves no reconstructable trail.
+        serviceId: result.legalProcedure.id || null,
         procedureName: result.legalProcedure.name,
         stageStatusWasCompleted: result.stageWasCompleted
       });
@@ -825,6 +1140,13 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
     // 1. Auth
     const user = await checkUserPermissions(context);
 
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לקדם שלב בהליך'
+      );
+    }
+
     // 2. Validation
     if (!data.clientId || typeof data.clientId !== 'string') {
       throw new functions.https.HttpsError(
@@ -904,6 +1226,57 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       const nextStage = service.stages[activeIndex + 1];
       const now = new Date().toISOString();
 
+      // 3f2. PR-B-2 (2026-07-21, R3): find OPEN budget_tasks still pointing at
+      // the stage being closed RIGHT NOW, so they can be re-pointed to the
+      // newly-active stage in this same transaction — the ROOT-CAUSE fix for
+      // hours logged against a task landing on an already-completed stage's
+      // package (measured in PROD 2026-07-21: 75 entries / 101.60h across 6
+      // clients).
+      //
+      // R2 FIX 1 (2026-07-22) WIDENED this to ANY completed stage of the
+      // service. REVERTED R3 (2026-07-22, same day) after an independent
+      // product-owner review: for client 2025006, the owner ruled the STAGE
+      // CLOSURE itself was the error and the tasks pointing at the closed
+      // stage are CORRECT where they are — the widened filter would have
+      // forcibly (and irreversibly — no write path exists anywhere for a
+      // task's `serviceId` outside this callable) moved exactly those tasks.
+      // Client 2026057 (fixed-price, ~₪90,000 turning on stage attribution)
+      // is the one client the owner is handling supervised/human-decided —
+      // its stage_a is closed, and the widened filter would have auto-moved
+      // its tasks on the next advance, pre-empting that reserved decision on
+      // the highest-stakes client in the dataset. The widened set was also
+      // built from `status === 'completed'` with NO positional constraint —
+      // a later stage marked completed (as a future `reopenStage` feature
+      // will deliberately do) could move a task BACKWARD. The narrow filter
+      // below is correct for WRITES; CHANGE 2 below adds detect-only
+      // observability for what the narrow filter deliberately leaves behind.
+      //
+      // Re-point, NEVER close: completing a task is irreversible (no reopen
+      // callable exists) and completeTask refuses when actualMinutes===0
+      // (budget-tasks/index.js:521-534) — auto-closing would destroy
+      // in-flight work AND fail outright on untouched tasks.
+      //
+      // FIRESTORE TRANSACTION ORDERING (hard constraint): this read MUST
+      // happen here — after the client-doc read above, BEFORE
+      // writeClientWithCanonicalAggregates is called below. That helper
+      // performs its OWN internal transaction.get(clientRef) followed by
+      // transaction.update (shared/client-writer.js "2. Transactional read" +
+      // "9. Write") — so the ordering across this whole callback is: read
+      // client (3a) → read budget_tasks (here) → [call the helper: internal
+      // re-read of client, then client write] → THEN the repoint task writes
+      // (placed after the helper call, see below — NOT before it, or a task
+      // write would land between the outer reads and the helper's internal
+      // read, violating "all reads before all writes"). All reads precede
+      // all writes; Firestore requires this or the transaction throws at
+      // runtime. The QUERY itself (this read) stays exactly here; only the
+      // IN-MEMORY filtering below moves to after `updatedStages` exists.
+      //
+      // Query scoped to `clientId` ONLY (a single equality filter — no
+      // composite index risk); the precise match is filtered in-memory below.
+      const clientBudgetTasksSnap = await transaction.get(
+        db.collection('budget_tasks').where('clientId', '==', data.clientId)
+      );
+
       // 3g. Immutable update — stages
       const updatedStages = service.stages.map((stage, idx) => {
         if (idx === activeIndex) return { ...stage, status: 'completed', completedAt: now };
@@ -912,6 +1285,154 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       });
       const updatedService = { ...service, stages: updatedStages };
       const updatedServices = services.map((s, idx) => idx === serviceIndex ? updatedService : s);
+
+      // PR-2 (2026-08-16): a stage advance MOVES AVAILABLE CAPACITY without
+      // anyone adding or removing a single hour — the closing stage's unused
+      // balance stops being available and the opening stage's budget starts.
+      // Nothing recorded that until now: the audit row below lists which stage
+      // closed and which opened, but not what it did to the number the office
+      // makes decisions on. Under the capacity rule this is the moment money
+      // moves, so it belongs in the trail.
+      //
+      // Read-only and total by construction (see shared/stage-capacity.js) —
+      // it cannot affect the write.
+      const capacityBefore = computeServiceCapacity(service);
+      const capacityAfter = computeServiceCapacity(updatedService);
+
+      // 3g2. CHANGE 2 (2026-07-22, R3): `completedStageIds` — the set of THIS
+      // service's completed stage ids (both the stage just closed above AND
+      // any earlier stage already `completed` before this advance). This
+      // set exists ONLY to power the detect-only counter below
+      // (`strandedOnEarlierStageCount`). IT MUST NEVER AGAIN BE USED TO
+      // SELECT WHAT GETS WRITTEN — that was R2 FIX 1's mistake, reverted
+      // above. A task on a `pending` (future) stage is never in this set.
+      const completedStageIds = new Set(
+        updatedStages.filter((s) => s.status === 'completed').map((s) => s.id)
+      );
+
+      // 3g3. PR-B-2 R2 FIX 5: observability-only counter. createBudgetTask
+      // writes `parentServiceId: data.parentServiceId || null`
+      // (budget-tasks/index.js:178) — the anchor field is known-incomplete in
+      // production. A task that matches on stage + status but has no
+      // parentServiceId is excluded from re-pointing (we cannot safely infer
+      // which service it belongs to), but that exclusion is otherwise
+      // indistinguishable from "no task existed". This counter surfaces it.
+      // Does NOT change behaviour — count only, never re-point on this basis.
+      let skippedForMissingParentServiceIdCount = 0;
+
+      // 3g4. CHANGE 2 (2026-07-22, R3): detect-only counter for OPEN tasks
+      // that belong to THIS service and are stranded on an EARLIER completed
+      // stage of this service (not the one closing right now). These tasks
+      // are real, still open, and are DELIBERATELY not re-pointed by the
+      // narrow write filter below — see the 2025006 ruling and the 2026057
+      // pre-emption risk in the comment above. Their disposition belongs to
+      // a human (the future reopen/modal flow), not to this code. This
+      // counter — plus the console.warn emitted per matching task, below —
+      // is the measurable residual the narrow filter leaves behind.
+      // ZERO writes ever result from this branch.
+      let strandedOnEarlierStageCount = 0;
+
+      // FIX E (2026-07-22, PR-B-2 R4 — outcomes-grader "blind spot" finding):
+      // a third detect-only bucket. `strandedOnEarlierStageCount` only fires
+      // when `t.parentServiceId === service.id` — but an OPEN task with a
+      // FALSY parentServiceId whose `serviceId` doesn't correspond to ANY
+      // stage of THIS service (not the closing stage, not an earlier
+      // completed stage, not a future pending stage) previously fell through
+      // every branch uncounted: it fails the stranded check (requires
+      // parentServiceId===service.id), then fails the second block's
+      // `t.serviceId !== currentStage.id` return before ever reaching the
+      // `!t.parentServiceId` counter (that counter only increments when
+      // serviceId DOES equal currentStage.id). This counter closes that gap
+      // for the UNAMBIGUOUS case only: `parentServiceId === service.id`
+      // (the task explicitly names this service) but `serviceId` matches no
+      // stage on it at all — data corruption / a stale-stage bug, not the
+      // drift class either existing counter targets. ZERO writes, ever.
+      //
+      // Deliberately NOT counted (would require guessing): an OPEN task with
+      // a FALSY parentServiceId whose serviceId happens to equal an earlier
+      // completed stage id (e.g. 'stage_a') of THIS service. Stage ids
+      // ('stage_a'/'stage_b'/'stage_c') are literal constants reused across
+      // EVERY legal_procedure service on a client (SYSTEM_CONSTANTS.
+      // VALID_STAGE_IDS) — so without parentServiceId there is no way to
+      // tell whether that task belongs to THIS service or a sibling
+      // legal_procedure service on the same client with the same stage ids.
+      // Counting it here would be an attribution guess dressed up as a
+      // measurement — per instruction, a wrong counter is worse than a
+      // missing one, so this case is left uncounted (already partially
+      // visible via `skippedForMissingParentServiceIdCount` in the one
+      // sub-case where serviceId also happens to equal currentStage.id).
+      let unresolvedStageForServiceCount = 0;
+      const stageIdsOfThisService = new Set(
+        Array.isArray(service.stages) ? service.stages.map((s) => s.id) : []
+      );
+
+      const tasksToRepoint = clientBudgetTasksSnap.docs.filter((taskDoc) => {
+        const t = taskDoc.data();
+        if (t.status !== OPEN_TASK_STATUS) return false;
+
+        // Detect-only: an open task of THIS service, stranded on an earlier
+        // completed stage (not the one closing now). Never selected for
+        // write. Identifiers only in the log — no client name, employee
+        // email, task description, or hours (PUBLIC repo, world-readable
+        // CI logs).
+        if (
+          t.parentServiceId === service.id &&
+          t.serviceId !== currentStage.id &&
+          completedStageIds.has(t.serviceId)
+        ) {
+          strandedOnEarlierStageCount++;
+          console.warn('STRANDED_BUDGET_TASK_EARLIER_STAGE', {
+            taskId: taskDoc.id,
+            stageId: t.serviceId,
+            serviceId: service.id,
+            clientId: data.clientId
+          });
+          return false;
+        }
+
+        // Detect-only (FIX E): an open task explicitly owned by THIS service
+        // (parentServiceId matches) whose serviceId is not any stage of this
+        // service at all — unresolvable, not covered by the stranded branch
+        // above (which requires completedStageIds.has(serviceId)). Never
+        // selected for write.
+        if (
+          t.parentServiceId === service.id &&
+          t.serviceId !== currentStage.id &&
+          !completedStageIds.has(t.serviceId) &&
+          !stageIdsOfThisService.has(t.serviceId)
+        ) {
+          unresolvedStageForServiceCount++;
+          console.warn('BUDGET_TASK_UNRESOLVED_STAGE_FOR_SERVICE', {
+            taskId: taskDoc.id,
+            stageId: t.serviceId,
+            serviceId: service.id,
+            clientId: data.clientId
+          });
+          return false;
+        }
+
+        // WRITE-SELECTION predicate (narrow — reverted to the pre-R2-FIX-1
+        // shape): only a task pointing at the EXACT stage being closed now.
+        if (t.serviceId !== currentStage.id) return false;
+        if (t.parentServiceId === service.id) return true;
+        if (!t.parentServiceId) skippedForMissingParentServiceIdCount++;
+        return false;
+      });
+
+      // 3g4. PR-B-2 R2 FIX 3: hard ceiling BEFORE any write happens. Each
+      // re-pointed task costs 2 writes (task update + audit doc) — see
+      // MAX_REPOINT_TASKS comment at module scope for the 500-write/2-per-
+      // task arithmetic. Thrown here, before writeClientWithCanonicalAggregates
+      // is even called, so no partial write attempt is made and the admin
+      // gets a named, actionable Hebrew error instead of a raw Firestore
+      // "too many writes" failure at commit time.
+      if (tasksToRepoint.length > MAX_REPOINT_TASKS) {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          `נמצאו ${tasksToRepoint.length} משימות פתוחות לעדכון שלב — חורג מהמגבלה הבטוחה (${MAX_REPOINT_TASKS}). ` +
+          'לא ניתן לבצע את מעבר השלב באופן אוטומטי. פנה לתמיכה טכנית.'
+        );
+      }
 
       // 3h. PR-B.8 (2026-05-17): migrate to canonical helper.
       // Pattern from PR-B.1-B.7 (#283-#289). Equivalence verified upfront:
@@ -936,13 +1457,138 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
         }
       );
 
+      // 3h2. PR-B-2: write the re-point for every matched OPEN task, with an
+      // audit entry committed ATOMICALLY in this same transaction (audit-FIRST
+      // discipline, functions/CLAUDE.md "Audit-FIRST"; logCriticalActionInTxn
+      // from functions/src-ts/audit-critical.ts). Update ONLY the stage
+      // pointer (serviceId) — NEVER actualMinutes/estimatedMinutes/status/
+      // timeEntries/any budget or completion field. `serviceName` on the task
+      // stores the PARENT SERVICE's display name (verified: apps/user-app/js/
+      // modules/client-case-selector.js:1246-1249 — `parentService.name`, set
+      // once at creation and never the stage name), which does not change
+      // when the stage advances — so it is intentionally left untouched here.
+      //
+      // MUST run AFTER writeClientWithCanonicalAggregates, not before: that
+      // helper does its OWN internal transaction.get(clientRef) (a READ)
+      // before its transaction.update(clientRef, ...) (a WRITE) — see
+      // shared/client-writer.js "2. Transactional read" / "9. Write". If the
+      // task-repoint writes below ran BEFORE calling the helper, the sequence
+      // would be read→read→WRITE(task)→READ(helper's internal re-read)→
+      // WRITE(client) — a write sandwiched before a later read, which
+      // Firestore's real transaction API rejects at runtime ("all reads must
+      // execute before all writes"). Running the repoint writes here instead
+      // keeps every read (outer client, budget_tasks query, helper's internal
+      // re-read) before every write (helper's client write, then these task
+      // writes) — verified by a dedicated ordering test
+      // (tests/move-to-next-stage-repoint.test.js, "H. Reads precede writes")
+      // that failed exactly this way before this ordering fix.
+      //
+      // Zero matched tasks (the common case today — measured PROD blast
+      // radius is 2-4 open tasks on a closed stage) → this loop performs ZERO
+      // writes, so the transaction is byte-identical to pre-PR-B-2 behavior.
+      //
+      // Failure semantics: no try/catch here by design. Any error re-pointing
+      // a task (or writing its audit entry) throws inside this same
+      // transaction callback and aborts the WHOLE stage advance — a stage
+      // that advances while its in-flight tasks are left behind on the
+      // closed stage is exactly the defect this PR fixes, and a partial
+      // success would be invisible (no compensating signal exists downstream
+      // to catch it). This is free — no extra code needed — because the
+      // repoint writes already live inside the single db.runTransaction that
+      // wraps the entire stage-advance.
+      for (const taskDoc of tasksToRepoint) {
+        // CHANGE 5 (2026-07-22, R3): capture the task's OWN prior serviceId
+        // before the update, rather than assuming it equals `currentStage.id`.
+        // Under the narrow write filter above the two are always equal by
+        // construction (only tasks with serviceId === currentStage.id are
+        // ever selected here) — but reading it off the task keeps the audit
+        // field truthful even if the filter is ever changed again, at zero
+        // cost.
+        const priorStageId = taskDoc.data().serviceId;
+
+        // PR-B-2 R2 FIX 2: mirror shared/client-writer.js:238's guard —
+        // `user.username` (functions/shared/auth.js:48 `employee.username`)
+        // has no default and is written verbatim from caller input
+        // (functions/auth/index.js:167). The Node Firestore SDK throws
+        // SYNCHRONOUSLY on `undefined` in transaction.update() (no
+        // `ignoreUndefinedProperties` is set anywhere in functions/), which
+        // would abort the entire stage advance. Omit the key rather than
+        // write `undefined` or fabricate a value.
+        const taskUpdatePayload = {
+          serviceId: nextStage.id,
+          lastModifiedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+        if (user.username) {
+          taskUpdatePayload.lastModifiedBy = user.username;
+        }
+
+        // PR-B-2 R2 FIX 4 (comment corrected 2026-07-22 R3 — CHANGE 4): this
+        // try/catch does NOT protect against a concurrently-deleted task
+        // (NOT_FOUND at commit), despite the original comment's claim.
+        // `transaction.update` and `logCriticalActionInTxn`'s `transaction.set`
+        // both BUFFER their write — a missing-document failure surfaces at
+        // COMMIT time, which is OUTSIDE this callback and OUTSIDE this
+        // try/catch entirely. What this guard genuinely catches is the
+        // SYNCHRONOUS-throw class only: undefined-value validation inside
+        // `transaction.update`/`transaction.set`, or `validateActorUid`
+        // throwing synchronously inside `logCriticalActionInTxn`. On any of
+        // those, catch, enrich with the failing taskId, and RE-THROW — abort
+        // semantics are UNCHANGED by design (do not swallow, do not
+        // continue); there is no UI anywhere that lets an admin fix a
+        // budget_task's stage (the admin task editor renders it read-only),
+        // so a named error is the only diagnostic path available for this
+        // synchronous class. A commit-time failure (e.g. concurrent delete)
+        // is NOT caught here — it propagates as the transaction's own
+        // rejection, unnamed by taskId, same as before this guard existed.
+        try {
+          // FIX B (2026-07-22, PR-B-2 R4 — Mechanical bar item, MASTER_PLAN
+          // §2.0.2 "Audit-FIRST, mutation-SECOND ordering"): audit call
+          // MUST precede the mutation (mirrors reconciliation/index.js's
+          // set-mode transaction). Both calls buffer into the same
+          // transaction and commit together — this swap changes ordering
+          // only, not atomicity or outcome. `priorStageId` was captured
+          // above from the pre-update task snapshot, so it is unaffected by
+          // this reordering.
+          logCriticalActionInTxn(transaction, 'REPOINT_BUDGET_TASK_STAGE', user.uid, {
+            clientId: data.clientId,
+            taskId: taskDoc.id,
+            parentServiceId: service.id,
+            fromStageId: priorStageId,
+            toStageId: nextStage.id
+          });
+
+          transaction.update(taskDoc.ref, taskUpdatePayload);
+        } catch (repointErr) {
+          console.error('Error re-pointing budget_task during moveToNextStage:', taskDoc.id, repointErr);
+          throw new functions.https.HttpsError(
+            'internal',
+            `שגיאה בעדכון שלב עבור משימה ${taskDoc.id} — מעבר השלב בוטל. פנה לתמיכה טכנית.`
+          );
+        }
+      }
+
       // 3i. return data from transaction
       return {
         currentStage: { id: currentStage.id, name: currentStage.name || currentStage.id },
         nextStage: { id: nextStage.id, name: nextStage.name || nextStage.id },
         updatedStages: updatedStages,
         isLastStage: isLastStage,
-        serviceName: service.name || service.serviceName
+        serviceName: service.name || service.serviceName,
+        // PR-2: what the advance did to AVAILABLE capacity on this service.
+        availableHoursBefore: capacityBefore.active,
+        availableHoursAfter: capacityAfter.active,
+        // PR-B-2: observability (G3) — how many open budget_tasks were
+        // re-pointed to the new stage as part of this stage advance.
+        repointedTaskCount: tasksToRepoint.length,
+        // PR-B-2 R2 FIX 5: observability-only — see the comment at 3g3.
+        skippedForMissingParentServiceIdCount: skippedForMissingParentServiceIdCount,
+        // CHANGE 2 (2026-07-22, R3): observability-only — see the comment
+        // at 3g4. Never repaired by this code; surfaced so the future
+        // reopen/modal flow has a measurable target.
+        strandedOnEarlierStageCount: strandedOnEarlierStageCount,
+        // FIX E (2026-07-22, R4): observability-only — see the comment at
+        // the counter's declaration above. Never repaired by this code.
+        unresolvedStageForServiceCount: unresolvedStageForServiceCount
       };
     });
 
@@ -955,11 +1601,24 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       fromStageName: result.currentStage.name,
       toStageId: result.nextStage.id,
       toStageName: result.nextStage.name,
-      serviceName: result.serviceName
+      serviceName: result.serviceName,
+      // PR-2: the capacity delta this advance caused. `availableHoursDelta` is
+      // typically NEGATIVE when the closing stage still held unused hours —
+      // that is the point: those hours were being presented as available and
+      // stop being so at this instant, with no hours added or removed.
+      availableHoursBefore: result.availableHoursBefore,
+      availableHoursAfter: result.availableHoursAfter,
+      availableHoursDelta: Math.round(
+        (result.availableHoursAfter - result.availableHoursBefore) * 100
+      ) / 100,
+      repointedTaskCount: result.repointedTaskCount,
+      skippedForMissingParentServiceIdCount: result.skippedForMissingParentServiceIdCount,
+      strandedOnEarlierStageCount: result.strandedOnEarlierStageCount,
+      unresolvedStageForServiceCount: result.unresolvedStageForServiceCount
     });
 
     // 5. Return
-    console.log(`✅ Stage moved: ${result.currentStage.id} → ${result.nextStage.id} for client ${data.clientId}`);
+    console.log(`✅ Stage moved: ${result.currentStage.id} → ${result.nextStage.id} for client ${data.clientId} (repointed ${result.repointedTaskCount} open task(s), skipped ${result.skippedForMissingParentServiceIdCount} for missing parentServiceId, ${result.strandedOnEarlierStageCount} stranded on an earlier closed stage, ${result.unresolvedStageForServiceCount} with an unresolved stage for this service)`);
 
     return {
       success: true,
@@ -968,6 +1627,10 @@ exports.moveToNextStage = functions.https.onCall(async (data, context) => {
       toStage: result.nextStage,
       updatedStages: result.updatedStages,
       isLastStage: result.isLastStage,
+      repointedTaskCount: result.repointedTaskCount,
+      skippedForMissingParentServiceIdCount: result.skippedForMissingParentServiceIdCount,
+      strandedOnEarlierStageCount: result.strandedOnEarlierStageCount,
+      unresolvedStageForServiceCount: result.unresolvedStageForServiceCount,
       message: `עברת לשלב "${result.nextStage.name}"`
     };
 
@@ -998,6 +1661,13 @@ exports.completeService = functions.https.onCall(async (data, context) => {
   try {
     // 1. Auth
     const user = await checkUserPermissions(context);
+
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לסמן שירות כהושלם'
+      );
+    }
 
     // 2. Validation
     if (!data.clientId || typeof data.clientId !== 'string') {
@@ -1148,6 +1818,13 @@ exports.changeServiceStatus = functions.https.onCall(async (data, context) => {
   try {
     // 1. Auth
     const user = await checkUserPermissions(context);
+
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לשנות סטטוס שירות'
+      );
+    }
 
     // 2. Validation
     if (!data.clientId || typeof data.clientId !== 'string') {
@@ -1347,6 +2024,13 @@ exports.deleteService = functions.https.onCall(async (data, context) => {
     // 1. Auth
     const user = await checkUserPermissions(context);
 
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול למחוק שירות'
+      );
+    }
+
     // 2. Validation
     if (!data.clientId || typeof data.clientId !== 'string') {
       throw new functions.https.HttpsError(
@@ -1497,6 +2181,174 @@ exports.deleteService = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError(
       'internal',
       `שגיאה במחיקת שירות: ${error.message}`
+    );
+  }
+});
+
+/**
+ * עדכון תאריך רכישה של חבילת שעות קיימת
+ * @param {Object} data
+ * @param {string} data.clientId - מזהה לקוח
+ * @param {string} data.serviceId - מזהה שירות
+ * @param {string} data.packageId - מזהה חבילה
+ * @param {string} data.purchaseDate - תאריך רכישה חדש (YYYY-MM-DD)
+ */
+exports.updatePackagePurchaseDate = functions.https.onCall(async (data, context) => {
+  try {
+    const user = await checkUserPermissions(context);
+
+    if (user.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'רק מנהל יכול לעדכן תאריך רכישת חבילה'
+      );
+    }
+
+    if (!data.clientId || typeof data.clientId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה לקוח חובה'
+      );
+    }
+
+    if (!data.serviceId || typeof data.serviceId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה שירות חובה'
+      );
+    }
+
+    if (!data.packageId || typeof data.packageId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'מזהה חבילה חובה'
+      );
+    }
+
+    if (!data.purchaseDate || typeof data.purchaseDate !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'תאריך רכישה חובה'
+      );
+    }
+
+    // Validate purchaseDate — mirrors addPackageToService
+    const parsed = new Date(data.purchaseDate);
+
+    if (isNaN(parsed.getTime())) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'תאריך רכישה לא תקין. פורמט צריך להיות: YYYY-MM-DD'
+      );
+    }
+
+    if (parsed > new Date()) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'תאריך רכישה לא יכול להיות בעתיד'
+      );
+    }
+
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    if (parsed < oneYearAgo) {
+      console.warn(`⚠️ Purchase date is more than 1 year old: ${parsed.toISOString()}`);
+    }
+
+    const newPurchaseDate = parsed.toISOString();
+
+    const clientRef = db.collection('clients').doc(data.clientId);
+
+    const result = await db.runTransaction(async (transaction) => {
+      const clientDoc = await transaction.get(clientRef);
+      if (!clientDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          `לקוח ${data.clientId} לא נמצא`
+        );
+      }
+
+      const clientData = clientDoc.data();
+      const services = clientData.services || [];
+
+      const serviceIndex = services.findIndex(s => s.id === data.serviceId);
+      if (serviceIndex === -1) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'שירות לא נמצא עבור לקוח זה'
+        );
+      }
+
+      const service = services[serviceIndex];
+      const packages = service.packages || [];
+
+      const packageIndex = packages.findIndex(p => p.id === data.packageId);
+      if (packageIndex === -1) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'חבילה לא נמצאה בשירות זה'
+        );
+      }
+
+      const oldPurchaseDate = packages[packageIndex].purchaseDate;
+
+      const updatedPackages = packages.map((pkg, idx) =>
+        idx === packageIndex
+          ? { ...pkg, purchaseDate: newPurchaseDate }
+          : pkg
+      );
+
+      const updatedService = { ...service, packages: updatedPackages };
+      const updatedServices = services.map((s, idx) =>
+        idx === serviceIndex ? updatedService : s
+      );
+
+      await writeClientWithCanonicalAggregates(
+        transaction,
+        clientRef,
+        { services: updatedServices },
+        {
+          caller: 'updatePackagePurchaseDate',
+          auditMeta: { uid: user.uid, username: user.username }
+        }
+      );
+
+      return {
+        serviceName: service.name || service.serviceName,
+        packageId: data.packageId,
+        oldPurchaseDate,
+        newPurchaseDate
+      };
+    });
+
+    await logAction('UPDATE_PACKAGE_PURCHASE_DATE', user.uid, user.username, {
+      clientId: data.clientId,
+      serviceId: data.serviceId,
+      packageId: result.packageId,
+      oldPurchaseDate: result.oldPurchaseDate,
+      newPurchaseDate: result.newPurchaseDate
+    });
+
+    console.log(`✅ Package ${data.packageId} purchaseDate updated: ${result.oldPurchaseDate} → ${result.newPurchaseDate}`);
+
+    return {
+      success: true,
+      packageId: result.packageId,
+      purchaseDate: result.newPurchaseDate,
+      message: `תאריך רכישה עודכן בהצלחה`
+    };
+
+  } catch (error) {
+    console.error('Error in updatePackagePurchaseDate:', error);
+
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
+    throw new functions.https.HttpsError(
+      'internal',
+      `שגיאה בעדכון תאריך רכישה: ${error.message}`
     );
   }
 });

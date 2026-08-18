@@ -18,8 +18,9 @@ After Pre-H.0.0.B the three admin-claim entry points all require an EXISTING adm
 | Endpoint | Path | Gate |
 |---|---|---|
 | `setAdminClaim` (legacy singular, grant + revoke) | `functions/auth/index.js` | `checkUserPermissions` → `employee.isAdmin` |
-| `setAdminClaims` (new, grant only) | `functions/src-ts/set-admin-claims.ts` | dual-shape token check (`token.role==='admin'` OR `token.admin===true`) |
-| `initializeAdminClaims` (new, bulk sync from `employees`) | `functions/src-ts/initialize-admin-claims.ts` | same dual-shape token check |
+| `setAdminClaims` (new, grant only) | `functions/src-ts/set-admin-claims.ts` | role-only token check (`token.role==='admin'`; legacy `admin:true` gate removed in the Pre-H.0.0.E follow-up) |
+| `initializeAdminClaims` (new, bulk sync from `employees`) | `functions/src-ts/initialize-admin-claims.ts` | same role-only token check |
+| `syncRoleClaims` (new, role reconciler — writes `partner`, removes `lawyer`) | `functions/src-ts/sync-role-claims.ts` | same role-only token check; DRY-RUN default, `--apply` is a supervised PROD action |
 
 This is intentional — it eliminates the previous vulnerability where unauthenticated callers could grant admin. The trade-off is that if NO user has admin (disaster recovery, restored Auth backup, fresh environment), there's no in-app path to bootstrap one.
 

@@ -93,7 +93,23 @@
   status = 200
 
 # Cache control for static assets
-# CSS/JS files - always check for updates (cache busting with ?v= parameter)
+#
+# DELIBERATELY HELD AT no-cache ON production-stable (2026-08-18 promotion).
+# Same reasoning as apps/admin-panel/netlify.toml: `immutable` is only safe when
+# every asset ref carries a ?v= token.
+#
+# And on THIS branch the gap is wider than on main: the production-stable build
+# context is `echo 'dist already in git - skip build'` (see [context.production-stable]
+# above), so cache-bust does NOT run here at all - not for the user app either.
+# Whatever tokens exist are the ones committed to git. An asset pinned for a year
+# therefore cannot be rolled back by `git revert` + redeploy; it would need a
+# filename change. That breaks the G2 rollback gate.
+#
+# Do NOT read this as "add cache-bust to the admin build and then adopt immutable" -
+# on production-stable neither app runs a build step at all.
+#
+# Changing cache policy is not part of promoting the display work. To adopt
+# `immutable`, close the token gaps first and align with main in its own PR.
 [[headers]]
   for = "/css/*"
   [headers.values]

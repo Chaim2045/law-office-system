@@ -96,7 +96,7 @@
          * Open modal for client
          * פתיחת המודאל ללקוח
          */
-        open(client, dataManager) {
+        open(client, dataManager, opts = {}) {
             if (!client) {
                 console.error('❌ No client provided');
                 return;
@@ -106,8 +106,12 @@
 
             this.currentClient = client;
             this.dataManager = dataManager;
+            // U5b: each open starts on the "כללי" detail panel (master-detail selection).
+            this._selectedRail = 'general';
 
-            // Render content
+            // Render content. renderServices() + renderFeeAgreements() run on EVERY open —
+            // even when opening straight to the report tab — because the overdraft +
+            // add-package injectors scan the management service-cards in the DOM (PR-U4).
             this.renderClientInfo();
             this.renderServices();
             this.renderFeeAgreements();
@@ -123,6 +127,66 @@
             // Show modal
             this.modalElement.style.display = 'flex';
             document.body.style.overflow = 'hidden';
+
+            // PR-U4: tab-bar (ניהול | הפקת דוח). Safe no-op when the tab markup isn't present.
+            this._reportRenderedForOpen = false; // report tab renders once per open, then persists across toggles
+            this._setupTabs();
+            this._switchTab(opts && opts.initialTab === 'report' ? 'report' : 'manage');
+        }
+
+        /**
+         * PR-U4: wire the ניהול / הפקת-דוח tab-bar. Idempotent (wires once) and a safe
+         * no-op when the tab markup isn't in the DOM (e.g. another page).
+         */
+        _setupTabs() {
+            const tabs = this.modalElement ? this.modalElement.querySelectorAll('.cm-tab') : null;
+            if (!tabs || tabs.length === 0 || this._tabsWired) {
+                return;
+            }
+            tabs.forEach((tab) => {
+                tab.addEventListener('click', () => this._switchTab(tab.getAttribute('data-cm-tab')));
+            });
+            this._tabsWired = true;
+        }
+
+        /**
+         * PR-U4: show one tab panel via a CSS toggle. BOTH panels stay in the DOM — the
+         * management panel (hidden under the report tab) keeps its service-cards present so
+         * the overdraft + add-package injectors keep firing (VAL-2). The report tab is
+         * (re)rendered for the current client on each switch to it.
+         */
+        _switchTab(name) {
+            if (!this.modalElement) {
+                return;
+            }
+            const tabs = this.modalElement.querySelectorAll('.cm-tab');
+            const panels = this.modalElement.querySelectorAll('.cm-panel');
+            if (!tabs.length || !panels.length) {
+                return; // no tab UI on this page
+            }
+            const tabName = name === 'report' ? 'report' : 'manage';
+            const manageActive = tabName === 'manage';
+
+            tabs.forEach((tab) => {
+                const active = tab.getAttribute('data-cm-tab') === tabName;
+                tab.classList.toggle('cm-tab--active', active);
+                tab.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+            const managePanel = this.modalElement.querySelector('#cmManagePanel');
+            const reportPanel = this.modalElement.querySelector('#cmReportPanel');
+            if (managePanel) {
+                managePanel.classList.toggle('cm-panel--active', manageActive);
+            }
+            if (reportPanel) {
+                reportPanel.classList.toggle('cm-panel--active', !manageActive);
+            }
+            if (!manageActive && reportPanel && window.ReportTab && typeof window.ReportTab.render === 'function') {
+                // Render once per open — toggling manage↔report preserves the in-progress selection + dates.
+                if (!this._reportRenderedForOpen) {
+                    window.ReportTab.render(this.currentClient, reportPanel, this.dataManager);
+                    this._reportRenderedForOpen = true;
+                }
+            }
         }
 
         /**
@@ -188,12 +252,14 @@ return;
                 }
 
                 try {
-                    await FirebaseService.call('updateClient', {
+                    await window.firebaseFunctions.httpsCallable('updateClient')({
                         clientId: client.id,
                         caseOpenDate: newDate.toISOString()
                     });
 
-                    this.currentClient.caseOpenDate = { seconds: Math.floor(newDate.getTime() / 1000), nanoseconds: 0 };
+                    // Real Timestamp (not a plain {seconds} object) so consumers that call
+                    // .toDate() — e.g. the report's 'all' range — anchor correctly in-session.
+                    this.currentClient.caseOpenDate = firebase.firestore.Timestamp.fromDate(newDate);
                     cleanup();
                     this.renderClientInfo();
                     this.showNotification('תאריך פתיחת תיק עודכן', 'success');
@@ -214,7 +280,7 @@ return;
 
                 if (active) {
                     modal.innerHTML = `
-                        <div style="font-weight:600;margin-bottom:12px;font-size:15px;">אישור חריגה — ${serviceName}</div>
+                        <div style="font-weight:600;margin-bottom:12px;font-size:15px;">אישור חריגה — ${this.escapeHtml(serviceName)}</div>
                         <input type="text" id="overrideNoteInput" placeholder="הערה (אופציונלי)" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;margin-bottom:16px;box-sizing:border-box;">
                         <div style="display:flex;gap:8px;justify-content:flex-end;">
                             <button id="overrideCancel" style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;">ביטול</button>
@@ -222,7 +288,7 @@ return;
                         </div>`;
                 } else {
                     modal.innerHTML = `
-                        <div style="font-weight:600;margin-bottom:12px;font-size:15px;">ביטול חריגה — ${serviceName}</div>
+                        <div style="font-weight:600;margin-bottom:12px;font-size:15px;">ביטול חריגה — ${this.escapeHtml(serviceName)}</div>
                         <div style="color:#6b7280;margin-bottom:16px;font-size:14px;">האם לבטל את אישור החריגה לשירות זה?</div>
                         <div style="display:flex;gap:8px;justify-content:flex-end;">
                             <button id="overrideCancel" style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;">ביטול</button>
@@ -346,17 +412,28 @@ return;
         }
 
         /**
-         * Render services list
-         * רינדור רשימת שירותים
+         * Render services (U5b master-detail cutover)
+         * רינדור שירותים — פריסת master-detail
+         * ────────────────────────────────────────────────────────────────────────
+         * Builds the pure view-model (ServiceCardModel) and renders it through the shared
+         * UnifiedServiceCard renderer as a master-detail layout:
+         *   - #cmManageRail            → a "כללי" row + one buildRailRow per service (nav).
+         *   - #managementServicesList  → ALL buildManageDetail cards, present at once so the
+         *     overdraft + add-package injectors keep scanning every card (VAL-2). Only the
+         *     selected service card is visible (the others get .cm-card-hidden).
+         * Manage mode = build WITHOUT getStageName, so stage.name resolves EXACTLY like the
+         * old renderStages did (AddPackageToStage matches a stage by its name). The old
+         * accordion renderer (renderServiceCard + helpers) is no longer wired — its
+         * byte-identical output now comes from UnifiedServiceCard (proven in U5a).
          */
         renderServices() {
             if (!this.currentClient) {
-return;
-}
+                return;
+            }
 
             const services = this.currentClient.services || [];
 
-            // 🔍 DEBUG: Check for duplicate services
+            // 🔍 DEBUG: Check for duplicate services (ids/counts only — never client PII)
             console.log('📊 Rendering services:', services.length);
             const serviceIds = services.map(s => s.id);
             const uniqueIds = [...new Set(serviceIds)];
@@ -368,50 +445,193 @@ return;
                 });
             }
 
-            if (services.length === 0) {
-                this.servicesListContainer.innerHTML = `
-                    <div class="management-empty-state">
-                        <i class="fas fa-inbox"></i>
-                        <h4>אין שירותים פעילים</h4>
-                        <p>הוסף שירות חדש כדי להתחיל</p>
-                    </div>
-                `;
+            const rail = document.getElementById('cmManageRail');
+            const list = this.servicesListContainer;
+            if (!rail || !list) {
+                // Not the master-detail markup (defensive — e.g. another page) → nothing to do.
                 return;
             }
 
-            const servicesHTML = services.map(service => this.renderServiceCard(service)).join('');
-            this.servicesListContainer.innerHTML = servicesHTML;
+            // The rail always starts with the "כללי · פרטי לקוח" row (pure DOM — no globals — so
+            // it is reachable even when the unified renderer is unavailable).
+            rail.innerHTML = '';
+            rail.appendChild(this._buildGeneralRailRow());
 
-            // Attach service action listeners
-            this.attachServiceActionListeners();
+            // FIX 1: renderServices must NEVER throw — open() calls it BEFORE it shows the modal,
+            // so a renderer failure here would silently abort the open (a client click does
+            // nothing). On any failure we render a professional Hebrew fallback (G1) and keep the
+            // "כללי" panel (fee-agreements + "הוסף שירות חדש") reachable as the default view.
+            const renderFallback = () => {
+                list.innerHTML =
+                    '<div class="management-empty-state">' +
+                    '<i class="fas fa-exclamation-triangle"></i>' +
+                    '<h4>שגיאה בטעינת השירותים</h4>' +
+                    '<p>רענן/י את הדף ונס/י שוב.</p>' +
+                    '</div>';
+            };
 
-            // Attach toggle listeners for expand/collapse
-            this.attachServiceToggleListeners();
+            // Guard the globals the card build depends on. Missing/stale → fallback + select
+            // "כללי" + RETURN (never throw).
+            const renderersReady =
+                window.ServiceCardModel && typeof window.ServiceCardModel.build === 'function' &&
+                window.UnifiedServiceCard &&
+                typeof window.UnifiedServiceCard.buildRailRow === 'function' &&
+                typeof window.UnifiedServiceCard.buildManageDetail === 'function';
+
+            if (!renderersReady) {
+                console.error('renderServices: unified renderer unavailable', {
+                    hasModel: !!window.ServiceCardModel,
+                    hasUnifiedCard: !!window.UnifiedServiceCard
+                });
+                renderFallback();
+                this._wireRailAndSelect(rail, true);
+                return;
+            }
+
+            try {
+                if (services.length === 0) {
+                    // FIX 3: the zero-service view IS the "כללי" panel (the rail carries only the
+                    // "כללי" row → the services list stays hidden). The old empty-state innerHTML
+                    // was unreachable under the hidden list — removed (delete-redundant).
+                    list.innerHTML = '';
+                } else {
+                    // Manage mode: NO getStageName → stage.name resolves identically to renderStages.
+                    const built = window.ServiceCardModel.build(this.currentClient);
+                    list.innerHTML = '';
+                    built.cards.forEach(card => {
+                        // FIX 4: a service with a falsy serviceId would key a rail row to '' → it
+                        // would silently select "general". Skip it (row + card) rather than emit it.
+                        if (!card.serviceId) {
+                            console.warn('renderServices: skipping a service with no serviceId');
+                            return;
+                        }
+                        // buildRailRow OWNS data-rail (= card.serviceId) — no re-tagging here (FIX 4).
+                        rail.appendChild(window.UnifiedServiceCard.buildRailRow(card));
+                        // DOM ELEMENTS (append, not innerHTML concat) — preserve them for the injectors.
+                        list.appendChild(window.UnifiedServiceCard.buildManageDetail(card));
+                    });
+
+                    // The new cards emit the SAME [data-service-action] / .override-btn /
+                    // .edit-pkg-date-btn selectors, so this binds them UNCHANGED.
+                    this.attachServiceActionListeners();
+                }
+            } catch (err) {
+                // Non-PII: error NAME + service COUNT only — never any client field.
+                console.error('renderServices failed', {
+                    errName: err && err.name,
+                    serviceCount: services.length
+                });
+                renderFallback();
+                this._wireRailAndSelect(rail, true);
+                return;
+            }
+
+            this._wireRailAndSelect(rail, false);
         }
 
         /**
-         * Attach toggle listeners for service cards
-         * צרף מאזינים להרחבה/כיווץ של כרטיסי שירות
+         * Wire the rail rows (click + roving ArrowUp/ArrowDown) and apply the selection.
+         * @param {HTMLElement} rail
+         * @param {boolean} forceGeneral - fallback paths force the "כללי" panel so the general
+         *        panel (fee-agreements) is always the reachable default.
          */
-        attachServiceToggleListeners() {
-            const serviceCards = this.servicesListContainer.querySelectorAll('.management-service-card');
-
-            serviceCards.forEach(card => {
-                const header = card.querySelector('.management-service-header');
-
-                header.addEventListener('click', () => {
-                    // Toggle expanded class
-                    const wasExpanded = card.classList.contains('expanded');
-
-                    // Close all other cards (optional - remove these 3 lines for multiple open cards)
-                    serviceCards.forEach(c => c.classList.remove('expanded'));
-
-                    // Toggle current card
-                    if (!wasExpanded) {
-                        card.classList.add('expanded');
-                    }
-                });
+        _wireRailAndSelect(rail, forceGeneral) {
+            // Click wiring — rows are recreated every render (innerHTML cleared), so no stacking.
+            // <button>s already fire click on Enter/Space (native keyboard).
+            rail.querySelectorAll('.cm-rail-row').forEach(row => {
+                row.addEventListener('click', () => this._selectRail(row.dataset.rail));
             });
+
+            // FIX 5: roving keyboard nav on the vertical tablist. The rail NODE persists across
+            // re-renders, so remove the prior handler before re-adding (no listener stacking).
+            if (this._railKeyHandler) {
+                rail.removeEventListener('keydown', this._railKeyHandler);
+            }
+            this._railKeyHandler = (e) => {
+                if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') {
+                    return;
+                }
+                const rows = Array.from(rail.querySelectorAll('.cm-rail-row'));
+                const idx = rows.indexOf(document.activeElement);
+                if (idx === -1) {
+                    return;
+                }
+                e.preventDefault();
+                const next = (idx + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length;
+                rows[next].focus();
+            };
+            rail.addEventListener('keydown', this._railKeyHandler);
+
+            // Restore/keep the selection; fall back to "כללי" if forced or the service is gone.
+            const services = (this.currentClient && this.currentClient.services) || [];
+            let selection = forceGeneral ? 'general' : (this._selectedRail || 'general');
+            if (selection !== 'general' && !services.some(s => s.id === selection)) {
+                selection = 'general';
+            }
+            this._selectRail(selection);
+        }
+
+        /**
+         * Build the "כללי · פרטי לקוח" rail row (mirrors UnifiedServiceCard.buildRailRow's
+         * element + classes so it styles + selects identically). data-rail="general".
+         */
+        _buildGeneralRailRow() {
+            const el = document.createElement('button');
+            el.type = 'button';
+            el.className = 'cm-rail-row';
+            el.setAttribute('role', 'tab');
+            el.setAttribute('aria-selected', 'false');
+            el.dataset.rail = 'general';
+            // FIX 5: the general row controls the general detail panel.
+            el.setAttribute('aria-controls', 'cmGeneralDetail');
+            el.innerHTML =
+                '<span class="cm-rail-row-icon"><i class="fas fa-user"></i></span>' +
+                '<span class="cm-rail-row-name">כללי · פרטי לקוח</span>';
+            return el;
+        }
+
+        /**
+         * Show ONE detail panel (master-detail selection).
+         *  - 'general'   → #cmGeneralDetail visible, #managementServicesList hidden.
+         *  - <serviceId> → #cmGeneralDetail hidden, #managementServicesList visible with ONLY the
+         *    matching .management-service-card shown (body revealed via the existing `.expanded`
+         *    accordion rule); the others are display:none via .cm-card-hidden.
+         * The matching rail row is marked aria-selected + active.
+         */
+        _selectRail(key) {
+            const selection = key || 'general';
+            this._selectedRail = selection;
+
+            const rail = document.getElementById('cmManageRail');
+            const general = document.getElementById('cmGeneralDetail');
+            const list = this.servicesListContainer;
+            if (!list) {
+                return;
+            }
+
+            const isGeneral = selection === 'general';
+
+            if (general) {
+                general.classList.toggle('cm-detail-panel--active', isGeneral);
+            }
+            if (isGeneral) {
+                list.setAttribute('hidden', '');
+            } else {
+                list.removeAttribute('hidden');
+                list.querySelectorAll('.management-service-card').forEach(card => {
+                    const match = card.getAttribute('data-service-id') === selection;
+                    card.classList.toggle('expanded', match);
+                    card.classList.toggle('cm-card-hidden', !match);
+                });
+            }
+
+            if (rail) {
+                rail.querySelectorAll('.cm-rail-row').forEach(row => {
+                    const active = (row.dataset.rail || 'general') === selection;
+                    row.classList.toggle('cm-rail-row--active', active);
+                    row.setAttribute('aria-selected', active ? 'true' : 'false');
+                });
+            }
         }
 
         /**
@@ -507,7 +727,18 @@ return;
             if (service.type === window.SYSTEM_CONSTANTS.SERVICE_TYPES.HOURS) {
                 const totalHours = service.totalHours || 0;
                 const hoursRemaining = service.hoursRemaining || 0;
-                const hoursUsed = totalHours - hoursRemaining;
+                // U1 (modal unification): read the STORED hoursUsed as the SSOT — the same
+                // canonical field the client rollup (functions/shared/aggregates.js), the
+                // report modal (ClientReportModal), and the unified renderer
+                // (service-card-renderer) all consume. Every healthy write path stores
+                // hoursUsed alongside hoursRemaining = totalHours - hoursUsed, so this is a
+                // no-op for current data; it only diverges (correctly, toward the report)
+                // for a drifted/hand-edited doc. Fall back to the legacy total - remaining
+                // derivation only when a doc predates the stored field (Number.isFinite
+                // guards an absent/non-numeric value → no regression for legacy docs).
+                const hoursUsed = Number.isFinite(service.hoursUsed)
+                    ? service.hoursUsed
+                    : (totalHours - hoursRemaining);
                 const percentage = totalHours > 0 ? ((hoursUsed / totalHours) * 100).toFixed(0) : 0;
 
                 // Determine status class based on remaining hours
@@ -587,6 +818,7 @@ return;
                             </div>
                         </div>
                     </div>
+                    ${this._renderPackagesBreakdown(service)}
                     ${overrideHTML}
                 `;
             } else if (service.type === window.SYSTEM_CONSTANTS.SERVICE_TYPES.LEGAL_PROCEDURE) {
@@ -652,8 +884,20 @@ return '';
                 // תצוגת שעות - בדיקת כל השדות האפשריים
                 let hoursInfo = '';
                 const stageHours = stage.hours || stage.totalHours || stage.allocatedHours || stage.estimatedHours || 0;
-                const hoursUsed = stage.hoursUsed || 0;
-                const hoursRemaining = stage.hoursRemaining !== undefined
+                // Pricing-aware: a FIXED stage records its work in `totalHoursWorked` and
+                // leaves `hoursUsed` at 0, so subtracting `hoursUsed` reported a stage with
+                // real work on it as fully untouched. Canonical rule: js/core/stage-hours.js.
+                const hoursUsed = (typeof window !== 'undefined' && window.StageHours)
+                    ? window.StageHours.stageEffectiveHoursUsed(stage)
+                    // Fallback runs only if stage-hours.js did not load. Uses
+                    // Number.isFinite, not `|| 0`, so it is behaviourally identical to
+                    // the helper (`|| 0` would pass a string '5' straight through).
+                    : (stage.pricingType === 'fixed' && Number.isFinite(stage.totalHoursWorked)
+                        ? stage.totalHoursWorked
+                        : (Number.isFinite(stage.hoursUsed) ? stage.hoursUsed : 0));
+                // Number.isFinite (not `!== undefined`): a stored `null` stage aggregate
+                // must fall through to the recompute, not slip past and crash at .toFixed().
+                const hoursRemaining = Number.isFinite(stage.hoursRemaining)
                     ? stage.hoursRemaining
                     : (stageHours - hoursUsed);
 
@@ -765,6 +1009,18 @@ return '';
                     e.stopPropagation();
                     const active = btn.dataset.active === 'true';
                     this.setServiceOverride(btn.dataset.serviceId, active, btn.dataset.name);
+                });
+            });
+
+            // Package purchase date edit buttons
+            this.servicesListContainer.querySelectorAll('.edit-pkg-date-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this._editPackagePurchaseDate(
+                        btn.dataset.serviceId,
+                        btn.dataset.packageId,
+                        btn.dataset.currentDate
+                    );
                 });
             });
         }
@@ -1383,52 +1639,333 @@ return; // user cancelled
             }, 0);
         }
 
-        async renewServiceHours(service) {
-            // Prompt for hours to add
-            const hoursToAdd = prompt(`כמה שעות להוסיף לשירות "${service.serviceName}"?`, '10');
+        _renderPackagesBreakdown(service) {
+            const packages = service.packages || [];
+            if (packages.length === 0) {
+                return '';
+            }
 
-            if (!hoursToAdd || isNaN(hoursToAdd) || parseFloat(hoursToAdd) <= 0) {
-                if (hoursToAdd !== null) { // User didn't click cancel
-                    this.showNotification('יש להזין מספר שעות תקין', 'warning');
+            const rows = packages.map(pkg => {
+                const date = pkg.purchaseDate
+                    ? new Date(pkg.purchaseDate).toLocaleDateString('he-IL', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                    : '-';
+                const hours = (pkg.hours ?? 0).toFixed(1);
+                const used = (pkg.hoursUsed ?? 0).toFixed(1);
+                const remaining = (pkg.hoursRemaining ?? 0).toFixed(1);
+                const desc = pkg.description
+                    ? (window.escapeHtml ? window.escapeHtml(pkg.description) : pkg.description)
+                    : '';
+
+                return `
+                    <tr>
+                        <td style="padding:4px 8px;white-space:nowrap;">
+                            ${date}
+                            <button class="edit-pkg-date-btn"
+                                    data-service-id="${service.id}"
+                                    data-package-id="${pkg.id}"
+                                    data-current-date="${pkg.purchaseDate || ''}"
+                                    title="ערוך תאריך רכישה"
+                                    style="background:none;border:none;cursor:pointer;padding:0 4px;color:#6b7280;font-size:12px;">✏️</button>
+                        </td>
+                        <td style="padding:4px 8px;text-align:center;">${hours}</td>
+                        <td style="padding:4px 8px;text-align:center;">${used}</td>
+                        <td style="padding:4px 8px;text-align:center;">${remaining}</td>
+                        <td style="padding:4px 8px;font-size:12px;color:#6b7280;">${desc}</td>
+                    </tr>`;
+            }).join('');
+
+            return `
+                <div style="margin-top:12px;">
+                    <div style="font-weight:600;font-size:13px;margin-bottom:6px;color:#374151;">
+                        <i class="fas fa-box-open" style="margin-left:4px;"></i>
+                        חבילות (${packages.length})
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                            <thead>
+                                <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb;">
+                                    <th style="padding:4px 8px;text-align:right;font-weight:600;">תאריך רכישה</th>
+                                    <th style="padding:4px 8px;text-align:center;font-weight:600;">שעות</th>
+                                    <th style="padding:4px 8px;text-align:center;font-weight:600;">נוצלו</th>
+                                    <th style="padding:4px 8px;text-align:center;font-weight:600;">נותרו</th>
+                                    <th style="padding:4px 8px;text-align:right;font-weight:600;">תיאור</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }
+
+        async _editPackagePurchaseDate(serviceId, packageId, currentDate) {
+            // Capture the client id NOW, while the management modal is guaranteed open.
+            // Opening this ModalManager sub-dialog can trigger the parent modal's Esc/backdrop
+            // close handler (which nulls this.currentClient), so reading it at submit time throws.
+            const clientId = this.currentClient?.id;
+            if (!clientId) {
+                this.showNotification('לא ניתן לזהות את הלקוח. פתח מחדש את כרטיס הלקוח ונסה שוב.', 'warning');
+                return;
+            }
+
+            let initialValue = '';
+            if (currentDate) {
+                try {
+                    initialValue = new Date(currentDate).toISOString().split('T')[0];
+                } catch (_) { /* leave empty */ }
+            }
+
+            const modalId = window.ModalManager.create({
+                title: 'עדכון תאריך רכישה',
+                content: `
+                    <form id="editPkgDateForm" style="display:flex;flex-direction:column;gap:16px;">
+                        <div class="form-group">
+                            <label for="editPkgDateInput" class="form-label" style="font-weight:600;">תאריך רכישה</label>
+                            <input type="date" class="form-control" id="editPkgDateInput"
+                                   value="${initialValue}" required
+                                   style="width:100%;padding:8px 12px;" />
+                        </div>
+                    </form>
+                `,
+                footer: `
+                    <button class="btn btn-secondary" data-action="cancel">
+                        <i class="fas fa-times"></i>
+                        <span>ביטול</span>
+                    </button>
+                    <button class="btn btn-primary" data-action="submit">
+                        <i class="fas fa-save"></i>
+                        <span>שמור</span>
+                    </button>
+                `,
+                size: 'small',
+                onOpen: () => {
+                    const modal = window.ModalManager.getElement(modalId);
+                    if (!modal) {
+return;
+}
+
+                    const dateInput = modal.querySelector('#editPkgDateInput');
+                    const submitBtn = modal.querySelector('[data-action="submit"]');
+                    const cancelBtn = modal.querySelector('[data-action="cancel"]');
+
+                    if (dateInput) {
+dateInput.focus();
+}
+
+                    if (cancelBtn) {
+                        cancelBtn.addEventListener('click', () => {
+                            window.ModalManager.close(modalId);
+                        });
+                    }
+
+                    const doSubmit = async () => {
+                        const val = dateInput?.value;
+                        if (!val) {
+                            this.showNotification('יש לבחור תאריך', 'warning');
+                            return;
+                        }
+
+                        window.ModalManager.close(modalId);
+
+                        try {
+                            this.showLoading('מעדכן תאריך רכישה...');
+
+                            const updateFn = window.firebaseFunctions.httpsCallable('updatePackagePurchaseDate');
+                            const result = await updateFn({
+                                clientId: clientId,
+                                serviceId: serviceId,
+                                packageId: packageId,
+                                purchaseDate: val
+                            });
+
+                            if (!result.data.success) {
+                                throw new Error(result.data.message || 'שגיאה בעדכון תאריך');
+                            }
+
+                            // If the parent modal is still open on the same client, update the
+                            // in-memory copy so the card reflects the new date immediately.
+                            if (this.currentClient && this.currentClient.id === clientId) {
+                                const localService = this.currentClient.services.find(s => s.id === serviceId);
+                                if (localService) {
+                                    const localPkg = (localService.packages || []).find(p => p.id === packageId);
+                                    if (localPkg) {
+                                        localPkg.purchaseDate = result.data.purchaseDate;
+                                    }
+                                }
+                                this.renderServices();
+                            } else if (window.ClientsDataManager && typeof window.ClientsDataManager.loadClients === 'function') {
+                                // Parent modal was closed (e.g. Esc dismissed the native date picker) —
+                                // refresh the list so the persisted date isn't left invisible.
+                                await window.ClientsDataManager.loadClients();
+                            }
+
+                            this.hideLoading();
+                            this.showNotification('תאריך רכישה עודכן בהצלחה', 'success');
+
+                        } catch (error) {
+                            console.error('❌ Error updating package date:', error);
+                            this.hideLoading();
+                            this.showNotification('שגיאה בעדכון תאריך: ' + error.message, 'error');
+                        }
+                    };
+
+                    if (submitBtn) {
+                        submitBtn.addEventListener('click', doSubmit);
+                    }
+
+                    const form = modal.querySelector('#editPkgDateForm');
+                    if (form) {
+                        form.addEventListener('submit', (e) => {
+                            e.preventDefault();
+                            doSubmit();
+                        });
+                    }
                 }
+            });
+        }
+
+        async renewServiceHours(service) {
+            // Capture the client id NOW (see _editPackagePurchaseDate): opening the ModalManager
+            // sub-dialog can trigger the parent modal's Esc/backdrop close → this.currentClient=null.
+            const clientId = this.currentClient?.id;
+            if (!clientId) {
+                this.showNotification('לא ניתן לזהות את הלקוח. פתח מחדש את כרטיס הלקוח ונסה שוב.', 'warning');
                 return;
             }
 
-            const hours = parseFloat(hoursToAdd);
+            const serviceName = window.escapeHtml ? window.escapeHtml(service.serviceName || '') : (service.serviceName || '');
 
-            if (!confirm(`האם להוסיף ${hours} שעות לשירות "${service.serviceName}"?`)) {
+            const modalId = window.ModalManager.create({
+                title: `הוספת שעות - ${serviceName}`,
+                content: `
+                    <form id="renewHoursForm" style="display: flex; flex-direction: column; gap: 16px;">
+                        <div class="form-group">
+                            <label for="renewHoursAmount" class="form-label" style="font-weight: 600;">כמות שעות *</label>
+                            <input type="number" class="form-control" id="renewHoursAmount"
+                                   min="1" step="0.5" value="10" required
+                                   style="width: 100%; padding: 8px 12px;" />
+                        </div>
+                        <div class="form-group">
+                            <label for="renewHoursDescription" class="form-label" style="font-weight: 600;">תיאור (אופציונלי)</label>
+                            <input type="text" class="form-control" id="renewHoursDescription"
+                                   placeholder="חידוש שעות"
+                                   style="width: 100%; padding: 8px 12px;" />
+                        </div>
+                        <div class="form-group">
+                            <label for="renewHoursPurchaseDate" class="form-label" style="font-weight: 600;">תאריך רכישה (אופציונלי)</label>
+                            <input type="date" class="form-control" id="renewHoursPurchaseDate"
+                                   style="width: 100%; padding: 8px 12px;" />
+                            <small class="form-text" style="color: var(--text-secondary, #6b7280); margin-top: 4px; display: block;">
+                                אם לא מצוין, יירשם התאריך של היום
+                            </small>
+                        </div>
+                    </form>
+                `,
+                footer: `
+                    <button class="btn btn-secondary" data-action="cancel">
+                        <i class="fas fa-times"></i>
+                        <span>ביטול</span>
+                    </button>
+                    <button class="btn btn-primary" data-action="submit">
+                        <i class="fas fa-plus"></i>
+                        <span>הוסף שעות</span>
+                    </button>
+                `,
+                size: 'small',
+                onOpen: () => {
+                    const modal = window.ModalManager.getElement(modalId);
+                    if (!modal) {
+return;
+}
+
+                    const submitBtn = modal.querySelector('[data-action="submit"]');
+                    const cancelBtn = modal.querySelector('[data-action="cancel"]');
+                    const hoursInput = modal.querySelector('#renewHoursAmount');
+
+                    if (hoursInput) {
+hoursInput.focus();
+}
+
+                    if (cancelBtn) {
+                        cancelBtn.addEventListener('click', () => {
+                            window.ModalManager.close(modalId);
+                        });
+                    }
+
+                    if (submitBtn) {
+                        submitBtn.addEventListener('click', () => {
+                            this._submitRenewHours(modalId, service, clientId);
+                        });
+                    }
+
+                    const form = modal.querySelector('#renewHoursForm');
+                    if (form) {
+                        form.addEventListener('submit', (e) => {
+                            e.preventDefault();
+                            this._submitRenewHours(modalId, service, clientId);
+                        });
+                    }
+                }
+            });
+        }
+
+        async _submitRenewHours(modalId, service, clientId) {
+            const modal = window.ModalManager.getElement(modalId);
+            if (!modal) {
+return;
+}
+
+            const hoursInput = modal.querySelector('#renewHoursAmount');
+            const descInput = modal.querySelector('#renewHoursDescription');
+            const dateInput = modal.querySelector('#renewHoursPurchaseDate');
+
+            const hours = parseFloat(hoursInput?.value);
+            if (!hours || isNaN(hours) || hours <= 0) {
+                this.showNotification('יש להזין מספר שעות תקין', 'warning');
                 return;
             }
+
+            const description = descInput?.value?.trim() || '';
+            const purchaseDate = dateInput?.value || undefined;
+
+            window.ModalManager.close(modalId);
 
             try {
                 this.showLoading('מוסיף שעות...');
 
-                // Call Cloud Function instead of direct Firestore write
-                const addPackageFn = window.firebaseFunctions.httpsCallable('addPackageToService');
-                const result = await addPackageFn({
-                    clientId: this.currentClient.id,
+                const payload = {
+                    clientId: clientId,
                     serviceId: service.id,
-                    hours: hours,
-                    description: `חידוש שעות - ${new Date().toLocaleDateString('he-IL')}`
-                });
+                    hours: hours
+                };
+                if (description) {
+                    payload.description = description;
+                }
+                if (purchaseDate) {
+                    payload.purchaseDate = purchaseDate;
+                }
+
+                const addPackageFn = window.firebaseFunctions.httpsCallable('addPackageToService');
+                const result = await addPackageFn(payload);
 
                 if (!result.data.success) {
                     throw new Error(result.data.message || 'שגיאה בהוספת שעות');
                 }
 
-                // Update local state from CF result
-                const localService = this.currentClient.services.find(s => s.id === service.id);
-                if (localService) {
-                    localService.totalHours = result.data.service.totalHours;
-                    localService.hoursRemaining = result.data.service.hoursRemaining;
-                    if (!localService.packages) {
-localService.packages = [];
-}
-                    localService.packages.push(result.data.package);
+                // Only touch the in-memory copy if the parent modal is still open on this client
+                // (opening the sub-dialog can Esc/backdrop-close it → this.currentClient=null).
+                if (this.currentClient && this.currentClient.id === clientId) {
+                    const localService = this.currentClient.services.find(s => s.id === service.id);
+                    if (localService) {
+                        localService.totalHours = result.data.service.totalHours;
+                        localService.hoursRemaining = result.data.service.hoursRemaining;
+                        if (!localService.packages) {
+                            localService.packages = [];
+                        }
+                        localService.packages.push(result.data.package);
+                    }
+                    this.renderServices();
+                    this.renderClientInfo();
                 }
-
-                this.renderServices();
-                this.renderClientInfo();
                 this.hideLoading();
                 this.showNotification(`נוספו ${hours} שעות בהצלחה`, 'success');
 
@@ -1465,7 +2002,29 @@ localService.packages = [];
             const currentStage = service.stages[activeStageIndex];
             const nextStage = service.stages[activeStageIndex + 1];
 
-            if (!confirm(`האם לעבור משלב "${currentStage.name}" לשלב "${nextStage.name}"?`)) {
+            // PR-2 (2026-08-16): a stage advance MOVES available capacity. The
+            // closing stage's unused balance stops counting and the opening
+            // stage's budget starts — without anyone adding or removing an
+            // hour. The old prompt named the stages only, so an admin closing a
+            // stage that still held unused hours had no idea. Say it plainly,
+            // using the numbers already on the stage objects (display-only; the
+            // server recomputes authoritatively).
+            const unusedNow = Number(currentStage.hoursRemaining);
+            const openingBudget = Number(nextStage.totalHours);
+
+            let capacityLine = '';
+            if (Number.isFinite(unusedNow) && unusedNow > 0) {
+                capacityLine =
+                    `\n\nשים לב: בשלב "${currentStage.name}" נותרו ${unusedNow.toFixed(1)} שעות שלא נוצלו. ` +
+                    'הן יפסיקו להיחשב כזמינות ברגע המעבר.';
+            }
+            if (Number.isFinite(openingBudget) && openingBudget > 0) {
+                capacityLine += `\nשלב "${nextStage.name}" ייפתח עם ${openingBudget.toFixed(1)} שעות.`;
+            }
+
+            if (!confirm(
+                `האם לעבור משלב "${currentStage.name}" לשלב "${nextStage.name}"?${capacityLine}`
+            )) {
                 return;
             }
 
@@ -1796,9 +2355,10 @@ localService.packages = [];
          * בריחת תווי HTML
          */
         escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+            // Routed to the shared SSOT escaper (js/core/escape-html.js).
+            // Behavior change: now also escapes " and ' (the temp-div escaped only & < >) —
+            // safe in HTML text/attribute contexts (e.g. the fee-agreement title attr).
+            return window.escapeHtml(text);
         }
 
         /**
@@ -1868,18 +2428,13 @@ return;
 
             if (agreements.length === 0) {
                 container.innerHTML = `
-                    <div class="fee-agreements-empty">
-                        <div class="empty-state-icon">
-                            <i class="fas fa-file-contract"></i>
-                        </div>
-                        <div class="empty-state-content">
-                            <h4 class="empty-state-title">אין הסכמי שכר טרחה</h4>
-                            <p class="empty-state-text">העלה הסכם שכר טרחה כדי להתחיל</p>
-                            <button class="empty-state-btn" onclick="document.getElementById('uploadFeeAgreementBtn').click()">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                                <span>העלאת הסכם</span>
-                            </button>
-                        </div>
+                    <div class="gen-empty">
+                        <div class="gen-empty-icon"><i class="fas fa-file-contract" aria-hidden="true"></i></div>
+                        <p class="gen-empty-text">אין הסכמי שכר טרחה עדיין</p>
+                        <button type="button" class="gen-upload" onclick="document.getElementById('uploadFeeAgreementBtn').click()">
+                            <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i>
+                            <span>העלה הסכם</span>
+                        </button>
                     </div>
                 `;
                 return;
@@ -1903,38 +2458,30 @@ return;
                 const fileSize = this.formatFileSize(agreement.fileSize);
 
                 return `
-                    <div class="fee-agreement-item" data-agreement-id="${agreement.id}">
-                        <div class="fee-agreement-info">
-                            <div class="fee-agreement-icon ${iconClass}">
-                                <i class="fas ${icon}"></i>
-                            </div>
-                            <div class="fee-agreement-details">
-                                <div class="fee-agreement-name" title="${this.escapeHtml(agreement.originalName || agreement.fileName)}">
-                                    ${this.escapeHtml(agreement.originalName || agreement.fileName)}
-                                </div>
-                                <div class="fee-agreement-meta">
-                                    <span><i class="fas fa-calendar-alt"></i> ${uploadDate}</span>
-                                    <span><i class="fas fa-hdd"></i> ${fileSize}</span>
-                                </div>
+                    <div class="gen-agr" data-agreement-id="${agreement.id}">
+                        <div class="gen-agr-icon ${iconClass}"><i class="fas ${icon}" aria-hidden="true"></i></div>
+                        <div class="gen-agr-body">
+                            <div class="gen-agr-name" title="${this.escapeHtml(agreement.originalName || agreement.fileName)}">${this.escapeHtml(agreement.originalName || agreement.fileName)}</div>
+                            <div class="gen-agr-meta">
+                                <span>${uploadDate}</span>
+                                <span>${fileSize}</span>
                             </div>
                         </div>
-                        <div class="fee-agreement-actions">
-                            <button class="fee-agreement-action-btn view" data-action="view" data-agreement-id="${agreement.id}" title="צפה בהסכם">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <button class="fee-agreement-action-btn delete" data-action="delete" data-agreement-id="${agreement.id}" title="מחק הסכם">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                        <div class="gen-agr-actions">
+                            <button type="button" class="gen-icon-btn" data-action="view" data-agreement-id="${agreement.id}" title="צפה בהסכם" aria-label="צפה בהסכם"><i class="fas fa-eye" aria-hidden="true"></i></button>
+                            <button type="button" class="gen-icon-btn danger" data-action="delete" data-agreement-id="${agreement.id}" title="מחק הסכם" aria-label="מחק הסכם"><i class="fas fa-trash" aria-hidden="true"></i></button>
                         </div>
                     </div>
                 `;
             }).join('');
 
             container.innerHTML = `
-                ${agreementsHTML}
-                <button class="fee-agreement-add-btn" onclick="document.getElementById('uploadFeeAgreementBtn').click()">
-                    <i class="fas fa-plus"></i>
-                    <span>הוסף הסכם נוסף</span>
+                <div class="gen-agr-list">
+                    ${agreementsHTML}
+                </div>
+                <button type="button" class="gen-upload" onclick="document.getElementById('uploadFeeAgreementBtn').click()">
+                    <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i>
+                    <span>העלה הסכם</span>
                 </button>
             `;
 
@@ -2072,16 +2619,43 @@ return;
          * View fee agreement
          * צפייה בהסכם שכר טרחה
          */
-        viewFeeAgreement(agreementId) {
+        async viewFeeAgreement(agreementId) {
             const agreement = this.currentClient?.feeAgreements?.find(a => a.id === agreementId);
 
-            if (!agreement || !agreement.downloadUrl) {
-                this.showNotification('לא ניתן לפתוח את ההסכם', 'error');
+            if (!agreement) {
+                this.showNotification('הסכם לא נמצא', 'error');
                 return;
             }
 
-            // Open in new tab
-            window.open(agreement.downloadUrl, '_blank');
+            // Security (PR-SEC-2): the PDF is private — fetch a short-lived signed URL
+            // on demand via getFeeAgreementUrl (no permanent public URL). Open the new
+            // tab SYNCHRONOUSLY (inside the click gesture, before the await) so the
+            // browser doesn't block it as a popup, then navigate it once the URL returns.
+            const viewTab = window.open('', '_blank');
+            try {
+                const getUrlFn = window.firebaseFunctions.httpsCallable('getFeeAgreementUrl');
+                const result = await getUrlFn({
+                    entity: 'clients',
+                    entityId: this.currentClient.id,
+                    agreementId: agreementId
+                });
+                const url = result?.data?.url;
+                if (!url) {
+                    throw new Error('missing-url');
+                }
+                if (viewTab) {
+                    viewTab.location = url;
+                } else {
+                    // popup was blocked — fall back to a same-context navigation
+                    window.open(url, '_blank');
+                }
+            } catch (error) {
+                if (viewTab) {
+                    viewTab.close();
+                }
+                console.error('❌ Error opening fee agreement:', error);
+                this.showNotification('לא ניתן לפתוח את ההסכם כעת. נסה שוב או פנה לתמיכה.', 'error');
+            }
         }
 
         /**

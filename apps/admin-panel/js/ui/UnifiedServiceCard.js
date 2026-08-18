@@ -1,0 +1,700 @@
+/**
+ * UnifiedServiceCard — the one renderer both modal tabs converge on.
+ * ─────────────────────────────────────────────────────────────────────────────
+ * docs/PLAN-ADMIN-MODAL-UNIFICATION-2026-07.md — PR-U4 (mode 'report-select' only;
+ * mode 'manage' is added in U5 when the management panel adopts this renderer).
+ *
+ * `report-select` builds the selectable service cards for the report tab, driven by
+ * the pure ServiceCardModel (U2) — so it inherits the D1/D2 fixes: one selectable unit
+ * per service (hours/fixed) or per active/completed stage (legal_procedure), keyed by
+ * service.id (no client-wide stage.id Map → no D2 collision), and it never reads the
+ * timesheet ledger (→ no D1 phantom). The cards reuse the existing report-service-cards.css
+ * classes so the visual language matches the current report modal.
+ *
+ * DA-2: a legal_procedure with NO active/completed stage yields a NON-selectable muted
+ * card (never a `{type:'legal_procedure', stage:''}` selection — that would make
+ * ReportGenerator.resolveServiceHours fall to the parent-sum over-count path).
+ *
+ * Pure DOM: this module BUILDS elements + returns each element's `selection` payload.
+ * The controller (ReportTab) owns selection state + the click wiring — this file has no
+ * global state and no window.* dependency except the SSOT window.escapeHtml.
+ */
+(function () {
+    'use strict';
+
+    function esc(v) {
+        return (typeof window !== 'undefined' && typeof window.escapeHtml === 'function')
+            ? window.escapeHtml(v)
+            : (v === null || v === undefined ? '' : String(v));
+    }
+
+    function num(v) {
+        return Number.isFinite(v) ? v : 0;
+    }
+
+    /**
+     * Worked hours for a stage, pricing-aware. THE ONLY place in this file that
+     * decides it — every stage surface below routes here.
+     *
+     * A FIXED stage keeps its work in `totalHoursWorked` and leaves `hoursUsed` at
+     * the 0 it was created with, so reading `hoursUsed` renders real work as zero.
+     * Canonical rule + rationale: js/core/stage-hours.js (mirrors the backend
+     * calcStageEffectiveHoursUsed). The fallback below runs only if that script did
+     * not load, and is behaviourally identical to it.
+     */
+    function stageWorkedHours(stage) {
+        if (typeof window !== 'undefined' && window.StageHours) {
+            return window.StageHours.stageEffectiveHoursUsed(stage);
+        }
+        if (!stage || typeof stage !== 'object') {
+            return 0;
+        }
+        if (stage.pricingType === 'fixed') {
+            if (Number.isFinite(stage.totalHoursWorked)) {
+                return stage.totalHoursWorked;
+            }
+            return num(stage.hoursUsed);
+        }
+        return num(stage.hoursUsed);
+    }
+
+    // Legacy `||`-chain (mirrors renderStages/getServiceInfo) — first truthy finite, else 0.
+    function pickHours() {
+        for (let i = 0; i < arguments.length; i++) {
+            const raw = arguments[i];
+            const n = typeof raw === 'string' ? parseFloat(raw) : raw;
+            if (Number.isFinite(n) && n) {
+                return n;
+            }
+        }
+        return 0;
+    }
+
+    // Badge text + variant class for a card (mirrors the report-service-cards.css badge set).
+    function badgeFor(type, isFixed, status) {
+        if (status === 'archived') {
+            return { cls: 'archived', text: 'בארכיון' };
+        }
+        if (type === 'legal_procedure') {
+            return { cls: 'legal-hourly', text: 'הליך משפטי' };
+        }
+        if (isFixed || type === 'fixed') {
+            return { cls: 'fixed', text: 'מחיר קבוע' };
+        }
+        return { cls: 'hours', text: 'שעות' };
+    }
+
+    // Build ONE selectable card element. `data` = {name, badge:{cls,text}, hoursUsed,
+    // totalHours, variantClasses:[], selectable, note}. `ds` = {serviceId, stage, type, name}.
+    function buildCard(data, ds) {
+        const card = document.createElement('div');
+        card.className = ['report-service-card'].concat(data.variantClasses || []).join(' ');
+        if (data.selectable) {
+            card.setAttribute('role', 'button');
+            card.setAttribute('tabindex', '0');
+            card.setAttribute('aria-pressed', 'false');
+            card.dataset.serviceName = ds.name || '';
+            card.dataset.serviceId = ds.serviceId || '';
+            card.dataset.stage = ds.stage || '';
+            card.dataset.serviceType = ds.type || '';
+        } else {
+            card.classList.add('report-service-card--disabled');
+            card.setAttribute('aria-disabled', 'true');
+        }
+
+        const showHours = num(data.totalHours) > 0 || num(data.hoursUsed) > 0;
+        const hoursStat = showHours
+            ? `<div class="report-card-stat">
+                   <span class="report-card-stat-label">נוצלו/סה"כ:</span>
+                   <span class="report-card-stat-value">${num(data.hoursUsed).toFixed(1)} / ${num(data.totalHours).toFixed(1)}</span>
+               </div>`
+            : '';
+
+        card.innerHTML = `
+            <div class="report-card-header">
+                <div class="report-card-main">
+                    <div class="report-card-name">${esc(data.name || 'ללא שם')}</div>
+                    <div class="report-card-meta">
+                        <span class="report-card-badge ${data.badge.cls}">${esc(data.badge.text)}</span>
+                    </div>
+                </div>
+                <div class="report-card-selected-indicator"><i class="fas fa-check-circle"></i></div>
+            </div>
+            <div class="report-card-stats">
+                ${hoursStat}
+                ${data.note ? `<div class="report-card-note">${esc(data.note)}</div>` : ''}
+            </div>`;
+        return card;
+    }
+
+    /**
+     * Build the selectable units for ONE ServiceCardModel card.
+     * @param {Object} card - a ServiceCardModel card.
+     * @param {Object} [options]
+     * @param {Function} [options.getStageName] - (stageId)=>label. When provided, a legal stage's
+     *        display name + `selection.service` use getStageName(stage.id) — BYTE-MATCHING the old
+     *        ClientReportModal (which labels legal stages by getStageName, not stage.name), so the
+     *        generated report reads identically no matter which surface produced the formData.
+     * @returns {Array<{el: HTMLElement, selection: {service,serviceId,stage,type}|null}>}
+     *   selection===null → a non-selectable card (DA-2 or a data gap). ReportTab skips wiring it.
+     */
+    function buildReportSelectCards(card, options) {
+        const type = card.type || 'hours';
+        const getStageName = options && typeof options.getStageName === 'function' ? options.getStageName : null;
+
+        if (type === 'legal_procedure') {
+            const stages = (Array.isArray(card.stages) ? card.stages : [])
+                .filter((s) => s.status === 'active' || s.status === 'completed');
+
+            if (stages.length === 0) {
+                // DA-2: no stage to attach → not selectable (never emit stage:'' for a legal service).
+                const badge = badgeFor(type, card.isFixed, card.status);
+                return [{
+                    el: buildCard({
+                        name: card.name, badge, totalHours: card.totalHours, hoursUsed: card.hoursUsed,
+                        variantClasses: card.nonAggregating ? ['archived'] : [],
+                        selectable: false, note: 'אין שלב פעיל לבחירה'
+                    }, {}),
+                    selection: null
+                }];
+            }
+
+            return stages.map((stage) => {
+                const badge = stage.status === 'active'
+                    ? { cls: 'current-stage', text: 'שלב פעיל' }
+                    : { cls: 'completed', text: 'הושלם' };
+                // Match the old report label (getStageName by stage.id); stage.name is the fallback.
+                const name = getStageName ? getStageName(stage.id) : (stage.name || card.name);
+                const ds = { serviceId: card.serviceId, stage: stage.id, type: 'legal_procedure', name };
+                return {
+                    el: buildCard({
+                        name, badge, totalHours: stage.totalHours, hoursUsed: stageWorkedHours(stage),
+                        variantClasses: card.nonAggregating ? ['archived'] : [], selectable: true
+                    }, ds),
+                    selection: { service: name, serviceId: card.serviceId, stage: stage.id, type: 'legal_procedure' }
+                };
+            });
+        }
+
+        // hours / fixed — one selectable card, no stage.
+        const badge = badgeFor(type, card.isFixed, card.status);
+        const variants = [];
+        if (card.isFixed || type === 'fixed') {
+            variants.push('fixed');
+        }
+        if (card.nonAggregating) {
+            variants.push('archived');
+        }
+        // overdraft styling parity: an unresolved negative remainder shows the overdraft variant.
+        if (Number.isFinite(card.hoursRemaining) && card.hoursRemaining < 0) {
+            variants.push(card.overdraftResolved && card.overdraftResolved.isResolved ? 'resolved' : 'overdraft');
+        }
+        const ds = { serviceId: card.serviceId, stage: '', type, name: card.name };
+        return [{
+            el: buildCard({
+                name: card.name, badge, totalHours: card.totalHours, hoursUsed: card.hoursUsed,
+                variantClasses: variants, selectable: true
+            }, ds),
+            selection: { service: card.name, serviceId: card.serviceId, stage: '', type }
+        }];
+    }
+
+    // ── mode 'manage-detail' (U5a, dead code until the U5b cutover) ──────────────
+    // Reproduces the management service-card DOM byte-for-byte (the classes + data-attrs
+    // the overdraft/add-package injectors + the 5 data-service-action buttons + the
+    // .override-btn + the .edit-pkg-date-btn depend on), driven by the extended
+    // ServiceCardModel card. SEC-1: every interpolated value (incl. attributes:
+    // title / data-name / overrideApprovedBy / overrideNote) is escaped at the sink.
+
+    function truncate(name) {
+        const s = name || '';
+        return s.length <= 20 ? s : (s.substring(0, 20) + '...');
+    }
+
+    // Service status → a calm dot + Hebrew label, rendered by the management header
+    // (buildManageHeader). Out-of-enum status → nothing (never a false "פעיל" on a blocked/legacy
+    // card, which would mislabel an admin-critical row and contradict the rail's "דורש טיפול" dot).
+    const USC_STATUS_TEXT = { active: 'פעיל', completed: 'הושלם', on_hold: 'בהמתנה', archived: 'בארכיון' };
+
+    // The override "אפשר/בטל חריגה" block (hours services with hoursRemaining <= 0).
+    function buildOverride(card) {
+        if (num(card.hoursRemaining) > 0) {
+            return '';
+        }
+        const dataName = esc(card.name || '');
+        if (card.overrideActive) {
+            const t = card.overrideApprovedAt;
+            const overrideDate = t && t.seconds ? new Date(t.seconds * 1000).toLocaleDateString('he-IL') : '';
+            return `
+                            <div style="margin-top:8px;padding:8px 12px;background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;">
+                                <span style="background:#f59e0b;color:#fff;padding:2px 8px;border-radius:12px;font-size:12px;">⚡ חריגה מאושרת</span>
+                                <small style="color:#6b7280;display:block;margin-top:4px;">אושר ע"י: ${esc(card.overrideApprovedBy || '')} | ${esc(overrideDate)}</small>
+                                ${card.overrideNote ? `<small style="color:#6b7280;display:block;">הערה: ${esc(card.overrideNote)}</small>` : ''}
+                                <button class="override-btn" data-service-id="${esc(card.serviceId)}" data-active="false" data-name="${dataName}" style="padding:4px 10px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;margin-top:4px;">בטל חריגה</button>
+                            </div>`;
+        }
+        return `
+                            <div style="margin-top:8px;">
+                                <button class="override-btn" data-service-id="${esc(card.serviceId)}" data-active="true" data-name="${dataName}" style="padding:4px 10px;background:#f59e0b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">אפשר חריגה</button>
+                            </div>`;
+    }
+
+    // Packages breakdown — a calm, collapsible list. >1 package → a native <details> disclosure
+    // (collapsed by default; keyboard + screen-reader come free); exactly 1 → shown inline (no
+    // toggle). The `.edit-pkg-date-btn` + its data-service-id/-package-id/-current-date are the
+    // "שינוי תאריך רכישה" handler contract (ClientManagementModal) — kept byte-identical.
+    function buildPackagesBreakdown(card) {
+        const packages = Array.isArray(card.packages) ? card.packages : [];
+        if (packages.length === 0) {
+            return '';
+        }
+        const rows = packages.map(function (pkg) {
+            const date = pkg.purchaseDate
+                ? new Date(pkg.purchaseDate).toLocaleDateString('he-IL', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                : '-';
+            const hours = num(pkg.hours).toFixed(1);
+            const used = num(pkg.hoursUsed).toFixed(1);
+            const remaining = num(pkg.hoursRemaining).toFixed(1);
+            const desc = pkg.description ? esc(pkg.description) : 'חבילה';
+            return `
+                        <div class="msc-pkg">
+                            <div class="msc-pkg-top">
+                                <span class="msc-pkg-name">${desc}</span>
+                                <button class="edit-pkg-date-btn msc-pkg-edit" data-service-id="${esc(card.serviceId)}" data-package-id="${esc(pkg.id)}" data-current-date="${esc(pkg.purchaseDate || '')}" title="ערוך תאריך רכישה" aria-label="ערוך תאריך רכישה"><i class="fas fa-pen" aria-hidden="true"></i></button>
+                            </div>
+                            <div class="msc-pkg-meta">${esc(date)} · ${hours} ש׳ · נוצלו ${used} · נותרו ${remaining}</div>
+                        </div>`;
+        }).join('');
+
+        if (packages.length === 1) {
+            return `
+                    <div class="msc-pkgs-solo">
+                        <div class="msc-pkgs-lbl">חבילה</div>
+                        ${rows}
+                    </div>`;
+        }
+        return `
+                    <details class="msc-pkgs">
+                        <summary class="msc-pkgs-sum">
+                            <span class="msc-pkgs-lbl">חבילות <span class="msc-pkgs-n">· ${packages.length}</span></span>
+                            <i class="fas fa-chevron-down msc-chev" aria-hidden="true"></i>
+                        </summary>
+                        <div class="msc-pkgs-list">${rows}</div>
+                    </details>`;
+    }
+
+    // getServiceInfo — 3 branches (HOURS / LEGAL_PROCEDURE / FIXED).
+    function buildServiceInfo(card) {
+        const type = card.type || 'hours';
+
+        if (type === 'hours') {
+            // Hours utilization lives in the management header's meter (buildManageHeader). The
+            // body is the (collapsible) packages breakdown + the overdraft override control.
+            return `
+                    ${buildPackagesBreakdown(card)}
+                    ${buildOverride(card)}
+                `;
+        }
+
+        if (type === 'legal_procedure') {
+            const stages = Array.isArray(card.stages) ? card.stages : [];
+            const totalStages = stages.length;
+            const completedStages = stages.filter((s) => s.status === 'completed').length;
+            const activeStage = stages.find((s) => s.status === 'active');
+            // pricingType (not a service-type) — routing string, mirrors getServiceInfo:685.
+            // eslint-disable-next-line no-restricted-syntax
+            const pricing = card.pricingType === 'hourly' ? 'שעתי' : 'קבוע';
+            return `
+                    <div class="management-service-info">
+                        <div class="management-service-info-item">
+                            <span class="management-service-info-label">התקדמות</span>
+                            <span class="management-service-info-value">${completedStages}/${totalStages} שלבים</span>
+                        </div>
+                        <div class="management-service-info-item">
+                            <span class="management-service-info-label">שלב נוכחי</span>
+                            <span class="management-service-info-value">${esc(activeStage ? activeStage.name : 'אין')}</span>
+                        </div>
+                        <div class="management-service-info-item">
+                            <span class="management-service-info-label">תמחור</span>
+                            <span class="management-service-info-value">${pricing}</span>
+                        </div>
+                    </div>
+                `;
+        }
+
+        // fixed — self-wrapped items, Hebrew status, no label colons (matches getServiceInfo:689).
+        return `
+                    <div class="management-service-info">
+                        <div class="management-service-info-item">
+                            <span class="management-service-info-label">מחיר</span>
+                            <span class="management-service-info-value">₪${num(card.fixedPrice).toLocaleString()}</span>
+                        </div>
+                        <div class="management-service-info-item">
+                            <span class="management-service-info-label">סטטוס</span>
+                            <span class="management-service-info-value">${card.status === 'active' ? 'פעיל' : 'הושלם'}</span>
+                        </div>
+                    </div>
+                `;
+    }
+
+    // renderStages — the .management-stage / .management-stage-name (===stage.name) contract.
+    function buildStagesHtml(card) {
+        const stages = Array.isArray(card.stages) ? card.stages : [];
+        if (stages.length === 0) {
+            return '';
+        }
+        const completedCount = stages.filter((s) => s.status === 'completed').length;
+        const progressPercent = stages.length > 0 ? (completedCount / stages.length) * 100 : 0;
+
+        const stagesHtml = stages.map((stage) => {
+            let icon = 'fa-circle';
+            let stageClass = 'pending';
+            if (stage.status === 'completed') {
+                icon = 'fa-check';
+                stageClass = 'completed';
+            } else if (stage.status === 'active') {
+                icon = 'fa-circle-notch';
+                stageClass = 'active';
+            }
+            const stageHours = pickHours(stage.hours, stage.totalHours, stage.allocatedHours, stage.estimatedHours);
+            // The backend sets hoursRemaining = null on every FIXED stage
+            // (functions/services/index.js:909), so this fallback ALWAYS fires there.
+            // With a raw `hoursUsed` read it subtracted 0 and painted a stage with real
+            // work on it as fully untouched (e.g. "100.0/100.0" on 30.5h worked).
+            const stageUsed = stageWorkedHours(stage);
+            const stageRemaining = Number.isFinite(stage.hoursRemaining)
+                ? stage.hoursRemaining
+                : (stageHours - stageUsed);
+            let hoursInfo = '';
+            if (stageHours > 0) {
+                if (stage.status === 'active') {
+                    hoursInfo = `${stageRemaining.toFixed(1)}/${stageHours.toFixed(1)}`;
+                } else {
+                    hoursInfo = `${stageHours.toFixed(1)}`;
+                }
+            }
+            // .management-stage-name === stage.name EXACTLY (AddPackageToStage matches on it).
+            const stageName = stage.name || stage.description || 'שלב';
+            return `
+                    <div class="management-stage ${stageClass}">
+                        <div class="management-stage-icon">
+                            <i class="fas ${icon}"></i>
+                        </div>
+                        <div class="management-stage-info">
+                            <div class="management-stage-name">${esc(stageName)}</div>
+                            ${hoursInfo ? `<div class="management-stage-hours">${hoursInfo} שע׳</div>` : ''}
+                        </div>
+                    </div>`;
+        }).join('');
+
+        return `
+                <div class="management-stages">
+                    <div class="management-stages-title"><i class="fas fa-layer-group"></i> שלבי ההליך</div>
+                    <div class="management-stages-timeline">
+                        <div class="management-stages-progress"><div class="management-stages-progress-fill" style="width: ${progressPercent}%"></div></div>
+                        <div class="management-stages-list">${stagesHtml}</div>
+                    </div>
+                </div>`;
+    }
+
+    // PR-B (closed-service hide-actions): frontend mirror of functions/shared/service-status.js
+    // HOURS_LOCKED_STATUSES. A CLOSED service (archived/completed) must NOT offer add-hours or
+    // stage-advance in the UI — the backend #535 gate already refuses, so the button was a dead-end.
+    // on_hold stays OPEN; completed is hours-locked yet still aggregates. DEFAULT-ACTIVE: no status →
+    // 'active' → open. Pinned to the backend SSOT by a cross-file drift-guard test.
+    const HOURS_LOCKED_STATUSES = ['archived', 'completed'];
+    function serviceIsClosed(card) {
+        const status = card && card.status ? card.status : 'active';
+        return HOURS_LOCKED_STATUSES.indexOf(status) !== -1;
+    }
+
+    // getServiceActions — the 5 data-service-action buttons.
+    function buildActions(card) {
+        const type = card.type || 'hours';
+        const id = esc(card.serviceId);
+        const closed = serviceIsClosed(card);
+        const buttons = [];
+        // CLOSED service: hide add-hours ("חדש שעות") + stage-advance ("עבור לשלב הבא"). "שנה סטטוס"
+        // stays (the only reopen path, per service-status.js) and "מחק" stays. Mirrors the #535 lock.
+        if (type === 'hours' && !closed) {
+            buttons.push(`<button class="management-service-action-btn primary" data-service-action="renew" data-service-id="${id}"><i class="fas fa-plus"></i> חדש שעות</button>`);
+        }
+        if (type === 'legal_procedure' && !closed && (Array.isArray(card.stages) ? card.stages : []).some((s) => s.status === 'active')) {
+            buttons.push(`<button class="management-service-action-btn primary" data-service-action="next-stage" data-service-id="${id}"><i class="fas fa-forward"></i> עבור לשלב הבא</button>`);
+        }
+        buttons.push(`<button class="management-service-action-btn secondary" data-service-action="change-status" data-service-id="${id}"><i class="fas fa-exchange-alt"></i> שנה סטטוס</button>`);
+        if (card.status === 'active') {
+            buttons.push(`<button class="management-service-action-btn secondary" data-service-action="complete" data-service-id="${id}"><i class="fas fa-check"></i> סמן כהושלם</button>`);
+        }
+        buttons.push(`<button class="management-service-action-btn danger" data-service-action="delete" data-service-id="${id}"><i class="fas fa-trash"></i> מחק שירות</button>`);
+        return buttons.join('');
+    }
+
+    /**
+     * mode 'manage-detail' → the full management service card as a detached HTMLElement.
+     * @returns {HTMLElement} `.management-service-card[data-service-id]`
+     */
+    function buildManageDetail(card) {
+        const type = card.type || 'hours';
+        const el = document.createElement('div');
+        el.className = 'management-service-card';
+        el.dataset.serviceId = card.serviceId || '';
+        el.innerHTML = `
+                    ${buildManageHeader(card)}
+
+                    <div class="management-service-body">
+                        <div class="management-service-content">
+                            ${buildServiceInfo(card)}
+
+                            ${type === 'legal_procedure' ? buildStagesHtml(card) : ''}
+
+                            <div class="management-service-actions">
+                                ${buildActions(card)}
+                            </div>
+                        </div>
+                    </div>`;
+        return el;
+    }
+
+    // "Needs attention" = a blocked service OR an unresolved negative remainder (overdraft).
+    // Drives the rail status dot so an overdrawn/blocked service is visible WITHOUT a click.
+    // Number.isFinite-guarded so a missing/non-numeric remainder never trips the signal.
+    function railNeedsAttention(card) {
+        if (card.status === 'blocked') {
+            return true;
+        }
+        const remaining = Number(card.hoursRemaining);
+        if (Number.isFinite(remaining) && remaining < 0) {
+            const resolved = !!(card.overdraftResolved && card.overdraftResolved.isResolved === true);
+            return !resolved;
+        }
+        return false;
+    }
+
+    // Rail hours ratio "used/total". A service-level rollup wins (hours services); when it is
+    // absent (0) but the service carries stages (a legal procedure keeps its hours on the
+    // stages) the ratio falls back to the sum over stages. Type-agnostic on purpose — a
+    // priceless service (0 total, no stages) simply shows nothing.
+    function railRatioHtml(card) {
+        let total = num(card.totalHours);
+        let used = num(card.hoursUsed);
+        if (!(total > 0)) {
+            const stages = Array.isArray(card.stages) ? card.stages : [];
+            if (stages.length > 0) {
+                total = stages.reduce((sum, s) => sum + num(s.totalHours), 0);
+                // Pricing-aware, or this DISPLAYED AGGREGATE stays 0 on a fixed
+                // procedure and disagrees with the per-stage figures above it.
+                used = stages.reduce((sum, s) => sum + stageWorkedHours(s), 0);
+            }
+        }
+        if (!(total > 0)) {
+            return '';
+        }
+        return '<span class="cm-rail-row-ratio">' + used.toFixed(1) + '/' + total.toFixed(1) + '</span>';
+    }
+
+    /**
+     * mode 'rail-row' → a THIN navigation row (no `.management-*` classes — DA-3, so the
+     * add-package/overdraft injectors never match a rail row). Selecting it shows the
+     * matching detail panel.
+     *
+     * opts (PR-R1) — the SAME rail row is reused by BOTH tabs; only the ARIA wiring differs:
+     *   - manage (default): role="tab"        → aria-selected, aria-controls="managementServicesList"
+     *   - report:           opts.role="radio" → aria-checked,  opts.ariaControls=<report detail id>
+     * The manage default output stays BYTE-IDENTICAL to pre-PR-R1 (ADMIN SAFETY — this row drives
+     * which management service-card is shown).
+     * @returns {HTMLElement}
+     */
+    function buildRailRow(card, opts) {
+        const o = opts || {};
+        const role = o.role || 'tab';
+        const selectedAttr = role === 'radio' ? 'aria-checked' : 'aria-selected';
+        const ariaControls = o.ariaControls || 'managementServicesList';
+        const el = document.createElement('button');
+        el.type = 'button';
+        el.className = 'cm-rail-row';
+        el.setAttribute('role', role);
+        el.setAttribute(selectedAttr, 'false');
+        // FIX 4: the builder OWNS the rail selection key (single source of truth).
+        el.dataset.rail = card.serviceId || '';
+        // FIX 5: a service row controls its detail area (the manage services-list by default).
+        el.setAttribute('aria-controls', ariaControls);
+
+        // FIX 2: surface "needs attention" (overdraft/blocked) on the rail so an admin does not
+        // have to open every service. NOT color-only (WCAG) — the row `title` + a visually-hidden
+        // label carry the signal too. SEC-1: every interpolated value stays escaped via esc().
+        // FIX 2 (P1): every service row carries a status dot — green (--ok) = healthy,
+        // orange (--attention) = needs attention (overdraft/blocked). NOT color-only (WCAG): an
+        // attention row also sets the row `title` + a visually-hidden label. The type icon is
+        // dropped from the rail (the detail panel's type badge carries type) to match the mockup.
+        const attention = railNeedsAttention(card);
+        if (attention) {
+            el.setAttribute('title', 'דורש טיפול');
+        }
+        const statusDot = attention
+            ? '<span class="cm-rail-row-status cm-rail-row-status--attention" aria-hidden="true"></span>'
+            : '<span class="cm-rail-row-status cm-rail-row-status--ok" aria-hidden="true"></span>';
+        const srLabel = attention
+            ? '<span class="cm-rail-row-sr">דורש טיפול</span>'
+            : '';
+        el.innerHTML =
+            statusDot +
+            '<span class="cm-rail-row-name">' + esc(truncate(card.name || 'ללא שם')) + '</span>' +
+            railRatioHtml(card) +
+            srLabel;
+        return el;
+    }
+
+    // ── Shared identity band (Track-2 PR-1) ─────────────────────────────────────
+    // EXTRACTED verbatim from ReportTab.identityBandHtml — the report tab and the management
+    // detail now render the SAME per-service band. The band uses the neutral usc-identity-*
+    // namespace (injector-safe: not .management-* and not .report-*). Returns an HTML
+    // STRING (both consumers write via innerHTML). Numbers are toFixed()'d (no XSS surface); the
+    // name is the only user string → esc(). bandNum coerces (byte-matching the source num()).
+    function bandNum(v) {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    // Meter threshold — RELATIVE, and SHARED by both the management header (buildManageHeader) and the
+    // report band (buildIdentityBand), so a service's meter reads the SAME on both tabs (the modal-
+    // unification SSOT extends to the display). over: remaining < 0 (a real overdraft, red). high:
+    // ≥85% of the quota used / ≤15% remaining (orange). good: else (green). remaining === 0 (fully used,
+    // not overdrawn) → high, NEVER red — a spent-but-not-overdrawn quota is a warning, not a debt.
+    // Replaces the old absolute "≤10h remaining = orange", which mislabelled a barely-used SMALL quota
+    // (e.g. 10h total / 2.5h used = 25%) as alarming.
+    function meterStatus(used, total, rem) {
+        if (rem < 0) {
+            return 'over';
+        }
+        return (total > 0 && (used / total) >= 0.85) ? 'high' : 'good';
+    }
+
+    function buildIdentityBand(card, opts) {
+        // Layout-only classification (icon/badge/meter routing). The disable mirrors the extracted
+        // source (ReportTab.identityBandHtml): this is a display fork, not a business rule, and
+        // keeping the exact original predicate preserves byte-identity (PR-1 = zero behavior change).
+        // eslint-disable-next-line no-restricted-syntax
+        const isLegal = card.type === 'legal_procedure';
+        const isFixed = !!card.isFixed;
+
+        let icon;
+        let badge;
+        if (isLegal) {
+            icon = 'fa-gavel';
+            badge = 'הליך משפטי';
+        } else if (isFixed) {
+            icon = 'fa-dollar-sign';
+            badge = 'מחיר קבוע';
+        } else {
+            icon = 'fa-clock';
+            badge = 'שעות';
+        }
+
+        let stat = '';
+        let meter = '';
+        // Meter/stat ONLY for an hours service WITH a real quota (total > 0). A 0-budget hours
+        // service renders the band alone; the caller adds a neutral note — never a red "debt" bar.
+        if (!isLegal && !isFixed && bandNum(card.totalHours) > 0) {
+            const used = bandNum(card.hoursUsed);
+            const total = bandNum(card.totalHours);
+            const rem = bandNum(card.hoursRemaining);
+            const status = meterStatus(used, total, rem);
+            const remText = rem < 0
+                ? 'חריגה ' + Math.abs(rem).toFixed(1)
+                : 'נותרו ' + rem.toFixed(1);
+            stat =
+                '<span class="usc-identity-stat"><b>' + used.toFixed(1) + '</b> / ' +
+                total.toFixed(1) + ' ש׳ · ' +
+                '<span class="usc-identity-rem usc-identity-rem--' + status + '">' + remText + '</span></span>';
+            const pct = Math.min(100, Math.max(0, (used / total) * 100));
+            meter =
+                '<div class="usc-identity-meter"><span class="usc-identity-meter-fill usc-identity-meter-fill--' +
+                status + '" style="width:' + pct + '%"></span></div>';
+        }
+
+        return '<div class="usc-identity"><div class="usc-identity-top">' +
+            '<span class="usc-identity-icon"><i class="fas ' + icon + '" aria-hidden="true"></i></span>' +
+            '<span class="usc-identity-name">' + esc(card.name || 'ללא שם') + '</span>' +
+            '<span class="usc-identity-badge">' + badge + '</span>' +
+            ((opts && opts.statusHtml) ? opts.statusHtml : '') +
+            stat +
+            '</div>' + meter + '</div>';
+    }
+
+    // ── Management header (Track-2 redesign) ─────────────────────────────────────
+    // The management fork of the header. The report tab keeps buildIdentityBand (shared, byte-
+    // untouched) — this compact header renders ONLY on the management card, so redesigning it never
+    // reaches the report tab. Injector-safe: emits no `.management-stage` / `.report-*` classes; the
+    // `.management-service-card` root + `data-service-id` (the ServiceOverdraftResolution anchor)
+    // live on buildManageDetail's element, not here. Reuses meterStatus / bandNum (band parity).
+    function buildManageHeader(card) {
+        // eslint-disable-next-line no-restricted-syntax
+        const isLegal = card.type === 'legal_procedure';
+        const isFixed = !!card.isFixed;
+        let icon;
+        let badge;
+        if (isLegal) {
+            icon = 'fa-gavel';
+            badge = 'הליך משפטי';
+        } else if (isFixed) {
+            icon = 'fa-dollar-sign';
+            badge = 'מחיר קבוע';
+        } else {
+            icon = 'fa-clock';
+            badge = 'שעות';
+        }
+
+        const statusText = USC_STATUS_TEXT[card.status];
+        const status = statusText
+            ? '<span class="msc-status msc-status--' + esc(card.status) + '">' +
+                '<span class="msc-dot" aria-hidden="true"></span>' + statusText + '</span>'
+            : '';
+
+        const name = esc(card.name || 'ללא שם');
+        const head =
+            '<div class="msc-head">' +
+                '<div class="msc-id">' +
+                    '<i class="fas ' + icon + ' msc-id-icon" aria-hidden="true"></i>' +
+                    '<span class="msc-name" title="' + name + '">' + name + '</span>' +
+                '</div>' +
+                '<div class="msc-meta"><span class="msc-type">' + badge + '</span>' + status + '</div>' +
+            '</div>';
+
+        // Hours block — only an hours service with a real quota (total > 0) shows the meter.
+        let hours = '';
+        if (!isLegal && !isFixed && bandNum(card.totalHours) > 0) {
+            const used = bandNum(card.hoursUsed);
+            const total = bandNum(card.totalHours);
+            const rem = bandNum(card.hoursRemaining);
+            const st = meterStatus(used, total, rem);
+            const remText = rem < 0 ? 'חריגה ' + Math.abs(rem).toFixed(1) : 'נותרו ' + rem.toFixed(1);
+            const pct = Math.min(100, Math.max(0, (used / total) * 100));
+            hours =
+                '<div class="msc-hours">' +
+                    '<div class="msc-hours-line">' +
+                        '<span class="msc-hours-used"><b>' + used.toFixed(1) + '</b> / ' + total.toFixed(1) + ' שעות</span>' +
+                        '<span class="msc-hours-rem msc-hours-rem--' + st + '">' + remText + '</span>' +
+                    '</div>' +
+                    '<div class="msc-meter"><span class="msc-meter-fill msc-meter-fill--' + st + '" style="width:' + pct + '%"></span></div>' +
+                '</div>';
+        }
+        return head + hours;
+    }
+
+    const api = {
+        buildReportSelectCards: buildReportSelectCards,
+        buildManageDetail: buildManageDetail,
+        buildRailRow: buildRailRow,
+        buildIdentityBand: buildIdentityBand,
+        // Exposed as a test seam (PR-B): the closed-service action gate is unit-tested directly.
+        buildActions: buildActions
+    };
+
+    if (typeof window !== 'undefined') {
+        window.UnifiedServiceCard = api;
+    }
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = api;
+    }
+})();

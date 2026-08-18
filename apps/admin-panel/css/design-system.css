@@ -56,6 +56,7 @@
   --orange: #f97316;
   --orange-light: #fb923c;
   --orange-dark: #ea580c;
+  --orange-darker: #c2410c; /* WCAG AA text on white (5.18:1); --orange-dark is only 3.56:1 */
 
   /* Red */
   --red: #ef4444;
@@ -115,6 +116,9 @@
   /* Maximum elevation */
   --shadow-xl: 0 20px 60px rgb(0 0 0 / 15%);
 
+  /* Sidebar (RTL, casts left) */
+  --shadow-sidebar: -4px 0 20px rgb(0 0 0 / 8%);
+
   /* ========== Z-INDEX LAYERS ========== */
 
   /* Base Levels */
@@ -129,6 +133,7 @@
   --z-sticky-header: 10;     /* כותרות sticky בטבלאות */
   --z-dropdown: 100;
   --z-sticky: 200;
+  --z-sidebar: 900;
 
   /* Overlays & Modals */
   --z-overlay-card: 1000;    /* overlay של כרטיס מורחב */

@@ -87,6 +87,45 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // The REAL timesheet_entry_costs path (Phase 2 H.2) — mirrors production
+    // `allow read, write: if false` so tests/rules/timesheetEntryCosts.test.ts can
+    // assert it denies EVERY context. Holds the employee's confidential cost-per-hour
+    // OFF the timesheet entry doc (§7.6 / §10 Option A); Admin-SDK access only.
+    match /timesheet_entry_costs/{entryId} {
+      allow read, write: if false;
+    }
+
+    // The REAL client_profitability path (Phase 2 H.3 PR3) — mirrors production
+    // `allow read: if isAdmin() || isPartner(); allow write: if false`. Unlike the
+    // two `if false` collections above, this one ALLOWS admin + partner READ, so
+    // tests/rules/clientProfitability.test.ts asserts the POSITIVES (admin/partner
+    // read succeed) AND the negatives (employee/unauth read deny + all writes deny).
+    // The FIRST production isPartner() consumer (dormant today; resolves admin-only
+    // until a partner claim exists). The cost aggregate lives HERE, OFF the
+    // world-readable clients doc (§7.6 / §8.5 D-A).
+    match /client_profitability/{caseNumber} {
+      allow read: if isAdmin() || isPartner();
+      allow write: if false;
+    }
+
+    // The REAL sales_record_links path (Phase 2 H.6) — mirrors production
+    // `allow read, write: if false`. Fully CF-only (like employee_costs /
+    // timesheet_entry_costs): holds the agreed-fee snapshot OFF the world-readable
+    // clients doc (§7.6 / DLR §8.2.5 D-A). tests/rules/salesRecordLinks.test.ts
+    // asserts it denies EVERY context (unauth/employee/admin/partner — read + write).
+    match /sales_record_links/{linkId} {
+      allow read, write: if false;
+    }
+
+    // The REAL pending_signature_intents path (Phase 2 H.6.c-1) — mirrors production
+    // `allow read, write: if false`. Fully CF-only (like sales_record_links /
+    // employee_costs): the H.6.c-1 idempotency marker (non-PII business ids only, no fee)
+    // that guarantees exactly one pending_signature client per sale.
+    // tests/rules/pendingSignatureIntents.test.ts asserts it denies EVERY context.
+    match /pending_signature_intents/{salesRecordId} {
+      allow read, write: if false;
+    }
+
     // Deny everything else.
     match /{document=**} {
       allow read, write: if false;

@@ -1,0 +1,25 @@
+# Rubric — Report detail V3: side-by-side layout (period bar + [stage picker | always-on calendar])
+
+**Track:** the closing piece of the admin reading-pane / modal-unification design track (Haim-approved Var 3). The report "הפקת דוח" detail changes from a single vertical stack (service detail → date presets → collapsible calendar) — which grew past the `.cm-detail` 60vh cap on a multi-stage legal service (the #528 overlap class) — into a **full-width period bar on top + a two-column body: the stage picker beside an ALWAYS-VISIBLE calendar**. The "מותאם" disclosure toggle is removed (the calendar is just there). Roughly halves the height, so it cannot overflow.
+
+**Scope:** frontend-only, DEV, admin-critical. 4 files: `js/ui/ReportTab.js` (`_shellHtml` restructure + remove the dead `_wireCustomToggle` + a short stage-name for the picker row), `css/clients-modals.css` (the V3 grid), `clients.html` (`?v=` bump — ReportTab.js + clients-modals.css → `20260806-r-v3-sidebyside`), `tests/unit/admin-panel/report-tab.test.ts` (one test re-anchored to the V3 contract). No backend / data / count / contract change.
+
+## MUST (all required for PASS)
+
+- **M1 — the layout.** `_shellHtml` emits `.report-period.report-period--bar` (label + presets + resolved dateline) on top, then `.report-body` (grid) = `#mgmtReportServiceDetail` (stage picker) + `.report-cal-col` (the `#mgmtReportCustomDates` calendar, rendered `report-custom-dates--open`). The `#mgmtReportCustomToggle` button is GONE.
+- **M2 — every ID + the wiring preserved.** `#mgmtReportRail`, `#mgmtReportServiceDetail`, `#mgmtReportPresetSeg`, `#mgmtReportResolvedRange`, `#mgmtReportCustomDates`, `#mgmtReportRangeAnchor`, `#mgmtReportStartDate`, `#mgmtReportEndDate`, the `name="mgmtReportFormat"` radios, `#mgmtGenerateReportBtn`, `#mgmtEmailReportBtn` all still exist → `getFormData` (reads the native date fields + format + selection) is unchanged, and `_wireQuickDates`/`_wireDateInputs`/`_wireActions`/`_initRangePicker`/`_setQuickDateRange` (all ID-based) still bind. The dead `_wireCustomToggle` call + method are removed (the guarded method is now unreachable — no toggle).
+- **M3 — injector-safe (0 `management-*`).** The report tab emits NONE of the injector-scanned `.management-*` classes (rail = `.cm-rail-row`, detail = `.report-*`). Verified live (`[class*="management-"]` count = 0) + `report-tab.test.ts` "no management-* class" green.
+- **M4 — short stage name (display) / verbose name (contract).** The picker ROW shows the SHORT stage name (`stageShortName` → "שלב א'/ב'/ג'") — the identity band above already names the procedure, and the verbose "הליך משפטי - שלב א'" truncated to "הליך מ…" in the narrower column. The SELECTION (`_setStageSelection` → `getFormData.service = getStageName(stage.id)`, verbose) is UNCHANGED → the report engine still gets the byte-identical label.
+- **M5 — report contract green.** `report-tab.test.ts` 38 pass: the 9-key `getFormData` contract, DA-1 (scoped format read), DA-2 (legal stage locking / stageless refusal), the unassigned-note, the two-legal-procedure rail rows — all unchanged. Exactly ONE test re-anchored: the old "מותאם disclosure" test → the V3 contract (no toggle, always-open, two-column body, period bar on top).
+- **M6 — gates.** `node --check` OK; eslint 0 errors (pre-existing `no-alert` warnings only); stylelint 0; `?v=` bumped on ReportTab.js + clients-modals.css.
+- **M7 — no overflow / no clip.** The two-column body halves the height (tallest column = the calendar alone), so it cannot overflow the 60vh cap. The calendar column is 348px (holds the 307px calendar + divider without clipping) — verified live (`clippedLeft:false`).
+
+## PRODUCT-GRADE GATES (expected)
+
+- **G1** PASS — removes the overflow/overlap class + the truncated-stage-name defect; no NaN/undefined path (pure display of pre-computed data).
+- **G2** PASS — Rollback = single `git revert` (restores the vertical stack + `?v=`). Code-only, no data/schema.
+- **G3** N/A — read-only display; no write path.
+- **G4** PASS — `report-tab.test.ts` 38 (the getFormData contract + injector-safety + the re-anchored V3 test) + a real-CSS LIVE render of the actual `ReportTab.js` (legal service selected → the real 3-stage picker beside the calendar; 0 management-* verified) shown to Haim. Manual DEV smoke: open a report on a legal service → the period bar sits on top, the stage picker beside the calendar, no overlap; pick a stage + a range + PDF → generate works.
+- **G5** PASS — Hebrew unchanged (all labels are existing strings; the short stage name is the canonical `שלב א'/ב'/ג'`).
+- **G6** — **BEHAVIORAL/DISPLAY CHANGE (declared, ADMIN SAFETY).** The report detail is re-laid-out (vertical stack → period bar + two-column body; the "מותאם" toggle removed → calendar always visible). **No count/filter/aggregate/data/contract change** — `getFormData` is byte-identical, the same services/stages/dates render. A deliberate visual change to an admin-trusted screen, per apps/admin-panel/CLAUDE.md.
+- **G7** N/A — no auth/PII/permissions.

@@ -8,7 +8,8 @@
  *   D. Service-level drift guard (predates this migration; must remain)
  *   E. Canonical helper integration:
  *      - happy path (package appended, service.totalHours grows, aggregates derived)
- *      - orphan absorption (newPackage.hoursUsed = orphanHours)
+ *      - OWN-0(c): new package starts EMPTY; orphans NOT re-counted (no detonation,
+ *        no backfill); service.hoursUsed PRESERVED (no PR #174 under-count)
  *      - legacy `caseId` alias
  *   F. Audit log
  *   G. Return shape
@@ -146,7 +147,7 @@ const VALID_USER = {
   uid: 'user1',
   email: 'test@test',
   username: 'testuser',
-  role: 'manager'
+  role: 'admin'
 };
 
 function makeCtx(uid = 'user1') {
@@ -268,6 +269,51 @@ describe('C. Service-type guard', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
+// C2. Status gate (A1) — a CLOSED service refuses new hour packages.
+// Checked regardless of overrideActive. Throw aborts the txn (no write).
+// ═══════════════════════════════════════════════════════════════
+
+describe('C2. Status gate — closed service refuses new package', () => {
+  const ARGS = { clientId: 'c1', serviceId: 's1', hours: 5 };
+
+  test('archived service → failed-precondition + no write', async () => {
+    setupTxMocks(makeClientDoc([makeHoursService('s1', { status: 'archived' })]), []);
+    await expect(addPackageToService(ARGS, makeCtx()))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+  });
+
+  test('completed service → failed-precondition + no write', async () => {
+    setupTxMocks(makeClientDoc([makeHoursService('s1', { status: 'completed' })]), []);
+    await expect(addPackageToService(ARGS, makeCtx()))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+  });
+
+  test('archived service + overrideActive:true → STILL failed-precondition (override does NOT bypass)', async () => {
+    const svc = { ...makeHoursService('s1', { status: 'archived' }), overrideActive: true };
+    setupTxMocks(makeClientDoc([svc]), []);
+    await expect(addPackageToService(ARGS, makeCtx()))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(mockTransaction.update).not.toHaveBeenCalled();
+  });
+
+  test('on_hold service → ALLOWED (package added)', async () => {
+    setupTxMocks(makeClientDoc([makeHoursService('s1', { status: 'on_hold', totalHours: 10 })]), []);
+    const result = await addPackageToService(ARGS, makeCtx());
+    expect(result.success).toBe(true);
+    expect(mockTransaction.update).toHaveBeenCalledTimes(1);
+  });
+
+  test('active service → ALLOWED (package added)', async () => {
+    setupTxMocks(makeClientDoc([makeHoursService('s1', { status: 'active', totalHours: 10 })]), []);
+    const result = await addPackageToService(ARGS, makeCtx());
+    expect(result.success).toBe(true);
+    expect(mockTransaction.update).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
 // D. Service-level drift guard (predates this migration; preserved)
 // ═══════════════════════════════════════════════════════════════
 
@@ -333,37 +379,60 @@ describe('E. Canonical helper integration', () => {
     expect(payload.isBlocked).toBe(false);
   });
 
-  test('orphan absorption: orphan entries assigned to newPackage, hoursUsed reflects them', async () => {
+  test('OWN-0(c) — orphan entries are NOT re-counted into the new package (no detonation, no backfill)', async () => {
     setupTxMocks(
       makeClientDoc([makeHoursService('s1', { totalHours: 10 })]),
-      // 2 orphan entries — 60 + 30 = 90 minutes = 1.5h
+      // 2 orphan entries exist on the service — pre-OWN-0 these were swept into the
+      // new package (the +874h double-count detonator). They must now be IGNORED.
       [
         { minutes: 60, clientId: 'c1', serviceId: 's1' },
         { minutes: 30, clientId: 'c1', serviceId: 's1' }
       ]
     );
 
-    await addPackageToService(
-      { clientId: 'c1', serviceId: 's1', hours: 5 },
-      makeCtx()
-    );
+    await addPackageToService({ clientId: 'c1', serviceId: 's1', hours: 5 }, makeCtx());
 
     const [, payload] = mockTransaction.update.mock.calls[0];
     const svc = payload.services.find(s => s.id === 's1');
     const newPkg = svc.packages.find(p => p.type === 'additional');
 
-    // newPackage absorbs orphan hours
-    expect(newPkg.hoursUsed).toBe(1.5);
-    expect(newPkg.hoursRemaining).toBe(3.5); // 5 - 1.5
+    // New package starts EMPTY — orphan hours are NOT folded in.
+    expect(newPkg.hoursUsed).toBe(0);
+    expect(newPkg.hoursRemaining).toBe(5);
 
-    // Service totals reflect: 10 initial (unused) + 5 new (1.5 used) = 15 total, 1.5 used
+    // Capacity grows; existing consumption (0 here) preserved.
     expect(svc.totalHours).toBe(15);
-    expect(svc.hoursUsed).toBe(1.5);
-    expect(svc.hoursRemaining).toBe(13.5);
+    expect(svc.hoursUsed).toBe(0);
+    expect(svc.hoursRemaining).toBe(15);
 
-    // Backfill: orphan entries got packageId
-    expect(mockBatchUpdate).toHaveBeenCalledTimes(2);
-    expect(mockBatchCommit).toHaveBeenCalledTimes(1);
+    // No packageId-backfill batch (the trigger-re-firing entry rewrite is gone).
+    expect(mockBatchUpdate).not.toHaveBeenCalled();
+    expect(mockBatchCommit).not.toHaveBeenCalled();
+  });
+
+  test('OWN-0(c) — service-only hours are PRESERVED, not dropped (no PR #174 under-count)', async () => {
+    // svc.hoursUsed (5) exceeds Σ packages.hoursUsed (2) → 3h live only at service
+    // level (service-only). The pre-OWN-0 `service.hoursUsed = Σpackages` recompute
+    // would DROP those 3h. The preserve path must keep them.
+    const svc = {
+      id: 's1', type: ST.HOURS, name: 'svc', status: 'active',
+      totalHours: 10, hoursUsed: 5, hoursRemaining: 5,
+      packages: [{ id: 'p1', type: 'initial', hours: 10, hoursUsed: 2, hoursRemaining: 8, status: 'active' }]
+    };
+    setupTxMocks(makeClientDoc([svc]), []);
+
+    await addPackageToService({ clientId: 'c1', serviceId: 's1', hours: 5 }, makeCtx());
+
+    const [, payload] = mockTransaction.update.mock.calls[0];
+    const out = payload.services.find(s => s.id === 's1');
+    const newPkg = out.packages.find(p => p.type === 'additional');
+
+    expect(newPkg.hoursUsed).toBe(0);
+    expect(out.totalHours).toBe(15);
+    expect(out.hoursUsed).toBe(5);          // PRESERVED (not recomputed to Σpackages=2)
+    expect(out.hoursRemaining).toBe(10);    // 15 - 5
+    // Client aggregate (real canonical helper) reflects the preserved consumption.
+    expect(payload.hoursUsed).toBe(5);
   });
 
   test('legacy caseId alias works same as clientId', async () => {
@@ -446,5 +515,238 @@ describe('G. Return value', () => {
       }),
       message: expect.any(String)
     });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// H. purchaseDate validation (PR-DATE-1)
+// ═══════════════════════════════════════════════════════════════
+
+describe('H. purchaseDate validation', () => {
+  test('unparseable purchaseDate → invalid-argument', async () => {
+    await expect(
+      addPackageToService(
+        { clientId: 'c1', serviceId: 's1', hours: 5, purchaseDate: 'not-a-date' },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('future purchaseDate → invalid-argument', async () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const futureStr = tomorrow.toISOString().slice(0, 10);
+
+    await expect(
+      addPackageToService(
+        { clientId: 'c1', serviceId: 's1', hours: 5, purchaseDate: futureStr },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('valid purchaseDate is stored on the new package', async () => {
+    setupTxMocks(
+      makeClientDoc([makeHoursService('s1', { totalHours: 10 })]),
+      []
+    );
+
+    const result = await addPackageToService(
+      { clientId: 'c1', serviceId: 's1', hours: 5, purchaseDate: '2026-01-15' },
+      makeCtx()
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.package.purchaseDate).toMatch(/^2026-01-15/);
+  });
+
+  test('omitting purchaseDate defaults to now (backward compatible)', async () => {
+    setupTxMocks(
+      makeClientDoc([makeHoursService('s1', { totalHours: 10 })]),
+      []
+    );
+
+    const before = new Date().toISOString();
+    const result = await addPackageToService(
+      { clientId: 'c1', serviceId: 's1', hours: 5 },
+      makeCtx()
+    );
+    const after = new Date().toISOString();
+
+    expect(result.success).toBe(true);
+    expect(result.package.purchaseDate >= before).toBe(true);
+    expect(result.package.purchaseDate <= after).toBe(true);
+  });
+
+  test('purchaseDate >1yr old is accepted with warning (not rejected)', async () => {
+    setupTxMocks(
+      makeClientDoc([makeHoursService('s1', { totalHours: 10 })]),
+      []
+    );
+
+    const result = await addPackageToService(
+      { clientId: 'c1', serviceId: 's1', hours: 5, purchaseDate: '2024-01-01' },
+      makeCtx()
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.package.purchaseDate).toMatch(/^2024-01-01/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// I. updatePackagePurchaseDate (PR-DATE-2)
+// ═══════════════════════════════════════════════════════════════
+
+const { updatePackagePurchaseDate } = require('../services/index');
+
+describe('I. updatePackagePurchaseDate', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockCheckUserPermissions.mockResolvedValue(VALID_USER);
+  });
+
+  test('missing clientId → invalid-argument', async () => {
+    await expect(
+      updatePackagePurchaseDate(
+        { serviceId: 's1', packageId: 'pkg_1', purchaseDate: '2026-01-01' },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('missing packageId → invalid-argument', async () => {
+    await expect(
+      updatePackagePurchaseDate(
+        { clientId: 'c1', serviceId: 's1', purchaseDate: '2026-01-01' },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('missing purchaseDate → invalid-argument', async () => {
+    await expect(
+      updatePackagePurchaseDate(
+        { clientId: 'c1', serviceId: 's1', packageId: 'pkg_1' },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('unparseable purchaseDate → invalid-argument', async () => {
+    await expect(
+      updatePackagePurchaseDate(
+        { clientId: 'c1', serviceId: 's1', packageId: 'pkg_1', purchaseDate: 'not-a-date' },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('future purchaseDate → invalid-argument', async () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    await expect(
+      updatePackagePurchaseDate(
+        { clientId: 'c1', serviceId: 's1', packageId: 'pkg_1', purchaseDate: tomorrow.toISOString().slice(0, 10) },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'invalid-argument' });
+  });
+
+  test('package not found → not-found', async () => {
+    setupTxMocks(
+      makeClientDoc([makeHoursService('s1', { totalHours: 10 })]),
+      []
+    );
+
+    await expect(
+      updatePackagePurchaseDate(
+        { clientId: 'c1', serviceId: 's1', packageId: 'pkg_nonexistent', purchaseDate: '2026-01-15' },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'not-found' });
+  });
+
+  test('valid update stores new purchaseDate and returns success', async () => {
+    const pkg = {
+      id: 'pkg_123',
+      type: 'initial',
+      hours: 10,
+      hoursUsed: 0,
+      hoursRemaining: 10,
+      purchaseDate: '2026-01-01T00:00:00.000Z',
+      status: 'active'
+    };
+    const svc = makeHoursService('s1', { totalHours: 10, packages: [pkg] });
+    setupTxMocks(makeClientDoc([svc]), []);
+
+    const result = await updatePackagePurchaseDate(
+      { clientId: 'c1', serviceId: 's1', packageId: 'pkg_123', purchaseDate: '2026-06-15' },
+      makeCtx()
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.packageId).toBe('pkg_123');
+    expect(result.purchaseDate).toMatch(/^2026-06-15/);
+  });
+
+  test('audit log records the change', async () => {
+    const pkg = {
+      id: 'pkg_456',
+      type: 'additional',
+      hours: 5,
+      hoursUsed: 2,
+      hoursRemaining: 3,
+      purchaseDate: '2026-03-01T00:00:00.000Z',
+      status: 'active'
+    };
+    const svc = makeHoursService('s1', { totalHours: 15, packages: [
+      { id: 'pkg_init', type: 'initial', hours: 10, hoursUsed: 0, hoursRemaining: 10, status: 'active' },
+      pkg
+    ] });
+    setupTxMocks(makeClientDoc([svc]), []);
+
+    await updatePackagePurchaseDate(
+      { clientId: 'c1', serviceId: 's1', packageId: 'pkg_456', purchaseDate: '2026-07-01' },
+      makeCtx()
+    );
+
+    expect(mockLogAction).toHaveBeenCalledWith(
+      'UPDATE_PACKAGE_PURCHASE_DATE',
+      'user1',
+      'testuser',
+      expect.objectContaining({
+        clientId: 'c1',
+        serviceId: 's1',
+        packageId: 'pkg_456',
+        oldPurchaseDate: '2026-03-01T00:00:00.000Z',
+        newPurchaseDate: expect.stringMatching(/^2026-07-01/)
+      })
+    );
+  });
+
+  test('purchaseDate >1yr old is accepted with warning', async () => {
+    const pkg = {
+      id: 'pkg_old',
+      type: 'initial',
+      hours: 10,
+      hoursUsed: 0,
+      hoursRemaining: 10,
+      purchaseDate: '2026-01-01T00:00:00.000Z',
+      status: 'active'
+    };
+    setupTxMocks(
+      makeClientDoc([makeHoursService('s1', { totalHours: 10, packages: [pkg] })]),
+      []
+    );
+
+    const result = await updatePackagePurchaseDate(
+      { clientId: 'c1', serviceId: 's1', packageId: 'pkg_old', purchaseDate: '2024-01-01' },
+      makeCtx()
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.purchaseDate).toMatch(/^2024-01-01/);
   });
 });

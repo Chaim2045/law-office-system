@@ -99,7 +99,7 @@ const VALID_USER = {
   uid: 'user1',
   email: 'test@test',
   username: 'testuser',
-  role: 'manager'
+  role: 'admin'
 };
 
 function makeCtx(uid = 'user1') {
@@ -134,6 +134,17 @@ describe('A. Auth + validation', () => {
         makeCtx()
       )
     ).rejects.toMatchObject({ code: 'unauthenticated' });
+  });
+
+  test('non-admin caller → permission-denied, no write (PR-SEC-A2: adding a service is admin-only)', async () => {
+    mockCheckUserPermissions.mockResolvedValue({ ...VALID_USER, role: 'employee' });
+    await expect(
+      addServiceToClient(
+        { clientId: 'c1', serviceType: 'hours', serviceName: 'X', hours: 10 },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+    expect(mockRunTransaction).not.toHaveBeenCalled(); // gate throws before any write
   });
 
   test('missing clientId → invalid-argument', async () => {

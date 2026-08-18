@@ -99,7 +99,20 @@
       frame-ancestors 'none';
     """
 
-# Cache control for static assets - NO CACHE for JS/CSS to ensure updates
+# Cache control for static assets.
+#
+# DELIBERATELY HELD AT no-cache ON production-stable (2026-08-18 promotion).
+# The `immutable` policy on main assumes every asset ref carries a ?v= token.
+# It does not: 83 script/link refs across the 11 admin pages have no token, and
+# the admin panel's Netlify build command is `echo` - it never runs cache-bust
+# (update-cache-busting.js touches only the two index.html files, and it REPLACES
+# an existing ?v= rather than adding one). Serving those 83 assets immutable
+# would pin them in every partner's browser for a year, so a hotfix could not be
+# rolled back by `git revert` + redeploy - it would need a filename change.
+# That breaks the G2 rollback gate.
+#
+# To adopt `immutable` here, first add ?v= tokens to all 83 refs (or make the
+# admin build run cache-bust), then align this block with main in its own PR.
 [[headers]]
   for = "/css/*"
   [headers.values]

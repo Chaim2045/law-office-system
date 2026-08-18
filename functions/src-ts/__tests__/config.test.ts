@@ -39,8 +39,10 @@ describe('config — cross-project constants', () => {
     expect(BIGQUERY_DATASET).toBe('law_office_analytics');
   });
 
-  it('sales collection has a value (UNVERIFIED — confirm before H.1)', () => {
-    expect(typeof TOFES_SALES_COLLECTION).toBe('string');
-    expect(TOFES_SALES_COLLECTION.length).toBeGreaterThan(0);
+  it('sales collection is the VERIFIED tofes-mecher sales_records (probe 2026-06-01)', () => {
+    // ✅ VERIFIED 2026-06-01 read-only schema probe against law-office-sales-form
+    // (PHASE_2_FOUNDATIONS "✅ VERIFIED"). Pin the exact name so a typo cannot
+    // silently retarget the H.1 bridge at a non-existent collection.
+    expect(TOFES_SALES_COLLECTION).toBe('sales_records');
   });
 });

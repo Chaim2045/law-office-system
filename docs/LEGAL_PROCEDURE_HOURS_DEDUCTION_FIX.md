@@ -280,7 +280,7 @@ When supporting both old and new structures:
 
 ## 🔗 Related Documents
 
-- [DATA_STRUCTURE_STANDARD.md](DATA_STRUCTURE_STANDARD.md) - The canonical data structure
+- [archive/DATA_STRUCTURE_STANDARD.md](archive/DATA_STRUCTURE_STANDARD.md) — ⚠️ הועבר לארכיון 2026-07-23, אינו מתאר את המערכת הנוכחית (ראה `docs/archive/README.md`)
 - [ENTERPRISE_V2_MIGRATION_GUIDE.md](ENTERPRISE_V2_MIGRATION_GUIDE.md) - Migration guide
 - [ENTERPRISE_V2_GAPS_AND_LIMITATIONS.md](ENTERPRISE_V2_GAPS_AND_LIMITATIONS.md) - Known gaps
 

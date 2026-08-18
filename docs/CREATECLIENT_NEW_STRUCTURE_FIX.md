@@ -21,7 +21,7 @@ The `createClient` function was creating legal procedure clients in the **OLD st
 
 ## 🔍 Discovery Process
 
-**Discovery Method:** Systematic verification against project rules (DATA_STRUCTURE_STANDARD.md)
+**Discovery Method:** Systematic verification against project rules (archive/DATA_STRUCTURE_STANDARD.md)
 
 ### Checklist Used:
 1. ✅ Does existing code read from BOTH structures? → Yes (addTimeToTask)
@@ -279,7 +279,7 @@ clientData.services = [
 Service-level aggregates make it easy to track progress per service.
 
 ### 4. **Data Integrity**
-Following DATA_STRUCTURE_STANDARD.md ensures all code paths work correctly.
+Following archive/DATA_STRUCTURE_STANDARD.md ensures all code paths work correctly.
 
 ### 5. **Migration Ready**
 When we migrate old clients to new structure, new clients are already in the right format.
@@ -288,7 +288,7 @@ When we migrate old clients to new structure, new clients are already in the rig
 
 ## 🔗 Related Documents
 
-- [DATA_STRUCTURE_STANDARD.md](DATA_STRUCTURE_STANDARD.md) - The canonical data structure
+- [archive/DATA_STRUCTURE_STANDARD.md](archive/DATA_STRUCTURE_STANDARD.md) — ⚠️ הועבר לארכיון 2026-07-23, אינו מתאר את המערכת הנוכחית (ראה `docs/archive/README.md`)
 - [LEGAL_PROCEDURE_HOURS_DEDUCTION_FIX.md](LEGAL_PROCEDURE_HOURS_DEDUCTION_FIX.md) - Hours deduction fix
 - [ENTERPRISE_V2_MIGRATION_GUIDE.md](ENTERPRISE_V2_MIGRATION_GUIDE.md) - Migration guide
 
@@ -296,7 +296,7 @@ When we migrate old clients to new structure, new clients are already in the rig
 
 ## ✅ Compliance Checklist
 
-Verification against DATA_STRUCTURE_STANDARD.md rules:
+Verification against archive/DATA_STRUCTURE_STANDARD.md rules:
 
 - [x] **Rule 1:** Write to NEW structure ONLY → ✅ Uses services[] array
 - [x] **Rule 2:** Read from BOTH structures → ✅ Legacy stages = [] for backward compat
@@ -314,15 +314,15 @@ Verification against DATA_STRUCTURE_STANDARD.md rules:
 ## 🎯 Summary
 
 **Problem:** createClient was creating legal_procedure in OLD structure
-**Discovery:** Systematic check against DATA_STRUCTURE_STANDARD.md
+**Discovery:** Systematic check against archive/DATA_STRUCTURE_STANDARD.md
 **Solution:** Wrap stages inside services[] array with proper metadata
 **Result:** All new clients now use consistent NEW structure
 **Deployment:** 2025-11-06
 
 ✅ **Status:** Fixed and deployed
-✅ **Tested:** Verified structure matches DATA_STRUCTURE_STANDARD.md
+✅ **Tested:** Verified structure matches archive/DATA_STRUCTURE_STANDARD.md
 ✅ **Compliant:** Passes all project rules
 
 ---
 
-**Remember:** Always check new features against DATA_STRUCTURE_STANDARD.md! 🔑
+**Remember:** Always check new features against archive/DATA_STRUCTURE_STANDARD.md! 🔑

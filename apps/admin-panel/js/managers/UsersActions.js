@@ -59,9 +59,6 @@
                 case 'delete-data':
                     await this.deleteUserData(userEmail);
                     break;
-                case 'whatsapp':
-                    // Handled by WhatsAppMessageDialog event listener
-                    break;
                 default:
                     console.warn(`⚠️ Unknown action: ${action}`);
             }

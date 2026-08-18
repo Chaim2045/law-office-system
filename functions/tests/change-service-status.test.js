@@ -120,7 +120,7 @@ const VALID_USER = {
   uid: 'user1',
   email: 'test@test',
   username: 'testuser',
-  role: 'manager'
+  role: 'admin'
 };
 
 function makeCtx(uid = 'user1') {
@@ -155,6 +155,16 @@ describe('A. Auth + validation', () => {
         makeCtx()
       )
     ).rejects.toMatchObject({ code: 'unauthenticated' });
+  });
+
+  test('non-admin caller → permission-denied (PR-SEC-A: reopen is admin-only; closes the #535 bypass)', async () => {
+    mockCheckUserPermissions.mockResolvedValue({ ...VALID_USER, role: 'employee' });
+    await expect(
+      changeServiceStatus(
+        { clientId: 'c1', serviceId: 's1', newStatus: 'active' },
+        makeCtx()
+      )
+    ).rejects.toMatchObject({ code: 'permission-denied' });
   });
 
   test('missing clientId → invalid-argument', async () => {

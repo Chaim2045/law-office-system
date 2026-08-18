@@ -158,15 +158,16 @@ describe('business-rules sync — canonical truth table is correct', () => {
   }
 });
 
-describe('business-rules sync — IIFE adapters are byte-identical', () => {
-  it('admin and user-app adapter files have identical bytes', () => {
-    const adminPath = path.join(repoRoot, 'apps/admin-panel/js/shared/business-rules-adapter.js');
-    const userPath = path.join(repoRoot, 'apps/user-app/js/shared/business-rules-adapter.js');
-    const adminBytes = fs.readFileSync(adminPath);
-    const userBytes = fs.readFileSync(userPath);
-    expect(adminBytes.equals(userBytes), 'adapter file byte-equality').toBe(true);
-  });
-});
+// NOTE — the former "IIFE adapters are byte-identical" byte-equality assertion
+// (admin copy bytes == user copy bytes) was FOLDED into the shared-web emit
+// drift-guard (tests/unit/shared/shared-web-emit.sync.test.ts) by PR-SHARE-2.
+// business-rules-adapter.js is now an emitted shared module: the drift-guard
+// asserts BOTH committed copies are byte-identical to a fresh emit of the one
+// canonical source (shared-web/src/shared/business-rules-adapter.js), which
+// proves admin==canonical==user transitively — a strictly stronger check.
+// Duplicating a bare admin==user assertion here is redundant, so it was removed
+// (plan §3.1, pair 3). The behavioral parity matrix below still exercises the
+// admin + user adapter IIFEs against the canonical + functions mirror.
 
 describe('business-rules sync — legacy client-type-display.isFixedService matches canonical', () => {
   // Implementation #5: a preserved local copy in apps/admin-panel/js/core/client-type-display.js.

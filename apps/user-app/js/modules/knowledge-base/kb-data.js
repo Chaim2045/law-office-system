@@ -671,7 +671,10 @@ const KB_ARTICLES = [
 
             actionButton: {
                 text: '🚀 פתח טופס תיק חדש',
-                action: '(new CaseCreationDialog()).open()'
+                action: '(new CaseCreationDialog()).open()',
+                // PR-SEC-A2-frontend: opening a case is admin-only on the backend (#537). Gate the
+                // KB action button too, so a non-admin never opens the dialog into a dead-end error.
+                requiresAdmin: true
             },
 
             relatedArticles: ['search_client', 'create_task', 'edit_case']

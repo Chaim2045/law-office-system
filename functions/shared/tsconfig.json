@@ -1,0 +1,41 @@
+{
+  // גל-3ה TS-1 (A′, in-place): compiles hand-migrated shared/*.ts modules IN PLACE
+  // (source → same-dir .js + .d.ts) so all existing require()/import consumers of
+  // `functions/shared/<name>` resolve unchanged. Extends the src-ts config for the
+  // Node-20 CommonJS + strict settings, then overrides output to emit in place.
+  //
+  // Scope is EXPLICIT per-file (include list) — never a wildcard — so the ~20
+  // sibling hand-written shared/*.js files are NEVER pulled into the TS compile
+  // (allowJs stays false, inherited).
+  // SOURCE lives in ./ts/ ; EMIT to ./ (parent). This keeps NO `.ts` at the
+  // import path `functions/shared/<name>` — so the src-ts project (which imports
+  // `../shared/logger`) resolves to the generated `.d.ts` (declaration files are
+  // exempt from rootDir) instead of grabbing the source `.ts` (which would trip
+  // TS6059 "not under rootDir"). rootDir=./ts + outDir=./ → ts/logger.ts emits
+  // shared/logger.js + shared/logger.d.ts at the exact legacy paths.
+  "extends": "../src-ts/tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./ts",
+    "outDir": "./",
+    "declaration": true,
+    "declarationMap": false,
+    "sourceMap": false,
+    "removeComments": false,
+    // Pin LF so the committed emit is byte-deterministic on ANY host (tsc's
+    // default newLine is platform-dependent → CRLF on Windows). This makes the
+    // CI build-drift guard self-defending: it no longer relies on .gitattributes
+    // renormalization to keep the committed shared/*.{js,d.ts} matching a fresh
+    // compile. Folded from the TS-2 devils-advocate pass (2026-07-30).
+    "newLine": "lf"
+  },
+  "include": [
+    "ts/logger.ts",
+    "ts/claim-writer.ts",
+    "ts/validators.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.test.ts",
+    "__tests__/**"
+  ]
+}

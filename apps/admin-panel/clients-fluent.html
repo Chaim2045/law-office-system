@@ -17,10 +17,10 @@
     <title>ניהול לקוחות | Fluent Design System</title>
 
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-functions-compat.js"></script>
 
     <!-- Fluent UI Web Components -->
     <script type="module" src="https://unpkg.com/@fluentui/web-components"></script>
@@ -38,6 +38,7 @@
 
     <!-- Core Styles -->
     <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/navigation.css">
     <link rel="stylesheet" href="css/main.css?v=20251125">
 </head>
 
@@ -424,31 +425,37 @@
     </div>
 
     <!-- Core Scripts -->
-    <script src="js/core/firebase.js?v=20251125"></script>
-    <script src="js/core/system-constants.js?v=20251125"></script>
-    <script src="js/core/config-loader.js?v=20251125"></script>
-    <script src="js/core/auth.js?v=20251125"></script>
-    <script src="js/core/constants.js?v=20251125"></script>
+    <script defer src="js/core/firebase.js?v=qw3fix"></script>
+    <script defer src="js/core/system-constants.js?v=sh-98d1260c"></script>
+    <script defer src="js/core/config-loader.js?v=sh-b6871918"></script>
+    <script defer src="js/core/auth.js?v=20251125"></script>
+    <script defer src="js/core/constants.js?v=20251125"></script>
+    <!-- Shared HTML-escape SSOT (window.escapeHtml) — load before any escaper consumer -->
+    <script defer src="js/core/escape-html.js?v=20260621-escapehtml-pr1"></script>
 
     <!-- Navigation Component -->
-    <script src="js/ui/Navigation.js?v=20251125"></script>
+    <script defer src="js/ui/Navigation.js?v=20251125"></script>
 
     <!-- Data Managers (Required for Fluent Components) -->
     <!-- PR-2.1.1: business-rules-adapter loads window.BUSINESS_RULES — must come before any consumer -->
-    <script src="js/shared/business-rules-adapter.js?v=20260526-pr-2-1-1"></script>
+    <script defer src="js/shared/business-rules-adapter.js?v=sh-b95da548"></script>
     <!-- ClientTypeDisplay MUST load BEFORE ClientsDataManager -->
-    <script src="js/core/client-type-display.js?v=20260514-mixed"></script>
-    <script src="js/managers/ClientsDataManager.js?v=20260723-prod-stagehours"></script>
-    <script src="js/ui/ClientsTable.js?v=20260516-isOnHold"></script>
-    <script src="js/ui/ClientReportModal.js?v=20260723-prod-stagehours"></script>
-    <script src="js/managers/ReportGenerator.js?v=20260507-stage-2"></script>
+    <script defer src="js/core/client-type-display.js?v=20260621-escapehtml-pr1"></script>
+    <script defer src="js/core/stage-hours.js?v=20260818-fixed-stage-hours"></script>
+    <script defer src="js/managers/ClientsDataManager.js?v=20260723-load-failure-visible"></script>
+    <script defer src="js/ui/ClientsTable.js?v=20260817-capacity-note"></script>
+    <script defer src="js/ui/ClientReportModal.js?v=20260802-u7-report-modal-shim"></script>
+    <script defer src="js/ui/ReportPreview.js?v=20260802-u3"></script>
+    <!-- CsvSafe (OWASP CSV/formula-injection encoder) MUST load BEFORE ReportGenerator (used by its CSV exports) -->
+    <script defer src="js/core/csv-safe.js?v=20260617-pr-sec-3"></script>
+    <script defer src="js/managers/ReportGenerator.js?v=20260818-fixed-stage-hours"></script>
 
     <!-- Fluent Design Components -->
-    <script src="js/fluent/FluentDataGrid.js?v=20251125"></script>
-    <script src="js/fluent/FluentClientsManager.js?v=20251125"></script>
+    <script defer src="js/fluent/FluentDataGrid.js?v=20260621-escapehtml-pr2"></script>
+    <script defer src="js/fluent/FluentClientsManager.js?v=20251125"></script>
 
     <!-- Shared Components -->
-    <script src="js/ui/Notifications.js?v=20251125"></script>
+    <script defer src="js/ui/Notifications.js?v=20260811-pr-sec-c2"></script>
 
     <!-- Initialization -->
     <script>

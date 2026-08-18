@@ -61,16 +61,25 @@
                 // Initialize Services
                 this.auth = this.app.auth();
                 this.db = this.app.firestore();
+
+                // Firestore settings MUST be applied before any other Firestore
+                // operation. With deferred script loading, holidays-cache.js can
+                // call onSnapshot during the setPersistence await below, which
+                // "starts" Firestore and makes later settings() calls fail.
+                this.db.settings({
+                    cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+                    merge: true,
+                    ignoreUndefinedProperties: true
+                });
+
                 this.functions = this.app.functions();
 
                 // Initialize Storage only if SDK is loaded (optional service)
-                // דפים שצריכים Storage יטענו את ה-SDK, דפים אחרים ימשיכו לעבוד
                 if (typeof this.app.storage === 'function') {
                     this.storage = this.app.storage();
                 }
 
                 // CRITICAL: Set persistence to SESSION for production security
-                // זה מבטיח התנתקות אוטומטית בסגירת הדפדפן (בטוח לייצור)
                 await this.auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
                     .then(() => {
                         console.log('✅ Master Admin: Using SESSION persistence (logout on browser close)');
@@ -78,13 +87,6 @@
                     .catch((error) => {
                         console.warn('⚠️ Failed to set persistence:', error);
                     });
-
-                // Firestore Settings for Optimal Performance
-                this.db.settings({
-                    cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
-                    merge: true,
-                    ignoreUndefinedProperties: true
-                });
 
                 // Set log level to error only (production mode)
                 firebase.firestore.setLogLevel('error');

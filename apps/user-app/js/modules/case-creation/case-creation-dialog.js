@@ -1715,7 +1715,7 @@ return;
             💡 לקוחות קיימים במערכת:
           </div>
           ${matches.map(client => `
-            <div class="client-suggestion-item" data-client-id="${client.id}" style="
+            <div class="client-suggestion-item" data-client-id="${this.escapeHtml(client.id)}" style="
               padding: 12px 16px;
               cursor: pointer;
               transition: background 0.15s;
@@ -1733,7 +1733,7 @@ return;
                 </div>
                 ${client.phone ? `
                   <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
-                    <i class="fas fa-phone" style="width: 12px;"></i> ${client.phone}
+                    <i class="fas fa-phone" style="width: 12px;"></i> ${this.escapeHtml(client.phone)}
                   </div>
                 ` : ''}
               </div>
@@ -1754,7 +1754,7 @@ return;
             <i class="fas fa-plus-circle" style="color: #10b981; width: 16px;"></i>
             <div style="flex: 1;">
               <div style="font-weight: 500; color: #059669; font-size: 14px;">
-                ${newName} (לקוח חדש)
+                ${this.escapeHtml(newName)} (לקוח חדש)
               </div>
             </div>
           </div>
@@ -1784,14 +1784,29 @@ return;
     highlightMatch(text, query) {
       const index = text.toLowerCase().indexOf(query.toLowerCase());
       if (index === -1) {
-return text;
+return this.escapeHtml(text);
 }
 
-      const before = text.substring(0, index);
-      const match = text.substring(index, index + query.length);
-      const after = text.substring(index + query.length);
+      // PR-SEC-C1: escape each name segment BEFORE wrapping the match — the highlight
+      // <span> is the ONLY markup; the name is inert text. A client name can carry
+      // `<img onerror=…>` from the (authenticated) tofes sales form, rendered here in the
+      // lawyer's session.
+      const before = this.escapeHtml(text.substring(0, index));
+      const match = this.escapeHtml(text.substring(index, index + query.length));
+      const after = this.escapeHtml(text.substring(index + query.length));
 
       return `${before}<span style="background: #fef08a; font-weight: 600;">${match}</span>${after}`;
+    }
+
+    /**
+     * HTML-escape (5-entity) — mirrors ClientCaseSelector.escapeHtml (same feature area).
+     */
+    escapeHtml(text) {
+      if (text === null || text === undefined) {
+        return '';
+      }
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return String(text).replace(/[&<>"']/g, m => map[m]);
     }
 
     /**
@@ -2640,7 +2655,10 @@ return text;
         data.pricingType = formData.service.pricingType;
         // ✅ שדות חדשים עבור המבנה החדש
         data.legalProcedureName = formData.case.title;  // שם ההליך המשפטי
-        data.ratePerHour = 800;  // תעריף שעתי ברירת מחדל
+        // H.3 D-B (2026-06-11): אין יותר תעריף 800 קשיח. תעריף שלא נבחר חייב להישאר
+        // נעדר כדי שה-Plan של התיק ידווח pricing_missing (לעולם לא 800×שעות מפוברק).
+        // כשהמשרד יבחר תעריף שעתי אמיתי — להציב כאן data.ratePerHour. (מקור אמיתי:
+        // tofes amountBeforeVat ב-H.6.)
         data.stages = [
           { id: 'stage_a', ...formData.service.stageA },
           { id: 'stage_b', ...formData.service.stageB },
