@@ -238,7 +238,7 @@
                             pattern="\\+972[0-9]{9}"
                         >
                         <div class="form-error" data-error="phone"></div>
-                        <small class="form-hint">פורמט: +972501234567 (נדרש ל-WhatsApp)</small>
+                        <small class="form-hint">פורמט: +972501234567</small>
                     </div>
 
                     <!-- Daily Hours Target (Optional) — PR-G.2: placeholder/hint pull from centralized constant -->
@@ -259,26 +259,6 @@
                         >
                         <div class="form-error" data-error="dailyHoursTarget"></div>
                         <small class="form-hint">ברירת מחדל: ${window.WORK_HOURS_CONSTANTS ? window.WORK_HOURS_CONSTANTS.DEFAULT_DAILY_TARGET : 8.45} שעות/יום. המערכת תחשב אוטומטית את התקן החודשי לפי ימי העבודה בפועל (מוריד שישי-שבת וחגים).</small>
-                    </div>
-
-                    <!-- WhatsApp Enabled -->
-                    <div class="form-group">
-                        <label class="form-label">
-                            <i class="fab fa-whatsapp"></i>
-                            <span>תזכורות WhatsApp</span>
-                        </label>
-                        <div class="toggle-switch-wrapper">
-                            <label class="toggle-switch">
-                                <input
-                                    type="checkbox"
-                                    id="whatsappEnabled"
-                                    name="whatsappEnabled"
-                                >
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="toggle-label" id="whatsappToggleLabel">כבוי</span>
-                        </div>
-                        <small class="form-hint">שליחת תזכורת יומית לרישום שעות ב-WhatsApp</small>
                     </div>
                 </form>
             `;
@@ -366,15 +346,6 @@ return;
                     });
                 }
             }
-
-            // WhatsApp toggle
-            const whatsappCheckbox = modal.querySelector('[name="whatsappEnabled"]');
-            const whatsappLabel = modal.querySelector('#whatsappToggleLabel');
-            if (whatsappCheckbox && whatsappLabel) {
-                whatsappCheckbox.addEventListener('change', () => {
-                    whatsappLabel.textContent = whatsappCheckbox.checked ? 'פעיל' : 'כבוי';
-                });
-            }
         }
 
         /**
@@ -404,16 +375,6 @@ return;
                     input.value = this.currentUser[field];
                 }
             });
-
-            // Populate WhatsApp toggle
-            const whatsappCheckbox = form.querySelector('[name="whatsappEnabled"]');
-            if (whatsappCheckbox) {
-                whatsappCheckbox.checked = this.currentUser.whatsappEnabled || false;
-                const label = form.querySelector('#whatsappToggleLabel');
-                if (label) {
-                    label.textContent = whatsappCheckbox.checked ? 'פעיל' : 'כבוי';
-                }
-            }
 
             console.log('✅ Form populated with user data');
         }
@@ -683,12 +644,6 @@ return null;
                 data[key] = value.trim();
             }
 
-            // Add checkbox value (not included in FormData by default)
-            const whatsappCheckbox = form.querySelector('[name="whatsappEnabled"]');
-            if (whatsappCheckbox) {
-                data.whatsappEnabled = whatsappCheckbox.checked;
-            }
-
             return data;
         }
 
@@ -717,7 +672,6 @@ return null;
                         username: userData.username || userData.email.split('@')[0],
                         role: userData.role,
                         phone: userData.phone || '',
-                        whatsappEnabled: userData.whatsappEnabled || false,
                         dailyHoursTarget: userData.dailyHoursTarget || null
                     }),
                     timeoutPromise
@@ -780,7 +734,6 @@ return null;
                     role: userData.role,
                     status: userData.status,
                     phone: userData.phone,
-                    whatsappEnabled: userData.whatsappEnabled,
                     dailyHoursTarget: userData.dailyHoursTarget || null
                 });
 

@@ -8,6 +8,13 @@
 
 ---
 
+> **⚠️ תיקון-התיישנות (ניקוי גל-3ד, 2026-07-30 — אושר ע"י חיים).** המסמך מתאר ברובו מצב חי,
+> אך **משטח ה-WhatsApp/Twilio פורק** (PR #474 frontend + #475 backend — 4 CFs נמחקו מ-prod)
+> וה-POC של `function-monitor` הוסר (S1 #477 נעל `function_monitor_logs`→`if false`; S3 #479
+> מחק את המודולים). שלוש שורות למטה שתיארו פיצ'ר-חי שכבר לא קיים סומנו **[הוסר]** inline:
+> תיקיית `whatsapp/` בעץ-הארכיטקטורה (§1), `SMS Twilio`, ו-`dailyInvariantCheck — WhatsApp
+> התראות` (בטבלת החוב). ה-changelog ההיסטורי (רשומות #134/#164 וכו') נכון כהיסטוריה ולא שונה.
+
 ## 1. מצב נוכחי
 
 ### Branches
@@ -160,7 +167,7 @@ functions/
 ├── services/             ← 7 פונקציות
 ├── timesheet/            ← 4 פונקציות + 8 helpers + internal-case
 ├── scheduled/            ← 3 פונקציות (כולל dailyInvariantCheck)
-├── whatsapp/             ← 4 פונקציות
+├── whatsapp/             ← [הוסר 2026-07-30, PR #474/#475 — 4 הפונקציות נמחקו מ-prod]
 ├── metrics/              ← 2 פונקציות
 ├── fee-agreements/       ← 2 פונקציות
 ├── admin/                ← 12 פונקציות (כולל system-config: 3)
@@ -709,11 +716,11 @@ entries שנוצרו ללא packageId (לפני שחבילה נוספה) — ה�
 | tsc permission denied ב-Netlify | נמוך | עקפנו עם skip build — חוב טכני |
 | ניקוי branches ישנים | הושלם | feature/timesheet-triggers נמחק. סה"כ 2 branches בלבד. |
 | task.timeEntries array drift | בינוני | 7 משימות עם array.sum ≠ collection.sum (מורש מ-7ט). דורש Migration 002 — schema mapping. השלכה: timeline UI מציג דקות ישנות, לא משפיע על actualMinutes/actualHours. |
-| SMS Twilio | נמוך | TODO בקוד, +972549539238 |
+| ~~SMS Twilio~~ **[הוסר]** | — | משטח Twilio פורק ב-PR #475 (גל-3ד, 2026-07-30) |
 | AI integration ל-User App | נדחה | Cloud Function כ-proxy ל-Claude API |
 | Trigger refactor — קריאות קוד | נמוך | PR #149 תיקן באגים, refactor נדחה לעתיד |
 | services/index.js — סינון fixed בחישוב client aggregates | הושלם | PR #155, 2026-03-20 |
-| dailyInvariantCheck — WhatsApp התראות | בינוני | נמצא פגם: בוט רץ אבל לא שולח התראה |
+| ~~dailyInvariantCheck — WhatsApp התראות~~ **[לא רלוונטי]** | — | נתיב ה-WhatsApp נמחק (#474/#475); `dailyInvariantCheck` עצמו חי אך כבר לא שולח התראת WhatsApp |
 | safeText SoT — service-card-renderer + client-search fallback לא זהה ל-global | נמוך | לא crash, edge case |
 | מחיקת loading-wrapper.js + loadLottieAnimation dead code | נמוך | cleanup |
 | getUserMetrics — נקרא 8 פעמים per action | הושלם | PR #166 — הוסר מהקליינט, חישוב מקומי בלבד |

@@ -115,23 +115,19 @@ const uploadFeeAgreement = functions.https.onCall(async (data, context) => {
       }
     });
 
-    // 8. Get download URL
-    await file.makePublic();
-    const downloadUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+    // 8. (Security — PR-SEC-2) Do NOT make the object public. Signed fee-agreement
+    // PDFs (client name + ת"ז + signatures + fee terms) stay PRIVATE; the admin
+    // views them on demand via the `getFeeAgreementUrl` callable, which mints a
+    // short-lived V4 signed URL from `storagePath`. The legacy `file.makePublic()`
+    // + permanent public downloadUrl was a world-readable leak that bypassed
+    // storage.rules (חוק הגנת הפרטיות / חיסיון עו"ד-לקוח). No downloadUrl is stored.
 
-    // Alternative: Use signed URL (more secure but expires)
-    // const [signedUrl] = await file.getSignedUrl({
-    //   action: 'read',
-    //   expires: Date.now() + 365 * 24 * 60 * 60 * 1000 // 1 year
-    // });
-
-    // 9. Create agreement metadata
+    // 9. Create agreement metadata (storagePath only — the URL is resolved on demand)
     const agreementData = {
       id: agreementId,
       fileName: sanitizedFileName,
       originalName: data.fileName,
       storagePath: storagePath,
-      downloadUrl: downloadUrl,
       fileType: data.fileType,
       fileSize: fileSize,
       uploadedAt: admin.firestore.Timestamp.now(),

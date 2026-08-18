@@ -430,12 +430,10 @@
          * Escape HTML
          */
         escapeHTML(str) {
-            if (!str) {
-return '';
-}
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
+            // Routed to the shared SSOT escaper (js/core/escape-html.js).
+            // Behavior change: now also escapes " and ' (the temp-div escaped only & < >);
+            // null-guard narrows to null/undefined only — safe in HTML text/attribute contexts.
+            return window.escapeHtml(str);
         }
 
         /**

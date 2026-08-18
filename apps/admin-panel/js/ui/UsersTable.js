@@ -28,7 +28,6 @@
                 { key: 'tasksCount', title: 'משימות', sortable: true },
                 { key: 'hoursThisMonth', title: 'שעות (חודש)', sortable: true },
                 { key: 'lastLogin', title: 'פעיל לאחרונה', sortable: true },
-                { key: 'messages', title: 'הודעות', sortable: false, width: '90px' },
                 { key: 'actions', title: 'פעולות', sortable: false, width: '120px' }
             ];
 
@@ -36,46 +35,6 @@
                 field: 'displayName',
                 order: 'asc'
             };
-
-            // Store response counts
-            this.responseCounts = new Map();
-
-            // Load response counts on init
-            this.loadResponseCounts();
-        }
-
-        /**
-         * Load response counts from AlertCommunicationManager
-         * טעינת ספירת תגובות מהמערכת
-         */
-        async loadResponseCounts() {
-            try {
-                if (window.alertCommManager && typeof window.alertCommManager.getUserResponseCounts === 'function') {
-                    this.responseCounts = await window.alertCommManager.getUserResponseCounts();
-                    console.log(`✅ UsersTable: Loaded response counts for ${this.responseCounts.size} users`);
-
-                    // Refresh table if already rendered
-                    this.refreshMessageBadges();
-                }
-            } catch (error) {
-                console.error('❌ Failed to load response counts:', error);
-            }
-        }
-
-        /**
-         * Refresh message badges in table
-         * רענון תגי ההודעות בטבלה
-         */
-        refreshMessageBadges() {
-            this.responseCounts.forEach((count, email) => {
-                const row = document.querySelector(`tr[data-user-id="${email}"]`);
-                if (row) {
-                    const messageTd = row.querySelector('.user-messages-badge-cell');
-                    if (messageTd) {
-                        messageTd.innerHTML = this.renderMessageBadge(email);
-                    }
-                }
-            });
         }
 
         /**
@@ -192,7 +151,6 @@
                     <td>${user.tasksCount || 0}</td>
                     <td>${this.renderHours(user.hoursThisMonth)}</td>
                     <td>${this.renderLastActivity(user)}</td>
-                    <td class="user-messages-badge-cell">${this.renderMessageBadge(user.email)}</td>
                     <td>${this.renderActions(user)}</td>
                 </tr>
             `;
@@ -204,7 +162,7 @@
          */
         renderAvatar(user) {
             if (user.photoURL) {
-                return `<img src="${user.photoURL}" alt="${user.displayName}" class="user-avatar">`;
+                return `<img src="${this.escapeHtml(user.photoURL)}" alt="${this.escapeHtml(user.displayName)}" class="user-avatar">`;
             }
 
             const initials = this.getInitials(user.displayName || user.username);
@@ -283,28 +241,6 @@ return '?';
 return '-';
 }
             return `${hours.toFixed(1)} ש'`;
-        }
-
-        /**
-         * Render message badge
-         * רינדור תג הודעות
-         */
-        renderMessageBadge(userEmail) {
-            const count = this.responseCounts.get(userEmail) || 0;
-
-            if (count === 0) {
-                return '-';
-            }
-
-            return `
-                <button class="user-message-badge"
-                        data-user-email="${userEmail}"
-                        data-action="view-messages"
-                        title="לחץ לצפייה בהודעות">
-                    <i class="fas fa-envelope"></i>
-                    <span class="badge-count">${count}</span>
-                </button>
-            `;
         }
 
         /**
@@ -463,12 +399,6 @@ return '-';
                             <i class="fas fa-edit"></i>
                             <span>ערוך</span>
                         </button>
-                        ${user.whatsappEnabled && user.phone ? `
-                        <button class="action-item whatsapp-action" data-action="whatsapp" data-user-email="${user.email}" data-user-name="${user.name || user.email}">
-                            <i class="fab fa-whatsapp"></i>
-                            <span>שלח הודעת WhatsApp</span>
-                        </button>
-                        ` : ''}
                         <button class="action-item" data-action="block" data-user-email="${user.email}">
                             <i class="fas fa-ban"></i>
                             <span>${user.status === window.ADMIN_PANEL_CONSTANTS.USER_STATUS.BLOCKED ? 'הסר חסימה' : 'חסום'}</span>
@@ -524,15 +454,6 @@ return '-';
                     const userEmail = item.getAttribute('data-user-email');
                     const userName = item.getAttribute('data-user-name');
                     this.handleAction(action, userEmail, userName);
-                });
-            });
-
-            // Message badge buttons
-            document.querySelectorAll('.user-message-badge').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const userEmail = btn.getAttribute('data-user-email');
-                    this.handleMessageBadgeClick(userEmail);
                 });
             });
 
@@ -611,33 +532,14 @@ return '-';
         }
 
         /**
-         * Handle message badge click
-         * טיפול בלחיצה על תג הודעות
-         */
-        handleMessageBadgeClick(userEmail) {
-            console.log(`📧 Opening messages for: ${userEmail}`);
-
-            // Find the user in DataManager
-            if (window.DataManager && window.DataManager.allUsers) {
-                const user = window.DataManager.allUsers.find(u => u.email === userEmail);
-                if (user && window.userDetailsModal) {
-                    // Open user details modal with messages tab
-                    window.userDetailsModal.open(user);
-                    // TODO: Switch to messages tab automatically
-                } else {
-                    console.error('User or userDetailsModal not found');
-                }
-            }
-        }
-
-        /**
          * Escape HTML to prevent XSS
          * בריחה מ-HTML למניעת XSS
          */
         escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+            // Routed to the shared SSOT escaper (js/core/escape-html.js).
+            // Behavior change: now also escapes " and ' (the temp-div escaped only & < >);
+            // undefined now renders '' instead of 'undefined' — safe in HTML text contexts.
+            return window.escapeHtml(text);
         }
     }
 

@@ -15,38 +15,6 @@ export class TaskApprovalService {
     console.log('✅ TaskApprovalService initialized');
   }
 
-  async createApprovalRequest(taskId, taskData, requestedBy, requestedByName) {
-    try {
-      const approvalData = {
-        taskId,
-        requestedBy,
-        requestedByName: requestedByName || requestedBy,
-        requestedAt: new Date(),
-        requestedMinutes: parseInt(taskData.estimatedMinutes) || 0, // ✅ הוסף שדה זה!
-        taskData: {
-          description: taskData.description || '',
-          clientId: taskData.clientId || '',
-          clientName: taskData.clientName || '',
-          caseId: taskData.caseId || '',
-          estimatedMinutes: parseInt(taskData.estimatedMinutes) || 0
-        },
-        status: 'pending',
-        reviewedBy: null,
-        reviewedAt: null,
-        approvedMinutes: null,
-        adminNotes: null,
-        rejectionReason: null
-      };
-
-      const docRef = await this.db.collection('pending_task_approvals').add(approvalData);
-      console.log('✅ Approval request created:', docRef.id);
-      return docRef.id;
-    } catch (error) {
-      console.error('❌ Error creating approval request:', error);
-      throw error;
-    }
-  }
-
   /**
    * ✅ Get approvals by status with cursor-based pagination
    * @param {string} status - Status to filter by ('all', 'pending', 'approved', 'rejected')
@@ -144,50 +112,12 @@ export class TaskApprovalService {
     }
   }
 
-  async approveRequest(approvalId, approvedMinutes, adminNotes = '') {
-    try {
-      // Support both main app and master-admin-panel
-      const functions = window.firebaseFunctions || window.firebase?.functions();
-      if (!functions) {
-        throw new Error('Firebase Functions not initialized');
-      }
-
-      const approveTaskBudget = functions.httpsCallable('approveTaskBudget');
-      const result = await approveTaskBudget({
-        approvalId,
-        approvedMinutes,
-        adminNotes
-      });
-
-      console.log('✅ Task approved via Cloud Function:', result.data);
-      return result.data;
-    } catch (error) {
-      console.error('❌ Error approving request:', error);
-      throw error;
-    }
-  }
-
-  async rejectRequest(approvalId, rejectionReason) {
-    try {
-      // Support both main app and master-admin-panel
-      const functions = window.firebaseFunctions || window.firebase?.functions();
-      if (!functions) {
-        throw new Error('Firebase Functions not initialized');
-      }
-
-      const rejectTaskBudget = functions.httpsCallable('rejectTaskBudget');
-      const result = await rejectTaskBudget({
-        approvalId,
-        rejectionReason
-      });
-
-      console.log('✅ Task rejected via Cloud Function:', result.data);
-      return result.data;
-    } catch (error) {
-      console.error('❌ Error rejecting request:', error);
-      throw error;
-    }
-  }
+  // ⚠️ H.4 PR-a (2026-06-15): approveRequest()/rejectRequest() REMOVED.
+  // They called the Cloud Functions `approveTaskBudget`/`rejectTaskBudget`, which
+  // DO NOT EXIST — tasks auto-activate (createBudgetTask hardcodes status:'פעיל'),
+  // so the gate was dead/broken (a latent G1 error). Budget enforcement is now
+  // VISIBILITY via the "חריגות תקציב" feed, not an approval gate. The remaining
+  // read helpers below are retained for any read-only consumer.
 
   listenToPendingApprovals(callback) {
     return this.db.collection('pending_task_approvals')

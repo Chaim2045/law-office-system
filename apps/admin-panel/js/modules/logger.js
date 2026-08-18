@@ -27,7 +27,28 @@
  * ✅ Sanitization: Prevents sensitive data leaks in console
  *
  * ════════════════════════════════════════════════════════════════════════════
+ * SSOT: shared-web/src/modules/logger.js — NEVER edit the emitted copies under
+ * apps/admin-panel/js/modules/ or apps/user-app/js/modules/. Edit HERE and run
+ * `npm run emit:shared` (see shared-web/README.md).
+ *
+ * Per-app parameterization via the emit-injected APP_CONTEXT constant:
+ *   'user'  → appends the PROD Console Override (silences console.log/info/debug
+ *             in production + installs window.enableDebug()/disableDebug() doors)
+ *   'admin' → override is gated OFF (admin never silenced console.log — preserves
+ *             today's admin behavior exactly)
+ * The override runs ONLY in the user app AND only in production (the double guard
+ * APP_CONTEXT==='user' && loggerInstance.isProduction mirrors the pre-mechanism
+ * behavior: admin had no such block; user's block was `if (isProduction)`).
+ * ════════════════════════════════════════════════════════════════════════════
  */
+
+// APP_CONTEXT is injected per target by shared-web/emit.js:
+//   'admin' when emitted into apps/admin-panel/js/…
+//   'user'  when emitted into apps/user-app/js/…
+// The sentinel comment below is the injection anchor. The default 'user' is the
+// fail-secure non-privileged value: anything other than the exact literal keeps
+// the parameterized surface at its lean/default form. See shared-web/README.md.
+const APP_CONTEXT = /*__APP_CONTEXT__*/ 'admin';
 
 /**
  * SecureLogger Class
@@ -278,3 +299,34 @@ window.PRODUCTION_MODE = loggerInstance.isProduction;
 window.devLog = (message, data) => loggerInstance.log(message, data);
 window.devInfo = (message, data) => loggerInstance.info(message, data);
 window.devDebug = (message, data) => loggerInstance.debug(message, data);
+
+// === PROD Console Override ===
+// Silences console.log/info/debug in production.
+// console.warn and console.error remain active.
+// Debug door: window.enableDebug() / window.disableDebug()
+// User-app only: gated behind APP_CONTEXT==='user' so the admin emitted copy
+// never installs the override (preserves today's admin behavior — admin never
+// silenced console.log). Runs ONLY in the user app AND only in production.
+if (APP_CONTEXT === 'user' && loggerInstance.isProduction) {
+    const _originalLog = console.log;
+    const _originalInfo = console.info;
+    const _originalDebug = console.debug;
+
+    console.log = function() {};
+    console.info = function() {};
+    console.debug = function() {};
+
+    window.enableDebug = function() {
+        console.log = _originalLog;
+        console.info = _originalInfo;
+        console.debug = _originalDebug;
+        console.log('🔓 Debug mode enabled');
+    };
+
+    window.disableDebug = function() {
+        console.log('🔒 Debug mode disabled');
+        console.log = function() {};
+        console.info = function() {};
+        console.debug = function() {};
+    };
+}

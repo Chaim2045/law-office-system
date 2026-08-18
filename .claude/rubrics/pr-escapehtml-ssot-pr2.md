@@ -1,0 +1,38 @@
+# Rubric — PR-ESCAPEHTML-SSOT-PR2
+
+**Title:** escapeHtml SSOT consolidation — PR2: the temp-div textContent family + the 2 inline-map copies → `window.escapeHtml`
+**App:** Admin Panel · **Env:** DEV · **Frontend-only, refactor (SSOT-preserving), admin-critical**
+
+**Scope:** PR2 of the Haim-approved 3-PR escapeHtml-dedup (checkpoint 2026-06-17; PR2 scope re-confirmed 2026-06-21 → "PR אחד, 16 routes"). Route the remaining LIVE duplicated escapers to the SSOT `apps/admin-panel/js/core/escape-html.js` → `window.escapeHtml` (shipped PR1 #390). **16 escapers** — 14 "temp-div" copies (`div.textContent = x; return div.innerHTML;`, 3-entity `& < >` only) + 2 inline-map 5-entity copies (`ReportGenerator`, `WhatsAppMessageDialog`) — each body replaced with `return window.escapeHtml(<param>);` (call-sites unchanged). Add `<script src="js/core/escape-html.js">` to the 2 host pages that lack it (**index.html**, **system-announcements.html**) + a full per-occurrence `?v=` bump across the 4 host pages (index, system-announcements, clients, clients-fluent). Fix the 2 existing behavioral tests that would otherwise red-CI. **NOT** `notification-bell.safeText` (onclick JS-string hazard — excluded), `case-form-validator` (dead admin copy — PR3 delete), `WorkloadCard.sanitize`/`service-card-renderer` (PR3), or the ClientsTable `data-tooltip-html` / ClientManagementModal `data-name` inline partials (permanent excludes).
+
+### The 16 routed escapers
+MessagesFullscreenModal `escapeHTML` · FluentDataGrid `escapeHtml` · DeleteDataSidePanel `escapeHtml` · ServiceOverdraftResolution `escapeHtml` · AnnouncementCard `static escapeHtml` · AdminThreadView `_escapeHTML` · ClientReportModal `escapeHtml` · ClientManagementModal `escapeHtml` · ReadStatusModal `escapeHtml` · TaskApprovalSidePanel `_escapeHtml` · UserAlertsPanel `escapeHTML` · UserDetailsModal `escapeHtml` · UsersTable `escapeHtml` · ClientsTable `escapeHtml` (the METHOD only) · WhatsAppMessageDialog `escapeHtml` · ReportGenerator `escapeHtml`.
+
+## MUST (block on FAIL)
+- **M1** — all 16 escapers DELEGATE to `window.escapeHtml` (`return window.escapeHtml(...)`); the temp-div (`document.createElement('div')…innerHTML`) / inline-map (`.replace(/[&<>"']/g…)`) bodies are REMOVED from each. "Route, never copy." No new inline escape logic added anywhere.
+- **M2** — every page that loads a routed file ALSO loads `escape-html.js`, BEFORE that consumer. `escape-html.js` added to **index.html** + **system-announcements.html** (the only 2 host pages lacking it; clients + clients-fluent already have it from PR1). This is the PR1 devils-advocate's load-order invariant — pinned by the routing-guard test.
+- **M3** — scope discipline / MUST-EXCLUDE preserved: `ClientsTable.js` `getTypeBadge` `data-tooltip-html` (2-entity `&`+`"`, packs already-rendered HTML) NOT touched; `ClientManagementModal` `data-name` inline `.replace(/"/g,…)` partials NOT touched; `notification-bell.safeText` (onclick JS-string-in-attr — `'`→`&#039;` would defeat its `\'` escaping) NOT routed; `case-form-validator` (dead admin copy) NOT routed; `WorkloadCard.sanitize` + `service-card-renderer` (PR3) NOT touched.
+- **M4** — behavior change DECLARED (G6): the 14 temp-div escapers go 3-entity → 5-entity (now also escape `"`→`&quot;` and `'`→`&#039;` — inert in HTML TEXT positions, a security IMPROVEMENT in the HTML-ATTRIBUTE sinks); the `if(!text)`/`text||''` falsy guards narrow to null/undefined-only (a literal `0`/`false` now stringifies instead of blanking — unobservable: every call-site passes strings or `||`-guards a string fallback); WhatsApp + ReportGenerator keep 5-entity output, only the null-guard narrows. No non-HTML / `.value` / string-compare sink consumes a routed escaper (verified — ClientReportModal's `<input value>` sinks are `disabled` static-HTML, parser-decoded, no read-back).
+- **M5** — the 2 existing behavioral tests that exercise a routed manager (`report-generator-escaping.test.ts`, `whatsapp-message-dialog-escaping.test.ts`) import `escape-html.js` so `window.escapeHtml` resolves at call-time (else `TypeError` → red CI). New `escapehtml-ssot-pr2-routing.test.ts` proves all 16 delegate (old body removed) + the 4-page load-order invariant + the ClientsTable-tooltip exclusion + the SSOT 5-entity contract. Full admin-panel suite green.
+- **M6** — cache-bust: `escape-html.js` `<script>` added with a manual `?v=20260621-escapehtml-pr2` tag (the `csv-safe.js` precedent on index.html — manual tag, not the global git-hash; no `update-cache-busting.js` run → no user-app churn), and EVERY routed consumer × EVERY host page it loads on gets a bumped `?v=` (incl. the divergent TaskApprovalSidePanel on index+clients and the previously-untagged AnnouncementCard/ReadStatusModal/TaskApprovalSidePanel).
+
+## SHOULD
+- **S1** — each routed body carries a PR1-style comment pointing to the SSOT + the entity/null-guard behavior note.
+- **S2** — ClientsTable's routed `escapeHtml` method carries a comment that the separate `data-tooltip-html` escape in `getTypeBadge()` is intentionally NOT routed.
+
+## Test plan
+`tests/unit/admin-panel/escapehtml-ssot-pr2-routing.test.ts` (23 tests: 16 per-file delegation guards [body delegates + temp-div/inline-map body removed], 1 count guard, 1 ClientsTable-tooltip exclusion guard, 4 per-page load-order guards, 1 SSOT 5-entity behavioral contract). The 2 fixed behavioral tests now exercise the routed `ReportGenerator` + `WhatsAppMessageDialog` end-to-end (instantiate manager → build HTML → assert XSS payload rendered inert). Full admin-panel suite **174/174** (151 prior + 23). Full root run: only `user-app/israeli-id-drift-guard.test.ts` fails (`Failed to resolve "zod"` — worktree partial-node_modules artifact, unrelated to this admin-panel-only PR; passes in CI with full deps; this PR touches ZERO user-app/zod/schema files). Local ESLint not runnable in the worktree (flat config's `@typescript-eslint` plugin absent from the partial tracked `node_modules`) — CI lint is the gate; changes are mechanically lint-safe (body→single `return`, `div`/`map` locals removed, `window` pre-existing global).
+
+## Rollback
+`git revert <merge-commit>` + redeploy (frontend; Netlify). No data migration, no schema/rule change. Reverting restores the 16 local escapers + removes the 2 new `<script>` tags + the `?v=` bumps.
+
+## PRODUCT-GRADE GATES
+- **G1 PASS** — the SSOT guard returns `''` for null/undefined; the temp-div copies' old `undefined`→`'undefined'` quirk is REMOVED (now `''`) — strictly fewer `undefined` leaks reach output.
+- **G2 PASS** — `git revert` rollback (code-only, no data/schema/rule).
+- **G3 N/A** — no data mutation (pure display-string escaping refactor).
+- **G4 PASS** — routing-guard test (all 16 delegate + load-order) + the 2 fixed behavioral tests exercising the routed managers end-to-end + the PR1 SSOT contract test.
+- **G5 PASS** — escaper maps only `& < > " '`; Hebrew + all other text passes through unchanged (the 2 fixed tests assert a benign Hebrew name renders unchanged).
+- **G6 PASS (declared)** — behavior change: temp-div copies 3→5-entity (inert in text, safer in attributes); null-guard narrows (unobservable for the string call-sites). No customer-visible regression for benign input; no non-HTML sink affected.
+- **G7 PASS** — XSS hardening (consolidates 16 escapers onto the audited SSOT; upgrades 14 from 3-entity to full 5-entity, closing latent attribute-breakout gaps e.g. ClientManagementModal `title=`/FluentDataGrid `data-type`/`title=`). security lens applied; the onclick JS-string hazard (notification-bell) correctly EXCLUDED rather than naively routed; URL/CSS-unsafe caveat already documented in the SSOT header.
+
+VERDICT: PASS

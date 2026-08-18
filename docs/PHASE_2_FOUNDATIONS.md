@@ -54,28 +54,55 @@ H.0 does NOT create tables — the schema is documented below; H.1's exporter cr
 ## Rotation runbook (if the SA key is compromised)
 1. In tofes-mecher Console → Service Accounts → create a NEW JSON key for `cross-project-reader`.
 2. `firebase functions:secrets:set TOFES_MECHER_SA_KEY` (paste the new key — creates a new secret version).
-3. Redeploy the function: `firebase deploy --only functions:tofesMecherConnectivityCheck`.
+3. Redeploy the bridge function: `firebase deploy --only functions:validateSalesRecordExists`. (H.1.b deleted the H.0 `tofesMecherConnectivityCheck`; `validateSalesRecordExists` now holds the `TOFES_MECHER_SA_KEY` secret binding.)
 4. In tofes-mecher Console → delete the OLD key.
 
 (Optional cleanup if the bridge is ever removed: `firebase functions:secrets:destroy TOFES_MECHER_SA_KEY`.)
 
 ---
 
-## Verifying the wiring (after Steps 1-2 + deploy)
-From the MAIN Admin Panel browser console, logged in as an admin:
-```js
-const check = firebase.functions().httpsCallable('tofesMecherConnectivityCheck');
-const r = await check({});
-console.log(r.data); // { ok: true, reachable: true, sawAtLeastOneDoc: <bool> }
+## ⚠️ ANTHROPIC_API_KEY — second deploy-blocking secret (H.5, 2026-06-16)
+
+The H.5 `verifySignaturePresence` Cloud Function declares `defineSecret('ANTHROPIC_API_KEY')` (the Claude API key for the signature-presence check; later reused by H.8 AI chat). **Same landmine class as `TOFES_MECHER_SA_KEY`:** `defineSecret` requires the secret to exist in Secret Manager BEFORE `firebase deploy`, or the deploy fails **for the ENTIRE functions codebase**.
+
+### Set it BEFORE the H.5 deploy
 ```
-- `ok: true, reachable: true` → IAM + secret + cross-project read all work. **This is the H.0 success criterion.**
-- `sawAtLeastOneDoc: false` is NOT a failure — it may mean the assumed collection name is wrong (see UNVERIFIED below) or the project is empty. Reachability is already proven.
+firebase functions:secrets:set ANTHROPIC_API_KEY
+```
+Paste an Anthropic API key from the firm's Anthropic Console (a workspace key scoped to this use). Creates secret `ANTHROPIC_API_KEY` version 1. **Never commit the key.**
+
+### 🔴 PRIVACY GATE before wiring to real data (H.6 prerequisite, NOT H.5)
+H.5 ships as **plumbing** — it has no live consumer until H.6, and its tests mock the SDK boundary, so **no real client document egresses in DEV/CI**. Before H.6 wires `verifySignaturePresence` to real PROD fee-agreement PDFs (which carry client ת"ז + signatures + financial terms), the firm must have a **legal basis** for sending that PII to a third-party processor (Anthropic) under חוק הגנת הפרטיות — a DPA / data-handling/retention posture / sub-processor disclosure (the Phase 3 C.6 compliance work, pulled forward as an H.6 gate). This is a product/legal decision (Haim's domain), tracked here so H.6 cannot silently ship the egress.
+
+### Rotation runbook (if the API key is compromised)
+1. In the Anthropic Console → rotate / create a new API key.
+2. `firebase functions:secrets:set ANTHROPIC_API_KEY` (paste the new key — new secret version).
+3. Redeploy the consumer: `firebase deploy --only functions:verifySignaturePresence`.
+4. In the Anthropic Console → revoke the OLD key.
+
+(Optional cleanup if H.5/H.8 are ever removed: `firebase functions:secrets:destroy ANTHROPIC_API_KEY`.)
+
+---
+
+## Verifying the wiring (after Steps 1-2 + deploy)
+
+> **⚠️ SUPERSEDED in H.1.b (2026-06-09):** the H.0 `tofesMecherConnectivityCheck` was the historical wiring proof (it returned `{ok, reachable, sawAtLeastOneDoc}`). It was validated live on 2026-06-08 (`{ok:true, reachable:true, sawAtLeastOneDoc:true}`) and then **DELETED** in H.1.b. The real bridge read `validateSalesRecordExists(salesRecordId)` now holds the secret binding and exercises the identical wiring while doing real work. To verify the wiring going forward, call it with a known `salesRecordId` (admin console) and expect `{ exists: true, ... }`.
+
+_Historical H.0 verification (the function no longer exists):_
+```js
+// const check = firebase.functions().httpsCallable('tofesMecherConnectivityCheck');
+// const r = await check({}); // → { ok:true, reachable:true, sawAtLeastOneDoc:<bool> }
+```
+- `reachable: true` was the H.0 success criterion (proven 2026-06-08).
+- `sawAtLeastOneDoc: false` was never a failure — it only meant an empty/early collection. (`sales_records` is now VERIFIED to exist + hold data.)
 
 ---
 
 ## BigQuery schema (documented for H.1 — not created in H.0)
 
-Dataset `law_office_analytics`, table **`sales_records`** (synced by H.1):
+Dataset `law_office_analytics`, table **`sales_records`** — **synced by H.1.c (PR, 2026-06-09)**: 19 typed columns, WRITE_TRUNCATE full-reload hourly.
+
+> **⚠️ H.1.c CHANGE (raw_json OMITTED):** the H.0-documented `raw_json` whole-doc column was **dropped** at the H.1.c checkpoint (Haim-approved, security default-deny). The whole doc would re-import `address` + payment-instrument detail (which H.1.b deliberately excluded) and smuggle any FUTURE tofes field into PII-at-rest unreviewed. The mirror is the **19 typed columns below only** (was 20 with `raw_json`). A future analytics need on an unmapped field adds an explicit reviewed column — never a whole-doc blob.
 
 | column | type | mode | PII | source field |
 |---|---|---|---|---|
@@ -98,10 +125,71 @@ Dataset `law_office_analytics`, table **`sales_records`** (synced by H.1):
 | `record_date` | STRING | NULLABLE | no | `date` (format TBD) |
 | `record_timestamp` | TIMESTAMP | NULLABLE | no | `timestamp` |
 | `synced_at` | TIMESTAMP | REQUIRED | no | (export time) |
-| `raw_json` | JSON/STRING | NULLABLE | mixed — future-proofs the other ~20 fields | full doc |
+| ~~`raw_json`~~ | — | — | **OMITTED in H.1.c** (default-deny — see note above) | ~~full doc~~ |
 
 - **No partitioning/clustering** — <1,000 rows expected (200+ clients, 6 months). Revisit only at 6-7 figure volume.
 - **Binding obligation for H.1 (carried from Pre-H.0.0.G):** the `SET_EMPLOYEE_COST` audit_log entries hold salary figures and **MUST be redacted before any BigQuery export.** Likewise `client_name`/`id_number`/`phone`/`email` and all four amount columns (`amount_before_vat`/`vat_amount`/`amount_with_vat`/`amount`) here are PII — the H.8 AI chat that queries this dataset must respect the principal-scoped IAM (Step 4).
+
+---
+
+## Retention & TTL (H.1.c follow-up, 2026-06-14)
+
+Two retention gaps flagged at the H.1.c checkpoint (security + completeness) were deferred and are resolved here. Both concern **PII-at-rest under חוק הגנת הפרטיות**. This is the focused retention note only — the full operational bridge runbook is scheduled for **H.9** (`docs/RUNBOOK_TOFES_MECHER_BRIDGE.md`, §8.11).
+
+> Investigated by the security + backend specialists (verdicts folded below); decisions ratified by Haim at the 2026-06-14 checkpoint: **90-day** dead-letter retention, **include** the no-PII payload lock, **set time-travel to 48h**.
+
+### Gap 1 — BigQuery `law_office_analytics.sales_records` retention DECISION
+
+**Decision: retain indefinitely, source-bounded — documented, no table expiration.**
+
+The mirror is a **derived, self-refreshing** dataset, not an independent record-of-truth. `exportSalesToBigQuery` does a full **WRITE_TRUNCATE** reload **every hour** (`schedule: '0 * * * *'`), so the table is *defined* as "whatever tofes-mecher held at the last run" — never "source ∪ history". A record erased at the source disappears from the mirror within **≤1h** (next run). There is **no independent indefinite-accumulation vector**, so the mirror creates **no new retention obligation beyond the one already attaching to the authoritative source** (tofes-mecher `sales_records`, the §10 locked system-of-record). "Indefinite / source-bounded" is therefore a legitimate, **documented** retention decision (the Privacy Authority's expectation is a *documented* decision, not necessarily a short one).
+
+**Liveness contingency (named, not hidden):** the ≤1h deletion-propagation guarantee holds only while the hourly job runs. The handler **throws on any hard failure** → Cloud Scheduler records a failed execution (alertable) — that throw is the enforcement of the propagation SLA. **Console follow-up (recommended, G3):** a Cloud Monitoring alert on the scheduler error-rate. (H.1.c already silently failed every run for ~1 day on the NUMERIC float-noise bug, PR #367 — the alert is what would have caught it.)
+
+**Time-travel mitigation (applied):** BigQuery time-travel (default **168h/7d**, floor **48h/2d**) + a non-configurable **fail-safe (~7d)** mean post-truncate snapshots — i.e. rows **deleted at source** — remain recoverable via `FOR SYSTEM_TIME AS OF` / table-undelete for up to **~14 days**. To shrink that deleted-PII tail, set the dataset to the **48h minimum**:
+
+```bash
+# bq CLI (stable, preferred)
+bq update --max_time_travel_hours=48 law-office-system-e4801:law_office_analytics
+```
+
+This cuts the *configurable* window 7d→2d at zero cost. The **fail-safe ~7d is not configurable** (Google-platform property) → documented as an **accepted residual**. The primary control on *who* can reach the tail in the interim is the **principal-scoped dataset IAM** (Haim/Guy only — Step 4).
+
+**Why NOT a BQ table default-expiration:** wrong tool. The exporter is create-if-not-exists (`table.exists()` → `createTable`), so an expiration that fired would just delete a table the **next hourly run recreates** — a self-healing flap that durably deletes nothing and adds an empty-table race. Rejected.
+
+**H.8 carry-forward (design item, NOT this PR):** the identifying columns (`id_number`/`client_name`/`phone`/`email`) are the time-travel liability. If the H.8 AI-chat queries are aggregate/analytical, evaluate carrying a **salted hash of `id_number`** (the locked join key, DLR §8.2.5 D1) and **dropping `client_name`/`phone`/`email`** from the mirror — so the identifying PII never enters the time-travel/fail-safe tail at all (same instinct as the H.1.c `raw_json` omission, one column-set further). A salted ת"ז hash is still PII-derived → still access-controlled. **Decide at the H.8 checkpoint.**
+
+### Gap 2 — `tofes_export_deadletter`: Firestore TTL + triage runbook
+
+**Config: a Firestore TTL policy on the `expireAt` field, 90-day retention.**
+
+The collection is append-only (one doc per failed-to-map row per hourly run) → bounded by a native TTL. The exporter now stamps **`expireAt = failedAt + 90d`** on every dead-letter write (`DEADLETTER_RETENTION_DAYS`).
+
+> **Why `expireAt`, NOT `failedAt`:** Firestore TTL deletes a doc when the **value** of the policy field is reached. `failedAt` is `serverTimestamp()` (≈now at write) = **already in the past**, so a policy on it would purge every doc almost immediately and destroy the forensic window. `expireAt` is a client-computed future `Timestamp` — the instant the policy fires. (The original deferral note said "TTL on `failedAt`"; that is mechanically wrong — corrected here.)
+
+Enable the policy (one-time, Haim — TTL policies are **not** expressible in `firestore.rules` / `firestore.indexes.json` / `firebase.json`; they are a gcloud/Console field config):
+
+```bash
+gcloud firestore fields ttl update expireAt \
+  --collection-group=tofes_export_deadletter \
+  --project=law-office-system-e4801 \
+  --enable-ttl
+
+# verify it registered:
+gcloud firestore fields ttl describe expireAt \
+  --collection-group=tofes_export_deadletter \
+  --project=law-office-system-e4801
+```
+
+TTL deletion is **best-effort within ~24–72h** of expiry — fine for a diagnostic log; do not treat 90d as exact. The **durable** failure signal is NOT the dead-letter — it is the `TOFES_BQ_EXPORT` `audit_log` run entry + the Scheduler-failure throw. **Those are never TTL'd.** The TTL only reaps the row-level forensic detail.
+
+**PII discipline:** each dead-letter doc is `{ salesRecordId, errorCode, failedAt, expireAt, schemaVersion }` — **no PII** (`salesRecordId` is the 20-char auto-id, an opaque business id; `errorCode` is a static token — the only thrower is `mapDocToRow`'s `'missing_doc_id'`, no value interpolation). A static AST guard (`dead-letter write references NO PII identifier`) now **locks** this — a future edit adding e.g. `idNumber: data.idNumber` to the write fails CI rather than landing PII at rest. So the collection is **safe for a developer to read during triage**.
+
+**Triage runbook (brief):**
+1. Read the collection via the **Firestore Console** (project owner bypasses the `if false` rule) or the Admin SDK — **never a client SDK** (CF-only). Look at `errorCode` + `salesRecordId`.
+2. To inspect the offending sale, call the admin callable **`validateSalesRecordExists(salesRecordId)`** (H.1.b) — it returns the live, field-minimized record (no need to touch tofes-mecher directly).
+3. **Nothing to "re-drive".** Because the export is a full hourly WRITE_TRUNCATE reload, a row fixed by a code change **re-maps automatically on the next run** — the stale dead-letter doc is then orphaned and auto-expires via TTL. Dead-letter entries are **diagnostic only**.
+4. A **recurring `errorCode`** across many rows/runs = a mapper bug (e.g. the NUMERIC-scale class that PR #367 fixed) → fix `mapDocToRow`, redeploy; entries stop and age out.
 
 ---
 
@@ -152,8 +240,8 @@ Confirmed by a one-time **read-only** schema probe against `law-office-sales-for
 ## Files shipped by H.0
 - `functions/src-ts/config/index.ts` — typed cross-project constants
 - `functions/src-ts/tofes-mecher/app.ts` — concurrency-safe named-app init (sanitized credential errors)
-- `functions/src-ts/tofes-mecher/connectivity-check.ts` — admin-gated v2 onCall (logger only, Hebrew errors, no key/PII in logs)
-- `functions/src-ts/__tests__/{config,connectivity-check}.test.ts` — 24 mocked tests (no real cross-project call)
+- `functions/src-ts/tofes-mecher/connectivity-check.ts` — admin-gated v2 onCall (logger only, Hebrew errors, no key/PII in logs). **⚠️ DELETED in H.1.b** (superseded by `validate-sales-record.ts`).
+- `functions/src-ts/__tests__/{config,connectivity-check}.test.ts` — 24 mocked tests (no real cross-project call). **⚠️ `connectivity-check.test.ts` DELETED in H.1.b**; its named-app/credential/no-PII-log coverage migrated to `validate-sales-record.test.ts`.
 - `functions/index.js` wiring + compiled `functions/lib/` (committed)
 
 **Deferred to H.1:** `@google-cloud/bigquery` dependency + client (⚠️ **lazy-import it** when added — it's a large dependency and this `functions/index.js` is shared by ~40 functions; a top-level import would bloat cold-start for all of them), Pattern A/D logic, real BigQuery table creation.

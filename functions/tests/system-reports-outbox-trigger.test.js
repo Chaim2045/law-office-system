@@ -7,10 +7,37 @@
  *   C. Outbox doc shape (status: 'pending', attempts: 0, etc.)
  *   D. Source doc never mutated (trigger does not update system_health_checks)
  *   E. Missing snapshot data → no-op
- *   F. discrepanciesCount=0 with status FAIL (edge) → no outbox write
+ *   F. discrepanciesCount=0 with status FAIL / status ERROR (PR-IG-A1) → outbox write
+ *   G. PR-IG-A1-FIX1 workaround REMOVED (2026-07-22 follow-up) — the outbox
+ *      `discrepancies` array is now exactly what the health-check document
+ *      held, on every status. The deployed bot formatter now reads the
+ *      census fields directly (hachnasovitz/system-reports/formatter.js,
+ *      live) — no synthetic entry is needed, and this suite asserts its
+ *      absence, plus that the fields the live bot depends on are present.
+ *   H. PR-IG-A1-FIX6 — healthCheckStatus guard on a missing/undefined status
+ *   I. PR-IG-A1-FIX5 — clientsScanErroredIds passthrough (pins the current
+ *      shape of an unmodified forward; does NOT itself prove the producer
+ *      can never leak a non-string entry — see the test's own comment)
  */
 
-const mockOutboxAdd = jest.fn().mockResolvedValue({ id: 'outbox_auto_id' });
+// Rejects if the payload carries a raw `undefined` field value, mirroring
+// real Firestore's behavior without `ignoreUndefinedProperties` (an
+// `.add()` call with an undefined field value throws). A plain
+// `mockResolvedValue` would accept ANY payload — including one where a
+// guard (e.g. the `typeof healthStatus === 'string' ? healthStatus : null`
+// coercion) was silently removed — so it could never catch that
+// regression. This check makes the guard tests below genuine: if a future
+// change reintroduces an unguarded `undefined` field, the mock rejects and
+// the test fails, instead of passing vacuously.
+const mockOutboxAdd = jest.fn((payload) => {
+  const undefinedKey = Object.keys(payload).find((key) => payload[key] === undefined);
+  if (undefinedKey) {
+    return Promise.reject(new Error(
+      `mock: payload.${undefinedKey} is undefined — real Firestore .add() would reject (no ignoreUndefinedProperties)`
+    ));
+  }
+  return Promise.resolve({ id: 'outbox_auto_id' });
+});
 const mockOutboxRef = { add: mockOutboxAdd };
 
 const mockDb = {
@@ -194,7 +221,11 @@ describe('E. Missing snapshot', () => {
 // ═══════════════════════════════════════════════════════════════
 
 describe('F. Edge cases', () => {
-  test('status FAIL but discrepanciesCount 0 → no outbox write', async () => {
+  // PR-IG-A1 (2026-07-22) BEHAVIORAL CHANGE: these two scenarios previously
+  // asserted "no outbox write" — that was exactly the silent-failure defect
+  // this PR closes (a FAIL with 0 discrepancies, and every ERROR, used to be
+  // invisible to the WhatsApp channel). Flipped to assert emission.
+  test('status FAIL but discrepanciesCount 0 → outbox write (PR-IG-A1: previously silent)', async () => {
     await registeredHandler(makeEvent({
       data: {
         type: 'invariant_check',
@@ -203,10 +234,13 @@ describe('F. Edge cases', () => {
         discrepancies: []
       }
     }));
-    expect(mockOutboxAdd).not.toHaveBeenCalled();
+    expect(mockOutboxAdd).toHaveBeenCalledTimes(1);
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    expect(payload.healthCheckStatus).toBe('FAIL');
+    expect(payload.severity).toBe('warning');
   });
 
-  test('status ERROR → no outbox write', async () => {
+  test('status ERROR → outbox write with critical severity (PR-IG-A1: previously silent)', async () => {
     await registeredHandler(makeEvent({
       data: {
         type: 'invariant_check',
@@ -216,10 +250,47 @@ describe('F. Edge cases', () => {
         message: 'שגיאה'
       }
     }));
+    expect(mockOutboxAdd).toHaveBeenCalledTimes(1);
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    expect(payload.healthCheckStatus).toBe('ERROR');
+    expect(payload.severity).toBe('critical');
+    expect(payload.healthCheckMessage).toBe('שגיאה');
+  });
+
+  test('status PARTIAL → outbox write with warning severity (PR-IG-A1: new status)', async () => {
+    await registeredHandler(makeEvent({
+      data: {
+        type: 'invariant_check',
+        status: 'PARTIAL',
+        discrepanciesCount: 0,
+        discrepancies: [],
+        clientsScanErrored: 3,
+        clientsScanChecked: 10,
+        clientsTotal: 13
+      }
+    }));
+    expect(mockOutboxAdd).toHaveBeenCalledTimes(1);
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    expect(payload.healthCheckStatus).toBe('PARTIAL');
+    expect(payload.severity).toBe('warning');
+    expect(payload.clientsScanErrored).toBe(3);
+    expect(payload.clientsScanChecked).toBe(10);
+    expect(payload.clientsTotal).toBe(13);
+  });
+
+  test('status PASS → no outbox write (unchanged)', async () => {
+    await registeredHandler(makeEvent({
+      data: {
+        type: 'invariant_check',
+        status: 'PASS',
+        discrepanciesCount: 0,
+        discrepancies: []
+      }
+    }));
     expect(mockOutboxAdd).not.toHaveBeenCalled();
   });
 
-  test('discrepanciesCount missing → falls back to discrepancies.length', async () => {
+  test('discrepanciesCount missing, status FAIL → falls back to discrepancies.length (no synthetic entry added on FAIL)', async () => {
     await registeredHandler(makeEvent({
       data: {
         type: 'invariant_check',
@@ -229,6 +300,219 @@ describe('F. Edge cases', () => {
       }
     }));
     expect(mockOutboxAdd).toHaveBeenCalledTimes(1);
-    expect(mockOutboxAdd.mock.calls[0][0].discrepanciesCount).toBe(2);
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    expect(payload.discrepanciesCount).toBe(2);
+    expect(payload.discrepancies.length).toBe(2); // no scan_incomplete appended
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// G. Synthetic scan_incomplete workaround REMOVED (2026-07-22 follow-up)
+//
+// The bot-side fix (hachnasovitz/system-reports/formatter.js) is deployed
+// and reads healthCheckStatus/healthCheckMessage/clientsScanChecked/
+// clientsScanErrored/clientsTotal directly, so this trigger no longer needs
+// to inject anything into `discrepancies[]` to make a PARTIAL/ERROR run
+// render truthfully. These tests assert the ABSENCE of the synthetic entry
+// (inverted from the pre-removal versions, which asserted its presence —
+// see git history on this file for the prior assertions) and that the
+// fields the live bot now depends on are present and correctly populated.
+// ═══════════════════════════════════════════════════════════════
+
+describe('G. scan_incomplete workaround removed', () => {
+  test('PARTIAL run → outbox discrepancies equals the health-check document\'s array exactly (no synthetic entry)', async () => {
+    await registeredHandler(makeEvent({
+      data: {
+        type: 'invariant_check',
+        status: 'PARTIAL',
+        discrepanciesCount: 0,
+        discrepancies: [],
+        clientsScanErrored: 3,
+        clientsScanChecked: 10,
+        clientsTotal: 13,
+        message: 'הבדיקה הושלמה חלקית'
+      }
+    }));
+
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    expect(payload.discrepancies).toEqual([]);
+    expect(payload.discrepancies.some((d) => d.type === 'scan_incomplete')).toBe(false);
+    expect(payload.discrepanciesCount).toBe(0);
+
+    // Most important: the fields the live bot's formatter reads directly are
+    // present and correctly populated — dropping any of these silently
+    // breaks the deployed bot.
+    expect(payload.healthCheckStatus).toBe('PARTIAL');
+    expect(payload.healthCheckMessage).toBe('הבדיקה הושלמה חלקית');
+    expect(payload.clientsScanChecked).toBe(10);
+    expect(payload.clientsScanErrored).toBe(3);
+    expect(payload.clientsTotal).toBe(13);
+  });
+
+  test('ERROR run → outbox discrepancies equals the health-check document\'s array exactly (no synthetic entry)', async () => {
+    await registeredHandler(makeEvent({
+      data: {
+        type: 'invariant_check',
+        status: 'ERROR',
+        discrepanciesCount: 0,
+        discrepancies: [],
+        message: 'שגיאה בבדיקת תקינות: firestore is down'
+      }
+    }));
+
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    expect(payload.discrepancies).toEqual([]);
+    expect(payload.discrepancies.some((d) => d.type === 'scan_incomplete')).toBe(false);
+    expect(payload.discrepanciesCount).toBe(0);
+
+    // Fields the live bot depends on for the ERROR render.
+    expect(payload.healthCheckStatus).toBe('ERROR');
+    expect(payload.healthCheckMessage).toBe('שגיאה בבדיקת תקינות: firestore is down');
+  });
+
+  test('PARTIAL-with-discrepancies → discrepancies array is byte-identical to the source (no injection)', async () => {
+    const realDiscrepancies = [
+      { type: 'aggregate_drift', clientId: 'c2', clientName: 'לקוח שני', driftFields: [] }
+    ];
+    await registeredHandler(makeEvent({
+      data: {
+        type: 'invariant_check',
+        status: 'PARTIAL',
+        discrepanciesCount: 1,
+        discrepancies: realDiscrepancies,
+        clientsScanErrored: 1,
+        clientsScanChecked: 1,
+        clientsTotal: 2
+      }
+    }));
+
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    expect(payload.discrepanciesCount).toBe(1);
+    expect(payload.discrepancies).toEqual(realDiscrepancies);
+    expect(payload.discrepancies.length).toBe(1);
+  });
+
+  test('genuine FAIL run → outbox payload is UNCHANGED (regression guard on the working path)', async () => {
+    const realDiscrepancies = [
+      { type: 'aggregate_drift', clientId: 'c1', clientName: 'לקוח טסט', driftFields: [] },
+      { type: 'package_drift', clientId: 'c2', clientName: 'לקוח שני', serviceId: 'svc1', totalHours: 10, sumPkgHours: 8, drift: 2 }
+    ];
+    await registeredHandler(makeEvent({
+      docId: 'hc_regression',
+      data: {
+        type: 'invariant_check',
+        status: 'FAIL',
+        discrepanciesCount: 2,
+        discrepancies: realDiscrepancies
+      }
+    }));
+
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    expect(payload.discrepancies).toEqual(realDiscrepancies);
+    expect(payload.discrepancies.length).toBe(2);
+    expect(payload.discrepanciesCount).toBe(2);
+  });
+
+  test('discrepanciesCount still carries the true total, unaffected by removal', async () => {
+    await registeredHandler(makeEvent({
+      data: {
+        type: 'invariant_check',
+        status: 'ERROR',
+        discrepanciesCount: 0,
+        discrepancies: [],
+        clientsScanErrored: 5,
+        clientsScanChecked: 0,
+        clientsTotal: 5
+      }
+    }));
+
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    // Zero discrepancies is the TRUE total here (the run crashed before
+    // finding any data discrepancy) — discrepanciesCount reports it exactly,
+    // with no inflation from a synthetic entry.
+    expect(payload.discrepanciesCount).toBe(0);
+    expect(payload.discrepancies).toEqual([]);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// H. PR-IG-A1-FIX6 — healthCheckStatus guard
+// ═══════════════════════════════════════════════════════════════
+
+describe('H. FIX6 — healthCheckStatus guard', () => {
+  test('a missing/undefined status does not reject the write — guarded to null like its siblings', async () => {
+    // status undefined is neither 'PASS' nor 'FAIL', so the trigger proceeds
+    // (this mirrors real fail-open behavior — an undefined status is itself
+    // an anomaly worth alerting on, not a reason to stay silent).
+    await registeredHandler(makeEvent({
+      data: {
+        type: 'invariant_check',
+        discrepanciesCount: 0,
+        discrepancies: []
+        // status intentionally omitted
+      }
+    }));
+
+    expect(mockOutboxAdd).toHaveBeenCalledTimes(1);
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    expect(payload.healthCheckStatus).toBeNull();
+    // This guard is now genuinely exercised, not merely reached: mockOutboxAdd
+    // (see the top of this file) rejects on any raw `undefined` field value,
+    // mirroring real Firestore's behavior without `ignoreUndefinedProperties`.
+    // If the `typeof healthStatus === 'string' ? healthStatus : null` coercion
+    // in the trigger were ever removed, `healthCheckStatus` would arrive here
+    // as `undefined` (status was omitted from the fixture above), the mock
+    // would reject, and this assertion would fail with a thrown error instead
+    // of silently passing.
+    expect(payload.status).toBe('pending');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// I. PR-IG-A1-FIX5 — clientsScanErroredIds passthrough
+// ═══════════════════════════════════════════════════════════════
+
+describe('I. FIX5 — clientsScanErroredIds passthrough', () => {
+  test('id list is forwarded to the outbox doc unmodified (trigger does no per-item validation)', async () => {
+    // HONEST SCOPE: the trigger does `Array.isArray(data.clientsScanErroredIds)
+    // ? data.clientsScanErroredIds : []` — a pure array-level passthrough with
+    // NO per-item type check. This test therefore only pins "whatever array
+    // the source doc holds arrives at the outbox unchanged"; it is NOT a PII
+    // guard and does not prove the producer can never push a non-string entry
+    // (e.g. an object carrying a name). If that guarantee is ever wanted, it
+    // has to be enforced in the trigger's production code (filter/validate
+    // each entry) and pinned by a fixture containing a non-string id — a
+    // clean-string fixture like this one would pass either way and cannot
+    // catch that regression.
+    const ids = ['2025001', '2025002', '2025003'];
+    await registeredHandler(makeEvent({
+      data: {
+        type: 'invariant_check',
+        status: 'PARTIAL',
+        discrepanciesCount: 0,
+        discrepancies: [],
+        clientsScanErrored: 3,
+        clientsScanChecked: 10,
+        clientsTotal: 13,
+        clientsScanErroredIds: ids
+      }
+    }));
+
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    expect(payload.clientsScanErroredIds).toEqual(ids);
+  });
+
+  test('missing clientsScanErroredIds → defaults to an empty array (does not reject)', async () => {
+    await registeredHandler(makeEvent({
+      data: {
+        type: 'invariant_check',
+        status: 'ERROR',
+        discrepanciesCount: 0,
+        discrepancies: []
+      }
+    }));
+
+    const payload = mockOutboxAdd.mock.calls[0][0];
+    expect(payload.clientsScanErroredIds).toEqual([]);
   });
 });

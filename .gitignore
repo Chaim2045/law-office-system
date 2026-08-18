@@ -34,6 +34,19 @@ functions/.env
 # Local backup snapshots (data may include client names, employee emails, taskIds)
 # Pre-migration data backups stay local — managed Firestore backups serve as canonical recovery
 backups/
+# One-time backfill write-plan / before-state backups (PII: employee emails, client
+# services snapshots). Stay local; never commit (public repo, §2.8). Used by:
+#   - backfill-cost-per-hour.js            (H.2 — employee<->entry email mapping)
+#   - backfill-strip-legal-hourly-rate.js  (H.3 — clientId + services[] before-state)
+functions/backfill-backups/
+# One-time security migration before-state (old feeAgreements[] incl. downloadUrl
+# which embeds clientId/caseId + storagePath; the rollback key). Stay local. Used by:
+#   - revoke-fee-agreement-public-acls.js  (PR-SEC-2 — ACL revocation + downloadUrl null)
+functions/security-migration-backups/
+# Package-drift repair before-state + per-client services snapshot + stamp plan
+# (the --rollback key; non-PII ids/counts but stays local on principle, §2.8). Used by:
+#   - repair-package-aggregates.js  (PR-DRIFT-2 — package-hours forward-replay repair)
+functions/repair-backups/
 
 # IDE
 .vscode/
@@ -78,3 +91,21 @@ scripts/investigate-*.mjs
 
 # Personal/draft analysis documents in docs/ (not part of the system)
 docs/LAW_OFFICE_SYSTEM_ניתוח_מקצועי.xlsx
+
+# A4-2: ops/debug scripts with staff PII — kept local, untracked from the public repo
+# (verified NON-LOADED: no HTML <script src>, no require/import in apps|functions,
+#  no root package.json script, no .github/workflows reference — safe to untrack)
+devtools/
+apps/user-app/js/scripts/add-employee-phones.js
+scripts/backup-drifted-tasks-2026-04-27.js
+# deep-investigate-* is NOT matched by the scripts/investigate-* rule above (line ~80)
+scripts/deep-investigate-drift-2026-04-27.js
+
+# Script OUTPUT carrying client names — the repo is PUBLIC (MASTER_PLAN §4).
+# The scripts themselves are committed; only their reports are excluded.
+scripts/.capacity-baseline-*.json
+scripts/.capacity-materialize-*.json
+scripts/.reconcile-backup-*.json
+
+# Scratch PR body drafts — the body is passed inline to gh, never committed.
+scripts/.pr-body-draft.md

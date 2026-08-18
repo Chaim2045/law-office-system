@@ -182,12 +182,70 @@ const {
 const { SYSTEM_CONSTANTS } = require('./shared/constants');
 const { ERROR_CODES, buildAppError } = require('./shared/errors');
 const { writeClientWithCanonicalAggregates } = require('./shared/client-writer');
+// Server-side gate: a CLOSED service (archived/completed) must not accept new hours.
+const { assertServiceAcceptsHours } = require('./shared/service-status');
+// PR-NOW-1: detect-only stage observability. Logs, never blocks. See shared/stage-detect.js.
+const { reportStageResolution, RESOLUTION_SOURCE } = require('./shared/stage-detect');
+// H.2 cost foundation — resolve + atomically stamp a CF-only cost doc per entry.
+const {
+  resolveEmployeeCost,
+  buildEntryCostDoc,
+  TIMESHEET_ENTRY_COSTS_COLLECTION
+} = require('./lib/employee-costs/resolve-employee-cost');
+// PR-2 (idempotency SSOT): the atomic exactly-once primitive, extracted from
+// this file's original PR-1 inline implementation so functions/timesheet/index.js
+// can share the SAME processed_operations record shape (no duplicate logic).
+const {
+  DEFAULT_IDEMPOTENCY_TTL_HOURS,
+  readProcessedOperation,
+  writeProcessedOperation,
+  replayAlreadyExists
+} = require('./shared/idempotency');
 const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
 function sanitizeString(str) {
   if (typeof str !== 'string') return '';
   return str.trim().replace(/[<>]/g, '');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PR-1 (idempotency): exactly-once protection for addTimeToTask.
+//
+// The User App's FirebaseService.call('addTimeToTask', ...) times out at 15s and
+// auto-retries up to 3x on a slow network. If the server's first call actually
+// SUCCEEDED (just slow), the retry re-ran the write → a DUPLICATE time entry.
+// The client now mints ONE idempotencyKey per submission (reused across retries);
+// we short-circuit any duplicate inside the same transaction that does the write,
+// using the shared `processed_operations` primitive (functions/shared/idempotency.js
+// — PR-2 extracted this file's original inline implementation into that SSOT
+// module so functions/timesheet/index.js's create paths can share the exact
+// same record shape).
+// ─────────────────────────────────────────────────────────────────────────────
+const IDEMPOTENCY_TTL_HOURS = DEFAULT_IDEMPOTENCY_TTL_HOURS;
+// Non-empty, ≤200 chars, URL/UUID-safe alphabet (matches crypto.randomUUID output
+// and the frontend fallback `addtime_<ts>_<rand>`). A malformed key is rejected
+// (throw) rather than silently ignored — a bad key means a bad client and we do
+// NOT want to fall through to non-idempotent behavior for it.
+const IDEMPOTENCY_KEY_REGEX = /^[A-Za-z0-9_-]+$/;
+
+/**
+ * Validate an optional idempotency key.
+ * @param {*} key - the raw data.idempotencyKey (may be undefined/null)
+ * @returns {string|null} the validated key, or null when none was provided
+ * @throws {functions.https.HttpsError} 'invalid-argument' when a key is present but malformed
+ */
+function validateIdempotencyKey(key) {
+  if (key === undefined || key === null || key === '') {
+    return null;
+  }
+  if (typeof key !== 'string' || key.length > 200 || !IDEMPOTENCY_KEY_REGEX.test(key)) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'מזהה בקשה לא תקין'
+    );
+  }
+  return key;
 }
 
 /**
@@ -215,8 +273,19 @@ function computeFixedDeduction(services, lookupServiceId, minutesDelta) {
   return { updatedServices: updatedArr, isOverage: false, overageMinutes: 0 };
 }
 
+// OWN-0(b) (2026-06-24): resolveFreshStampPackageId REMOVED. DRIFT-0's "fresh-only"
+// stamp deliberately left HOURS entries packageId:null whenever the deduction
+// overdrew a depleted/overdraft package — a package-counted-null orphan. The entry
+// now stamps the actual deduction target inline (entryStampPackageId), so the stamp
+// and the deduction never diverge. Non-HOURS keeps serviceIds.packageId. getActivePackage
+// is still used by lookupServiceIds below.
+
 function lookupServiceIds(clientData, taskData) {
-  const result = { stageId: null, packageId: null };
+  // PR-NOW-1: `stageSource` records WHICH of the three precedence levels produced
+  // `stageId`. Observability only — no caller branches on it. Without it the
+  // silent hardcoded-fallback case is indistinguishable from an explicit id,
+  // because this function collapses all three into one value.
+  const result = { stageId: null, packageId: null, stageSource: null };
 
   // PATH 1: legal_procedure חדש (services)
   if (taskData.serviceType === ST.LEGAL_PROCEDURE && taskData.parentServiceId) {
@@ -224,6 +293,9 @@ function lookupServiceIds(clientData, taskData) {
     if (service && service.type === ST.LEGAL_PROCEDURE) {
       const isHourly = !service.pricingType || service.pricingType === PT.HOURLY;
       const currentStageId = taskData.serviceId || service.currentStage || SYSTEM_CONSTANTS.VALID_STAGE_IDS[0];
+      result.stageSource = taskData.serviceId
+        ? RESOLUTION_SOURCE.EXPLICIT
+        : (service.currentStage ? RESOLUTION_SOURCE.SERVICE_CURRENT_STAGE : RESOLUTION_SOURCE.HARDCODED_FALLBACK);
       const stage = (service.stages || []).find(s => s.id === currentStageId);
       if (stage) {
         result.stageId = stage.id;
@@ -257,6 +329,9 @@ function lookupServiceIds(clientData, taskData) {
   // PATH 4: legacy hourly
   if (clientData.procedureType === ST.LEGAL_PROCEDURE && clientData.pricingType === PT.HOURLY) {
     const currentStageId = taskData.serviceId || clientData.currentStage || SYSTEM_CONSTANTS.VALID_STAGE_IDS[0];
+    result.stageSource = taskData.serviceId
+      ? RESOLUTION_SOURCE.EXPLICIT
+      : (clientData.currentStage ? RESOLUTION_SOURCE.SERVICE_CURRENT_STAGE : RESOLUTION_SOURCE.HARDCODED_FALLBACK);
     const stage = (clientData.stages || []).find(s => s.id === currentStageId);
     if (stage) {
       result.stageId = stage.id;
@@ -269,6 +344,9 @@ function lookupServiceIds(clientData, taskData) {
   // PATH 5: legacy fixed
   if (clientData.procedureType === ST.LEGAL_PROCEDURE && clientData.pricingType === PT.FIXED) {
     const targetStageId = taskData.serviceId || clientData.currentStage || SYSTEM_CONSTANTS.VALID_STAGE_IDS[0];
+    result.stageSource = taskData.serviceId
+      ? RESOLUTION_SOURCE.EXPLICIT
+      : (clientData.currentStage ? RESOLUTION_SOURCE.SERVICE_CURRENT_STAGE : RESOLUTION_SOURCE.HARDCODED_FALLBACK);
     const stage = (clientData.stages || []).find(s => s.id === targetStageId);
     if (stage) result.stageId = stage.id;
     return result;
@@ -296,6 +374,16 @@ function lookupServiceIds(clientData, taskData) {
 async function addTimeToTaskWithTransaction(db, data, user) {
   const MAX_RETRIES = 3;
   let lastError = null;
+
+  // H.2: resolve the employee cost-per-hour ONCE before the retry loop — a plain
+  // employee_costs read that never throws, so it never blocks task-time logging.
+  // Stamped into a CF-only timesheet_entry_costs doc atomically inside the txn.
+  const resolvedCost = await resolveEmployeeCost(user.email);
+
+  // PR-1 (idempotency): validate ONCE before the loop. Throws on a malformed key;
+  // returns null when no key was supplied (older cached clients mid-rollout →
+  // behaves exactly as before, no idempotency, no crash).
+  const idempotencyKey = validateIdempotencyKey(data.idempotencyKey);
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -342,6 +430,21 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           }
         }
 
+        // 3️⃣ PR-1 (idempotency): read the processed-operations record LAST in Phase 1
+        // (after task+client reads, before ANY write — Firestore reads-before-writes).
+        // If this key was already committed, short-circuit: return the stored result,
+        // performing NO task update, NO cost write, NO arrayUnion — the duplicate retry
+        // is blocked and hours are not double-counted.
+        let idemRef = null;
+        if (idempotencyKey) {
+          const idemLookup = await readProcessedOperation(transaction, db, idempotencyKey);
+          idemRef = idemLookup.ref;
+          if (idemLookup.existingResult !== null) {
+            console.log(`🔄 [addTimeToTask] Idempotent replay — returning stored result for key ${idempotencyKey}`);
+            return idemLookup.existingResult;
+          }
+        }
+
         console.log(`✅ [Transaction Phase 1] All reads completed`);
 
         // ========================================
@@ -367,6 +470,8 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           description: data.description ? sanitizeString(data.description) : '',
           addedBy: user.username,
           addedAt: new Date().toISOString(),
+          // PR-1 (idempotency): forensic trail — which submission produced this entry.
+          _idempotencyKey: idempotencyKey || null,
           budgetStatus: {
             currentEstimate,
             totalMinutesAfter: newActualMinutes,
@@ -439,12 +544,22 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         let deductedInTransaction = false;
         let entryIsOverage = false;
         let entryOverageMinutes = 0;
+        // OWN-0(b): the packageId to STAMP on the entry = the actual deduction
+        // target. Default = serviceIds.packageId (preserves non-HOURS behavior);
+        // the HOURS branch overrides it with the real applyHoursDelta target below.
+        let entryStampPackageId = serviceIds.packageId || null;
 
         if (clientData && resolvedServiceId && services.length > 0) {
           const lookupServiceId = taskData.parentServiceId || resolvedServiceId;
           const targetService = services.find(s => s.id === lookupServiceId);
 
           if (targetService) {
+            // Status gate (A1): a CLOSED service (archived/completed) refuses new
+            // hours regardless of overrideActive/type. Placed at the deduction
+            // chokepoint (covers HOURS/LEGAL_PROCEDURE/FIXED + auto-selected single
+            // service) BEFORE any applyHoursDelta — a throw aborts the txn cleanly.
+            assertServiceAcceptsHours(targetService);
+
             const serviceType = targetService.type || clientData.procedureType;
 
             if (serviceType === ST.HOURS) {
@@ -470,14 +585,38 @@ async function addTimeToTaskWithTransaction(db, data, user) {
                   }
                 }
                 deductionResult = applyHoursDelta(services, lookupServiceId, resolvedPackageId, minutesDelta);
+                // OWN-0(b): stamp the package the deduction actually hit (incl. an
+                // overdraft/depleted fallback going negative) — NOT null. Eliminates
+                // the package-counted-null orphan at the source.
+                entryStampPackageId = resolvedPackageId;
               } else {
                 deductionResult = applyHoursDeltaServiceOnly(services, lookupServiceId, minutesDelta);
+                // Genuine service-only (0 packages / all beyond -10h floor): no package
+                // to stamp → null. Surfaced by Check-7 (OWN-0(d)); recovered by repair.
+                entryStampPackageId = null;
                 console.warn(`⚠️ [addTimeToTask] No package found — counting at service level`);
               }
 
             } else if (serviceType === ST.LEGAL_PROCEDURE) {
               const resolvedStageId = serviceIds.stageId || (resolvedServiceId.startsWith('stage_') ? resolvedServiceId : (targetService.currentStage || SYSTEM_CONSTANTS.VALID_STAGE_IDS[0]));
               const stage = (targetService.stages || []).find(s => s.id === resolvedStageId);
+
+              // PR-NOW-1 (detect-only): report a silent stage_a fallback / a deduction
+              // landing on an already-completed stage. Logs only — deduction unchanged.
+              reportStageResolution({
+                stage,
+                resolvedStageId,
+                // Prefer the source recorded inside lookupServiceIds — it is the only
+                // place that can tell an explicit id from the hardcoded fallback.
+                resolutionSource: serviceIds.stageId
+                  ? (serviceIds.stageSource || RESOLUTION_SOURCE.EXPLICIT)
+                  : (resolvedServiceId.startsWith('stage_')
+                    ? RESOLUTION_SOURCE.EXPLICIT
+                    : (targetService.currentStage ? RESOLUTION_SOURCE.SERVICE_CURRENT_STAGE : RESOLUTION_SOURCE.HARDCODED_FALLBACK)),
+                path: 'addTimeToTask',
+                caseNumber: taskData.clientId,
+                serviceId: targetService.id,
+              });
 
               if (stage) {
                 if (stage.pricingType === PT.FIXED) {
@@ -542,6 +681,13 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         // ✅ זיהוי אוטומטי של רשומת פנימית לפי clientId
         const isInternalWork = taskData.clientId === 'internal_office';
 
+        // OWN-0(b): the entry's packageId = the actual deduction target captured
+        // above (HOURS → the applyHoursDelta target incl. overdraft, or null for a
+        // genuine service-only deduction; non-HOURS → serviceIds.packageId). This
+        // supersedes DRIFT-0's fresh-only stamp, which left a package-counted-null
+        // orphan every time the deduction overdrew a depleted package.
+        const stampPackageId = entryStampPackageId;
+
         const timesheetEntry = {
           clientId: taskData.clientId,
           clientName: taskData.clientName,
@@ -551,13 +697,17 @@ async function addTimeToTaskWithTransaction(db, data, user) {
           serviceType: taskData.serviceType || null,
           parentServiceId: taskData.parentServiceId || null,
           stageId: serviceIds.stageId,
-          packageId: serviceIds.packageId,
+          packageId: stampPackageId,
           taskId: data.taskId,
           taskDescription: taskData.description,
           date: data.date,
           minutes: data.minutes,
           hours: data.minutes / 60,
-          action: data.description || taskData.description,
+          // PR-SEC-C2b: sanitize the stored action (the timesheet_entries.action sink) — this
+          // create path stored it raw, unlike createQuickLogEntry/createTimesheetEntry_v2. Uses
+          // this file's local sanitizeString (strips < >, coerces non-string → '') for in-file
+          // consistency with its description handling; both forms render inert at the escaped sinks.
+          action: sanitizeString(data.description || taskData.description),
           employee: user.email,
           lawyer: user.username,
           isInternal: isInternalWork,
@@ -617,6 +767,14 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         transaction.set(timesheetRef, timesheetEntry);
         console.log(`✅ Timesheet entry created: ${timesheetRef.id}`);
 
+        // 5️⃣b (H.2): cost snapshot — CF-only timesheet_entry_costs/{entryId}, atomic
+        // with the entry; stored OFF the entry so the employee never sees their own
+        // confidential cost rate (§7.6 / Option A).
+        transaction.set(
+          db.collection(TIMESHEET_ENTRY_COSTS_COLLECTION).doc(timesheetRef.id),
+          buildEntryCostDoc(timesheetRef.id, user.email, resolvedCost)
+        );
+
         // 6️⃣ לוג פעולה
         const logRef = db.collection('action_logs').doc();
         transaction.set(logRef, {
@@ -634,15 +792,28 @@ async function addTimeToTaskWithTransaction(db, data, user) {
         });
         console.log(`✅ Action log created: ${logRef.id}`);
 
-        console.log(`✅ [Transaction Phase 3] All writes completed successfully`);
-
-        // החזרת תוצאה
-        return {
+        // תוצאה — JSON-safe (no serverTimestamp sentinels inside), so it is both
+        // returned to the caller AND persisted verbatim in processed_operations.
+        const result = {
           success: true,
           taskId: data.taskId,
           newActualMinutes,
           timesheetAutoCreated: true
         };
+
+        // 7️⃣ PR-1 (idempotency): record the completed operation LAST, with .create()
+        // (NOT .set()) so a truly concurrent second transaction fails atomically with
+        // ALREADY_EXISTS — the desired serialization. The serverTimestamp/expiresAt
+        // sentinels live ONLY on this wrapper doc, never inside `result`.
+        if (idemRef) {
+          writeProcessedOperation(transaction, idemRef, idempotencyKey, result, { ttlHours: IDEMPOTENCY_TTL_HOURS });
+          console.log(`✅ [addTimeToTask] Idempotency record created: ${idempotencyKey}`);
+        }
+
+        console.log(`✅ [Transaction Phase 3] All writes completed successfully`);
+
+        // החזרת תוצאה
+        return result;
       });
 
       // הצלחה!
@@ -652,9 +823,25 @@ async function addTimeToTaskWithTransaction(db, data, user) {
     } catch (error) {
       lastError = error;
 
-      // אם זה version conflict, נסה שוב
-      if (error.code === 'aborted' && attempt < MAX_RETRIES) {
-        console.log(`⚠️ Version conflict on attempt ${attempt}, retrying...`);
+      // PR-1 (idempotency): concurrent idempotent double. A sibling call with the SAME
+      // key won the `transaction.create` race, so our create threw ALREADY_EXISTS. The
+      // operation SUCCEEDED under this key → return the stored result, NOT a failure.
+      // (Surfacing a false failure would push the user to re-submit with a fresh key —
+      // the exact duplicate this fix prevents.) If the winner's doc isn't visible yet,
+      // fall through and retry — the next attempt's Phase-1 read finds it.
+      if (idempotencyKey && error.code === 'already-exists') {
+        const replayedResult = await replayAlreadyExists(db, idempotencyKey);
+        if (replayedResult !== null) {
+          console.log(`🔄 [addTimeToTask] Concurrent idempotent replay for key ${idempotencyKey}`);
+          return replayedResult;
+        }
+      }
+
+      // Version conflict (optimistic lock) OR a not-yet-visible concurrent double → retry.
+      // On retry the Phase-1 idempotency read finds the committed doc and returns the
+      // stored result (clean replay, no duplicate).
+      if ((error.code === 'aborted' || error.code === 'already-exists') && attempt < MAX_RETRIES) {
+        console.log(`⚠️ Retryable transaction error (${error.code}) on attempt ${attempt}, retrying...`);
         await new Promise(resolve => setTimeout(resolve, 100 * attempt)); // exponential backoff
         continue;
       }

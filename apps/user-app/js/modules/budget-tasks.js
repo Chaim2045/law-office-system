@@ -34,6 +34,8 @@ import {
   createStatusBadge
 } from './timesheet-constants.js';
 import { buildErrorFromResult } from './error-utils.js';
+// PR-3a (idempotency): ONE key per submission, mirroring main.js's use.
+import { mintIdempotencyKey } from './submit-guard.js';
 
 import DescriptionTooltips from './description-tooltips.js';
 
@@ -179,6 +181,11 @@ export async function loadBudgetTasksFromFirebase(employee, statusFilter = 'acti
  */
 export async function saveBudgetTaskToFirebase(taskData) {
   try {
+    // PR-3a (idempotency): mint ONE key per submission so any retry of this
+    // create carries the SAME key → a slow-first-call success does not produce
+    // a duplicate task.
+    taskData.idempotencyKey = mintIdempotencyKey();
+
     // Call Firebase Function for secure validation and creation
     const result = await window.callFunction('createBudgetTask', taskData);
 
@@ -628,16 +635,22 @@ function renderSVGRingsSection(
    * Map a progress percentage to a severity level that the CSS uses to
    * pick a bar color. Thresholds:
    *   <50   low     → calm blue
-   *   50–79 medium  → deeper blue
-   *   80–99 high    → amber (early warning — user asked for color change
+   *   50–84 medium  → deeper blue
+   *   85–99 high    → amber (early warning — user asked for color change
    *                   before the last moment, not only at overrun)
    *   >=100 alarm   → red
+   *
+   * H.4 PR-b: the amber "approaching" tier is 85 (was 80) to align with the
+   * canonical budget thresholds (budget-status.js / budget-crossing.js / the
+   * card's getProgressColor+progressClass, all 85/100). This was the single
+   * per-task threshold that disagreed; now the row-bar turns amber at the same
+   * 85% the new crossing toast fires at.
    */
   const levelForPercent = (pct) => {
     if (pct >= 100) {
  return 'alarm';
 }
-    if (pct >= 80)  {
+    if (pct >= 85)  {
  return 'high';
 }
     if (pct >= 50)  {

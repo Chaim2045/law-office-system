@@ -40,7 +40,7 @@ console.log(JSON.stringify(result.data, null, 2));
 
 ### Permission requirements
 
-You must hold a current admin claim — accepts EITHER `{role: 'admin'}` OR `{admin: true}` (during the transition).
+You must hold a current admin claim — `{role: 'admin'}` (role-only; the legacy `{admin:true}` gate half was removed in the Pre-H.0.0.E follow-up).
 
 Non-admin → permission-denied (Hebrew message).
 Unauthenticated → unauthenticated (Hebrew message).
@@ -116,7 +116,7 @@ If it's non-zero, you have a choice:
 
 ## What this diagnostic does NOT do
 
-- Does **not** set any claim. Use future PR-H.0.0.F (`syncRoleClaims`) for that.
+- Does **not** set any claim. Use `syncRoleClaims` (Pre-H.0.0.F) — the authorized partner/role-claim writer — for that.
 - Does **not** delete or modify any document.
 - Does **not** clean up `messages.toRoles` even if it finds `'partner'` there.
 - Does **not** audit-log anything. (Read-only diagnostic does not need critical audit per G3 of PRODUCT-GRADE-GATES.)

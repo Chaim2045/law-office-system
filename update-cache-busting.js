@@ -53,11 +53,13 @@ filesToUpdate.forEach(filePath => {
     let content = fs.readFileSync(fullPath, 'utf8');
 
     // ספירת כמה החלפות נעשו
-    const matches = content.match(/\?v=[^"'>]*/g);
+    // דילוג על tokens מסוג ?v=sh-... — אלה בבעלות מנגנון shared-web/emit.js
+    // (content-hash, ראה docs/PLAN-SHARED-CODE-MECHANISM.md §1.6). לא נוגעים בהם.
+    const matches = content.match(/\?v=(?!sh-)[^"'>]*/g);
     const count = matches ? matches.length : 0;
 
-    // החלפה של כל ה-?v=XXX עם version חדש
-    content = content.replace(/\?v=[^"'>]*/g, `?${version}`);
+    // החלפה של כל ה-?v=XXX (למעט sh-) עם version חדש
+    content = content.replace(/\?v=(?!sh-)[^"'>]*/g, `?${version}`);
 
     // שמירת הקובץ
     fs.writeFileSync(fullPath, content, 'utf8');

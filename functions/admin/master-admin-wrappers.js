@@ -18,6 +18,10 @@ const admin = require('firebase-admin');
 // PR-G.3.11: TZ-safe date helpers. DO NOT use `.toISOString().split('T')[0]`
 // or `.slice(0,10)` — UTC, drifts at IL midnight.
 const { normalizeDateToYMD } = require('../shared/calendar');
+// Pre-H.0.0.F: read-merge-write claim primitives — editing a role must not
+// clobber a user's other claim fields (§7.5 no-clobber), and only elevated
+// roles (admin/partner) are written as a claim.
+const { mergeRoleClaim, removeRoleClaim } = require('../shared/claim-writer');
 
 // שימוש ב-Admin SDK הקיים (מאותחל ב-index.js)
 const db = admin.firestore();
@@ -333,11 +337,19 @@ exports.updateUser = functions.https.onCall(async (data, context) => {
     if (data.role && validateRole(data.role)) {
       updates.role = data.role;
 
-      // עדכון Custom Claims
+      // עדכון Custom Claims — read-merge-write (Pre-H.0.0.F). Only ELEVATED roles
+      // (admin/partner) are written as a claim; any other role CLEARS the role
+      // claim — consistent with syncRoleClaims (a non-elevated role carries no
+      // privilege claim). So editing a user to 'employee'/'lawyer' does NOT
+      // re-mint the dormant role claim that syncRoleClaims removes. Either way we
+      // merge onto existing claims so non-role fields survive (no clobber).
       if (employeeData.authUID) {
-        await auth.setCustomUserClaims(employeeData.authUID, {
-          role: data.role
-        });
+        const userRecord = await auth.getUser(employeeData.authUID);
+        const existingClaims = userRecord.customClaims || {};
+        const nextClaims = (data.role === 'admin' || data.role === 'partner')
+          ? mergeRoleClaim(existingClaims, data.role)
+          : removeRoleClaim(existingClaims);
+        await auth.setCustomUserClaims(employeeData.authUID, nextClaims);
       }
     }
 
@@ -607,8 +619,7 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
       authUserData,
       clientsSnapshot,
       tasksSnapshot,
-      timesheetSnapshot,
-      messagesSnapshot
+      timesheetSnapshot
     ] = await Promise.all([
       // שליפת נתוני Auth
       employeeData.authUID ? auth.getUser(employeeData.authUID).catch(() => null) : Promise.resolve(null),
@@ -631,13 +642,6 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
         .where('date', '>=', startOfMonth)
         .where('date', '<=', endOfMonth)
         .orderBy('date', 'desc')
-        .get(),
-
-      // שליפת הודעות (messages sent to this user)
-      db.collection('user_messages')
-        .where('to', '==', data.email)
-        .orderBy('createdAt', 'desc')
-        .limit(50)
         .get()
     ]);
 
@@ -680,11 +684,6 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
     // ✅ REFACTOR: activity removed - loaded lazily via getUserActivity
     // Activity will be loaded on-demand when user clicks on "Activity" tab
 
-    // עיבוד הודעות
-    const messages = messagesSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
 
     // בניית תשובה
     const response = {
@@ -708,7 +707,6 @@ exports.getUserFullDetails = functions.https.onCall(async (data, context) => {
       tasks: tasks,
       timesheet: timesheet,
       activity: [], // ✅ REFACTOR: Empty - loaded lazily via getUserActivity
-      messages: messages, // ✅ הוספת הודעות
       stats: {
         totalClients: clients.length,
         activeTasks: tasks.filter(t => t.status === 'פעיל').length, // ✅ System uses "פעיל" (not "ממתין"/"בטיפול")

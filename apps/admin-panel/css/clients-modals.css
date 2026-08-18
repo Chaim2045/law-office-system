@@ -57,6 +57,18 @@
 }
 
 /*
+ * ModalManager sub-dialog overlay — MUST sit ABOVE this page's #clientManagementModal (.modal, z-index 10200).
+ * components.css defines .modal-overlay at z-index 9999 (correct on every other page). On clients.html the
+ * ClientManagementModal IS a 10200 overlay, so a ModalManager dialog opened FROM it (renewServiceHours /
+ * _editPackagePurchaseDate — "חדש שעות" + the purchase-date pencil) rendered BEHIND it.
+ * This override is scoped: clients-modals.css loads ONLY on clients.html and AFTER components.css, so it
+ * wins here and touches no other page. 10300 = above 10200, below .quick-message-dialog (10500).
+ */
+.modal-overlay {
+    z-index: 10300;
+}
+
+/*
  * Modal Content Container
  * =======================
  * Centered content box that floats above the blurred overlay
@@ -166,6 +178,23 @@ div#clientReportModal .modal-content.modal-large,
 div#clientManagementModal .modal-content.modal-large {
     max-width: 850px !important;
     width: 90% !important;
+}
+
+/* ===== Confine the client-modal scroll to the CONTENT (not the overlay) =====
+   The base `.modal` overlay is itself a scroll container (`overflow-y: auto`) and centers a
+   `max-height: 90vh` box with `2rem` padding — and 90vh + 4rem > 100vh, so the WHOLE overlay
+   slid up/down (a "whole-screen" scroll) on top of the box's own inner scroll. Scoped ONLY to
+   this modal via id-specificity (beats the base `.modal` / `.modal-content`): the overlay no
+   longer scrolls, and the box is capped to fit inside the overlay's 2rem top+bottom padding so
+   the header/close never clips — the inner `.modal-content` / `.cm-detail` scroll (the
+   management/report content) then handles ALL overflow. `#addServiceModal` + every other modal
+   keep the base behaviour untouched. */
+#clientManagementModal {
+    overflow: hidden;
+}
+
+#clientManagementModal .modal-content.modal-large {
+    max-height: calc(100vh - 4rem);
 }
 
 /* ============================================
@@ -419,34 +448,6 @@ select.form-input {
     font-size: 1rem;
 }
 
-.management-section {
-    margin-bottom: 2rem;
-    padding-bottom: 2rem;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.management-section:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-
-.management-section-title {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #71717a;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.management-section-title i {
-    color: var(--primary-blue);
-    font-size: 0.875rem;
-}
-
 /* Services List */
 .management-services-list {
     display: flex;
@@ -456,23 +457,16 @@ select.form-input {
 
 .management-service-card {
     background: #fff;
-    border: 1px solid #e5e7eb;
-    border-left: 3px solid var(--primary-blue);
-    border-radius: 12px;
+    border: 1px solid var(--gray-200);
+    border-radius: 14px;
     overflow: hidden;
-    transition: all 0.2s ease;
-    box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+    box-shadow: 0 1px 3px rgb(15 23 42 / 6%);
 }
 
-.management-service-card:hover {
-    box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
-    border-left-width: 4px;
-    transform: translateY(-1px);
-}
-
+/* Master-detail: one card shown at a time (.expanded); it IS the detail pane, so no hover-lift
+   and no blue accent rail (the redesign — Track-2). The rail row carries selection state. */
 .management-service-card.expanded {
-    border-left-width: 4px;
-    box-shadow: 0 4px 16px rgb(24 119 242 / 12%);
+    border-color: var(--gray-200);
 }
 
 .management-service-header {
@@ -522,14 +516,247 @@ select.form-input {
     transition: max-height 0.3s ease-out;
 }
 
+/* Expanded (selected) — no clip: the collapsible packages / stepper can grow the card, and the
+   .cm-detail pane scrolls. Instant reveal (max-height:none doesn't animate) — snappy on a swap. */
 .management-service-card.expanded .management-service-body {
-    max-height: 1000px;
-    transition: max-height 0.4s ease-in;
+    max-height: none;
 }
 
 .management-service-content {
-    padding: 1rem 1.25rem;
-    border-top: 1px solid #f1f5f9;
+    padding: 14px 18px 16px;
+}
+
+/* ============================================================
+   MANAGEMENT SERVICE CARD — reading-pane redesign (Track-2)
+   Compact header + hours meter + collapsible packages + calm footer.
+   design-system.css tokens · :focus-visible · RTL logical props ·
+   WCAG AA (#fff on --blue-dark 5.17:1 / --red-dark 4.83:1) · motion via --transition-*.
+   .msc-* is injector-safe — never .management-stage / .report-*.
+   ============================================================ */
+
+/* header */
+.msc-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-4) 0;
+}
+
+.msc-id {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+}
+
+.msc-id-icon {
+    flex-shrink: 0;
+    font-size: var(--text-sm);
+    color: var(--gray-400);
+}
+
+.msc-name {
+    font-size: var(--text-md);
+    font-weight: var(--font-semibold);
+    color: var(--gray-900);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.msc-meta {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+}
+
+.msc-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--gray-600);
+}
+
+.msc-dot {
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gray-400);
+}
+
+.msc-status--active .msc-dot { background: var(--green); }
+
+.msc-status--completed .msc-dot { background: var(--blue); }
+
+.msc-status--on_hold .msc-dot { background: var(--orange); }
+
+.msc-status--archived .msc-dot { background: var(--gray-400); }
+
+/* hours line + thin meter */
+.msc-hours {
+    padding: var(--space-3) var(--space-4) 0;
+}
+
+.msc-hours-line {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.msc-hours-used {
+    font-size: var(--text-base);
+    color: var(--gray-700);
+    font-variant-numeric: tabular-nums;
+}
+
+.msc-hours-used b {
+    font-size: var(--text-lg);
+    font-weight: var(--font-semibold);
+    color: var(--gray-900);
+}
+
+.msc-hours-rem {
+    flex-shrink: 0;
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
+    color: var(--gray-500);
+}
+
+/* good/high/over share the report band's palette (buildIdentityBand) so the meter reads
+   identically on both tabs — the display half of the modal-unification SSOT (PR-2). */
+.msc-hours-rem--good { color: var(--green-dark); }
+
+.msc-hours-rem--high { color: var(--orange-darker); }
+
+.msc-hours-rem--over { color: var(--red-dark); }
+
+.msc-meter {
+    margin-top: 7px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--gray-100);
+    overflow: hidden;
+}
+
+.msc-meter-fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--blue);
+}
+
+.msc-meter-fill--good { background: var(--green); }
+
+.msc-meter-fill--high { background: var(--orange); }
+
+.msc-meter-fill--over { background: var(--red); }
+
+/* packages — collapsible (>1) / inline (1) */
+.msc-pkgs,
+.msc-pkgs-solo {
+    border-top: 1px solid var(--gray-100);
+}
+
+.msc-pkgs-sum {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: 9px 0 3px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.msc-pkgs-sum::-webkit-details-marker { display: none; }
+
+.msc-pkgs-sum:hover .msc-pkgs-lbl { color: var(--gray-700); }
+
+.msc-pkgs-sum:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 25%);
+    border-radius: var(--radius-sm);
+}
+
+.msc-pkgs-lbl {
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    letter-spacing: var(--letter-spacing-wide);
+    color: var(--gray-500);
+}
+
+.msc-pkgs-n {
+    color: var(--gray-400);
+    font-weight: var(--font-medium);
+}
+
+.msc-pkgs-solo .msc-pkgs-lbl {
+    display: block;
+    padding: 9px 0 2px;
+}
+
+.msc-chev {
+    font-size: var(--text-xs);
+    color: var(--gray-400);
+    transition: transform var(--transition-fast);
+}
+
+details.msc-pkgs[open] .msc-chev { transform: rotate(180deg); }
+
+.msc-pkg {
+    padding: 9px 0;
+    border-top: 1px solid var(--gray-100);
+}
+
+.msc-pkgs-list .msc-pkg:first-child,
+.msc-pkgs-solo .msc-pkg {
+    border-top: 0;
+}
+
+.msc-pkg-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.msc-pkg-name {
+    font-size: var(--text-base);
+    color: var(--gray-800);
+}
+
+.msc-pkg-meta {
+    margin-top: 2px;
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+    font-variant-numeric: tabular-nums;
+}
+
+.msc-pkg-edit {
+    flex-shrink: 0;
+    padding: 3px 5px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--gray-500);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.msc-pkg-edit:hover {
+    color: var(--blue-dark);
+    background: var(--gray-100);
+}
+
+.msc-pkg-edit:focus-visible {
+    outline: none;
+    border-color: var(--blue-dark);
 }
 
 .management-service-badge {
@@ -619,137 +846,172 @@ select.form-input {
 }
 
 /* Stages (for legal procedures) - Horizontal Timeline */
+
+/* ===== Legal stages — vertical stepper (reading-pane) =====
+   Was a cramped horizontal 3-dot timeline whose completed marker filled with an
+   UNDEFINED token (--success-green) → the green never applied, so the white ✓ sat
+   on the base white circle and vanished. This is a calm vertical stepper: numbered
+   pending steps, an accent-ringed current step, a green ✓ done step, joined by a
+   progress rail. Every colour is a real design-system token. The markup is
+   unchanged — the same .management-stage / -icon / -info / -name anchors the two
+   injectors (AddPackageToStage, ServiceOverdraftResolution) match on — so the
+   transformation is pure CSS and cannot break the injector contract. */
 .management-stages {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #f1f5f9;
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--gray-200);
 }
 
 .management-stages-title {
-    font-size: 0.6875rem;
-    font-weight: 600;
-    color: #71717a;
-    margin-bottom: 1rem;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    letter-spacing: var(--letter-spacing-wide);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    color: var(--gray-500);
 }
 
-/* Timeline Container */
 .management-stages-timeline {
     position: relative;
-    padding: 0.75rem 0;
 }
 
-/* Progress Bar Background */
+/* The old horizontal progress bar is redundant with the vertical rail — one
+   progress signal, not two competing ones. Suppressed rather than emitting a
+   second indicator that disagrees with the rail. */
 .management-stages-progress {
-    position: absolute;
-    top: 1.75rem;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: #f1f5f9;
-    border-radius: 999px;
-    z-index: 0;
+    display: none;
 }
 
-/* Progress Bar Fill */
-.management-stages-progress-fill {
-    height: 100%;
-    background: var(--primary-blue);
-    border-radius: 999px;
-    transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* Stages List - Horizontal */
+/* Vertical list. The counter numbers the pending/current markers (1, 2, 3 …);
+   the done marker keeps its ✓ instead. */
 .management-stages-list {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    counter-reset: usc-step;
+}
+
+/* One step row: marker (inline-start) then info, joined by a rail to the next. */
+.management-stage {
+    counter-increment: usc-step;
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding-bottom: var(--space-4);
+}
+
+.management-stage:last-child {
+    padding-bottom: 0;
+}
+
+/* Connecting rail — from just below this marker to the next marker's top,
+   centred on the 32px marker (16px − 1px for the 2px line). Gray by default;
+   the segment below a completed step turns green (progress filled up to here). */
+.management-stage:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 15px;
+    top: 32px;
+    bottom: 0;
+    width: 2px;
+    background: var(--gray-200);
+}
+
+.management-stage.completed:not(:last-child)::before {
+    background: var(--green-dark);
+}
+
+/* Marker circle. Base = the pending look; z-index keeps it above the rail. */
+.management-stage-icon {
     position: relative;
     z-index: 1;
-}
-
-/* Individual Stage */
-.management-stage {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    flex: 1;
-    position: relative;
-}
-
-.management-stage-icon {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    font-size: 0.875rem;
-    flex-shrink: 0;
-    background: white;
-    border: 2px solid #e5e7eb;
-    transition: all 0.2s;
-    z-index: 2;
-    box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+    background: #fff;
+    border: 2px solid var(--gray-300);
+    color: var(--gray-500);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    font-variant-numeric: tabular-nums;
+    transition:
+        background var(--transition-fast),
+        border-color var(--transition-fast),
+        box-shadow var(--transition-fast);
 }
 
-.management-stage.completed .management-stage-icon {
-    background: var(--success-green);
-    border-color: var(--success-green);
-    color: white;
+/* Pending + current markers show the step number; the ✓ icon is only for done. */
+.management-stage:not(.completed) .management-stage-icon > i {
+    display: none;
 }
 
+.management-stage:not(.completed) .management-stage-icon::after {
+    content: counter(usc-step);
+}
+
+/* Current step — accent fill + soft ring: "you are here". --blue-dark (#2563eb),
+   not --blue: white-on-blue-dark is 5.17:1, so the step NUMBER (text → WCAG AA
+   4.5:1) is legible; --blue (#3b82f6) is only 3.68:1 and would fail. */
 .management-stage.active .management-stage-icon {
-    background: var(--primary-blue);
-    border-color: var(--primary-blue);
-    color: white;
-    box-shadow: 0 0 0 4px rgb(24 119 242 / 10%);
+    background: var(--blue-dark);
+    border-color: var(--blue-dark);
+    color: #fff;
+    box-shadow: 0 0 0 4px var(--cm-active-surface);
 }
 
-.management-stage.pending .management-stage-icon {
-    background: white;
-    border-color: var(--border-color);
-    color: var(--text-secondary);
+/* Done step — solid green + white ✓. THE FIX: was --success-green (undefined →
+   white-on-white). --green-dark (#059669) → white ✓ at 3.77:1: the ✓ is a
+   non-text graphical icon (WCAG 1.4.11, 3:1) and redundant with fill+position,
+   so it clears the bar; plain --green (#10b981) is only 2.54:1. */
+.management-stage.completed .management-stage-icon {
+    background: var(--green-dark);
+    border-color: var(--green-dark);
+    color: #fff;
 }
 
+/* Info column: name, hours, and the injected "הוסף שעות" chip stack vertically. */
 .management-stage-info {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 0.125rem;
-    text-align: center;
+    align-items: flex-start;
+    gap: var(--space-1);
+    padding-top: var(--space-1);
+    min-width: 0;
+    text-align: start;
 }
 
 .management-stage-name {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: #18181b;
-    max-width: 90px;
+    font-size: var(--text-md);
+    font-weight: var(--font-medium);
+    color: var(--gray-900);
     line-height: 1.3;
 }
 
-.management-stage.completed .management-stage-name {
-    color: #71717a;
+.management-stage.active .management-stage-name {
+    color: var(--blue-dark);
+    font-weight: var(--font-semibold);
 }
 
-.management-stage.active .management-stage-name {
-    color: var(--primary-blue);
-    font-weight: 600;
+.management-stage.completed .management-stage-name {
+    color: var(--gray-500);
 }
 
 .management-stage-hours {
-    font-size: 0.6875rem;
-    color: #71717a;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    color: var(--gray-500);
     font-variant-numeric: tabular-nums;
 }
 
 .management-stage.active .management-stage-hours {
-    color: var(--primary-blue);
+    color: var(--blue-dark);
 }
 
 /* ===== Hours Service Progress Bar ===== */
@@ -856,135 +1118,89 @@ select.form-input {
     font-variant-numeric: tabular-nums;
 }
 
-/* Service Actions */
+/* Service actions — compact footer: one primary + quiet ghosts, destructive pushed to the edge.
+   flex-wrap keeps it usable on a phone; WCAG AA (#fff on --blue-dark; --red-dark for destructive). */
 .management-service-actions {
     display: flex;
-    justify-content: center;
-    gap: 0.5rem;
+    align-items: center;
     flex-wrap: wrap;
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #f1f5f9;
+    gap: var(--space-2);
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--gray-100);
 }
 
 .management-service-action-btn {
-    padding: 0.5rem 1rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
+    gap: 6px;
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--gray-600);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
     white-space: nowrap;
-    background: white;
-    color: #18181b;
+    cursor: pointer;
+    transition: color var(--transition-fast), background-color var(--transition-fast);
 }
 
 .management-service-action-btn i {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
 }
 
 .management-service-action-btn:hover {
-    border-color: var(--primary-blue);
-    color: var(--primary-blue);
-    background: rgb(24 119 242 / 2%);
+    background: var(--gray-100);
+    color: var(--gray-800);
+}
+
+.management-service-action-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 25%);
 }
 
 .management-service-action-btn.primary {
-    background: var(--primary-blue);
-    color: white;
-    border-color: var(--primary-blue);
+    background: var(--blue-dark);
+    color: #fff;
+    font-weight: var(--font-semibold);
 }
 
 .management-service-action-btn.primary:hover {
-    background: var(--primary-blue-dark);
+    background: var(--blue-dark);
+    color: #fff;
+    filter: brightness(0.95);
 }
 
 .management-service-action-btn.secondary {
-    background: white;
-    color: var(--primary-blue);
-    border-color: var(--primary-blue);
-}
-
-.management-service-action-btn.secondary:hover {
-    background: rgb(24 119 242 / 5%);
+    background: transparent;
+    color: var(--gray-600);
 }
 
 .management-service-action-btn.danger {
-    background: white;
-    color: var(--text-secondary);
-    border-color: var(--border-color);
+    margin-inline-start: auto;
+    color: var(--gray-600);
 }
 
 .management-service-action-btn.danger:hover {
-    color: var(--danger-red);
-    border-color: var(--danger-red);
-}
-
-/* Quick Actions - 2 Column Grid Minimalist */
-.management-actions-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-}
-
-.management-action-btn {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 1rem 0.75rem;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.625rem;
-    text-align: center;
-}
-
-.management-action-btn:hover {
-    border-color: #d1d5db;
-    background: rgb(24 119 242 / 2%);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
-}
-
-.management-action-btn i {
-    font-size: 1.25rem;
-    color: var(--primary-blue);
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: rgb(24 119 242 / 8%);
-    flex-shrink: 0;
-}
-
-.management-action-btn span {
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: #18181b;
-    line-height: 1.4;
-}
-
-.management-action-btn.danger:hover {
-    border-color: var(--danger-red);
-    background: rgb(220 38 38 / 2%);
-}
-
-.management-action-btn.danger i {
-    color: var(--text-secondary);
-    background: rgb(107 114 128 / 8%);
-}
-
-.management-action-btn.danger:hover i {
-    color: var(--danger-red);
     background: rgb(220 38 38 / 8%);
+    color: var(--red-dark);
+}
+
+/* Touch targets — on a phone the card stacks under the rail (.cm-split ≤700px); give the footer
+   buttons + the package edit + the disclosure summary a comfortable tap size. */
+@media (width <= 700px) {
+    .management-service-action-btn {
+        padding: 10px 14px;
+    }
+
+    .msc-pkg-edit {
+        padding: 6px 9px;
+    }
+
+    .msc-pkgs-sum {
+        padding: 12px 0 5px;
+    }
 }
 
 /* Empty State */
@@ -1010,318 +1226,301 @@ select.form-input {
     font-size: 0.875rem;
 }
 
-/* ============================================
-   FEE AGREEMENTS - הסכמי שכר טרחה
-   ============================================ */
+/* ============================================================
+   GENERAL PANEL (כללי · פרטי לקוח) — reading-pane
+   Fee-agreements hairline list + quick-action row.
+   design-system.css tokens only · :focus-visible · RTL logical
+   props · WCAG AA (--red-dark 4.83:1 / --blue-dark 5.17:1).
+   ============================================================ */
 
-.fee-agreements-section {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+.gen-section {
+    margin-bottom: var(--space-8);
 }
 
-.fee-agreements-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+.gen-section:last-child {
+    margin-bottom: 0;
 }
 
-/* Individual Agreement Item */
-.fee-agreement-item {
+.gen-label {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem 1rem;
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    transition: all 0.2s ease;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    color: var(--gray-500);
+    letter-spacing: var(--letter-spacing-wide);
 }
 
-.fee-agreement-item:hover {
-    border-color: var(--primary-color);
-    background: rgb(37 99 235 / 2%);
+.gen-label i {
+    font-size: var(--text-sm);
+    color: var(--gray-400);
 }
 
-.fee-agreement-info {
+/* Agreements list */
+.gen-agr-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.gen-agr {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    flex: 1;
-    min-width: 0;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: #fff;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    transition: border-color var(--transition-fast), background-color var(--transition-fast);
 }
 
-.fee-agreement-icon {
+.gen-agr:hover {
+    border-color: var(--gray-300);
+    background: var(--gray-50);
+}
+
+.gen-agr-icon {
+    flex-shrink: 0;
     width: 36px;
     height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
-    background: rgb(37 99 235 / 8%);
-    color: var(--primary-color);
-    flex-shrink: 0;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-base);
+    background: var(--gray-100);
+    color: var(--gray-500);
 }
 
-.fee-agreement-icon i {
-    font-size: 1rem;
+.gen-agr-icon.pdf {
+    background: rgb(220 38 38 / 10%);
+    color: var(--red-dark);
 }
 
-.fee-agreement-icon.pdf {
-    background: rgb(220 38 38 / 8%);
-    color: #dc2626;
+.gen-agr-icon.image {
+    background: rgb(5 150 105 / 12%);
+    color: var(--green-dark);
 }
 
-.fee-agreement-icon.image {
-    background: rgb(16 185 129 / 8%);
-    color: #10b981;
-}
-
-.fee-agreement-details {
+.gen-agr-body {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.125rem;
-    min-width: 0;
+    gap: 2px;
 }
 
-.fee-agreement-name {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--text-primary);
+.gen-agr-name {
+    font-size: var(--text-md);
+    font-weight: var(--font-medium);
+    color: var(--gray-800);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.fee-agreement-meta {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
+.gen-agr-meta {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--gray-500);
 }
 
-.fee-agreement-meta span {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
+.gen-agr-meta span:not(:first-child) {
+    padding-inline-start: var(--space-2);
+    border-inline-start: 1px solid var(--gray-200);
 }
 
-/* Agreement Actions */
-.fee-agreement-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+.gen-agr-actions {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
 }
 
-.fee-agreement-action-btn {
+.gen-icon-btn {
     width: 32px;
     height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background: var(--card-bg);
-    color: var(--text-secondary);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--gray-500);
+    font-size: var(--text-md);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
 }
 
-.fee-agreement-action-btn:hover {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-    background: rgb(37 99 235 / 4%);
+.gen-icon-btn:hover {
+    background: var(--gray-100);
+    color: var(--gray-700);
 }
 
-.fee-agreement-action-btn.view:hover {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
+.gen-icon-btn.danger:hover {
+    background: rgb(220 38 38 / 10%);
+    color: var(--red-dark);
 }
 
-.fee-agreement-action-btn.delete:hover {
-    border-color: var(--danger-red);
-    color: var(--danger-red);
-    background: rgb(220 38 38 / 4%);
+.gen-icon-btn:focus-visible {
+    outline: none;
+    border-color: var(--blue-dark);
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 25%);
 }
 
-/* Add Agreement Button */
-.fee-agreement-add-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.75rem;
-    margin-top: 0.75rem;
-    background: #f8fafc;
-    color: #64748b;
-    border: 2px dashed #cbd5e1;
-    border-radius: 6px;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.fee-agreement-add-btn:hover {
-    background: #f1f5f9;
-    border-color: #94a3b8;
-    color: #475569;
-}
-
-.fee-agreement-add-btn i {
-    font-size: 0.875rem;
-}
-
-/* Upload Area */
-.fee-agreement-upload {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 1.25rem;
-    border: 2px dashed var(--border-color);
-    border-radius: 8px;
-    background: rgb(107 114 128 / 2%);
-    transition: all 0.2s ease;
-}
-
-.fee-agreement-upload:hover {
-    border-color: var(--primary-color);
-    background: rgb(37 99 235 / 2%);
-}
-
-.fee-agreement-upload-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.625rem 1.25rem;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.fee-agreement-upload-btn:hover {
-    background: var(--primary-hover);
-    transform: translateY(-1px);
-}
-
-.fee-agreement-upload-btn i {
-    font-size: 1rem;
-}
-
-.fee-agreement-upload-hint {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    margin: 0;
-}
-
-/* Empty State for Agreements */
-.fee-agreements-empty {
-    text-align: center;
-    padding: 2rem 1rem;
-    background: #f8fafc;
-    border: 2px dashed #cbd5e1;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-}
-
-.fee-agreements-empty:hover {
-    border-color: #94a3b8;
-    background: #f1f5f9;
-}
-
-.empty-state-icon {
-    width: 56px;
-    height: 56px;
-    margin: 0 auto 1rem;
-    background: #e2e8f0;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.empty-state-icon i {
-    font-size: 1.5rem;
-    color: #64748b;
-}
-
-.empty-state-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    align-items: center;
-}
-
-.empty-state-title {
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: #475569;
-    margin: 0;
-}
-
-.empty-state-text {
-    font-size: 0.8125rem;
-    color: #94a3b8;
-    margin: 0;
-}
-
-.empty-state-btn {
+/* Upload (ghost) */
+.gen-upload {
     display: inline-flex;
     align-items: center;
-    gap: 0.375rem;
-    padding: 0.5rem 1rem;
-    margin-top: 0.5rem;
-    background: #3b82f6;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 0.8125rem;
-    font-weight: 500;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    background: transparent;
+    color: var(--gray-600);
+    border: 1px dashed var(--gray-300);
+    border-radius: var(--radius-md);
+    font-size: var(--text-md);
+    font-weight: var(--font-medium);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: color var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
 }
 
-.empty-state-btn:hover {
-    background: #2563eb;
-    transform: translateY(-1px);
+.gen-upload:hover {
+    color: var(--blue-dark);
+    border-color: var(--blue);
+    background: rgb(59 130 246 / 6%);
 }
 
-.empty-state-btn:active {
-    transform: translateY(0);
+.gen-upload:focus-visible {
+    outline: none;
+    border-color: var(--blue-dark);
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 25%);
 }
 
-.empty-state-btn i {
-    font-size: 0.875rem;
+.gen-upload i {
+    font-size: var(--text-md);
 }
 
-/* Upload Progress */
-.fee-agreement-uploading {
+/* Empty state */
+.gen-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-8) var(--space-4);
+    text-align: center;
+    background: var(--gray-50);
+    border: 1px dashed var(--gray-200);
+    border-radius: var(--radius-md);
+}
+
+.gen-empty-icon {
+    width: 48px;
+    height: 48px;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    background: rgb(37 99 235 / 4%);
-    border: 1px solid var(--primary-color);
-    border-radius: 8px;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--gray-100);
+    color: var(--gray-400);
+    font-size: var(--text-lg);
 }
 
-.fee-agreement-uploading i {
-    color: var(--primary-color);
-    animation: spin 1s linear infinite;
+.gen-empty-text {
+    margin: 0;
+    font-size: var(--text-md);
+    color: var(--gray-500);
 }
 
-.fee-agreement-uploading span {
-    font-size: 0.875rem;
-    color: var(--text-primary);
+.gen-empty .gen-upload {
+    margin-top: 0;
+}
+
+/* Quick actions */
+.gen-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+}
+
+.gen-act {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    background: #fff;
+    color: var(--gray-700);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    font-size: var(--text-md);
+    font-weight: var(--font-medium);
+    text-align: start;
+    cursor: pointer;
+    transition: color var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.gen-act i {
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+    font-size: var(--text-lg);
+    color: var(--gray-400);
+    transition: color var(--transition-fast);
+}
+
+.gen-act:hover {
+    border-color: var(--gray-300);
+    background: var(--gray-50);
+}
+
+.gen-act:hover i {
+    color: var(--gray-600);
+}
+
+.gen-act:focus-visible {
+    outline: none;
+    border-color: var(--blue-dark);
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 25%);
+}
+
+/* Primary — filled (#fff on --blue-dark = 5.17:1, AA) */
+.gen-act--primary {
+    background: var(--blue-dark);
+    color: #fff;
+    border-color: var(--blue-dark);
+}
+
+.gen-act--primary i {
+    color: rgb(255 255 255 / 85%);
+}
+
+.gen-act--primary:hover {
+    background: var(--blue-dark);
+    color: #fff;
+    border-color: var(--blue-dark);
+    filter: brightness(0.94);
+}
+
+.gen-act--primary:hover i {
+    color: #fff;
+}
+
+/* Danger — restrained (red icon; --red-dark 4.83:1 text, AA) */
+.gen-act--danger i {
+    color: var(--red-dark);
+}
+
+.gen-act--danger:hover {
+    color: var(--red-dark);
+    border-color: var(--red-dark);
+    background: rgb(220 38 38 / 6%);
+}
+
+.gen-act--danger:hover i {
+    color: var(--red-dark);
 }
 
 @keyframes spin {
@@ -1405,6 +1604,11 @@ select.form-input {
         width: 100%;
     }
 
+    /* Mobile mirror of the scroll-confine — the overlay padding is 1rem here (→ 2rem total). */
+    #clientManagementModal .modal-content.modal-large {
+        max-height: calc(100vh - 2rem);
+    }
+
     .form-row {
         grid-template-columns: 1fr;
     }
@@ -1426,7 +1630,1089 @@ select.form-input {
         justify-content: flex-start;
     }
 
-    .management-actions-grid {
+    .gen-actions {
         grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================================
+   PR-U4 — unified client-modal tab-bar + panels + report tab
+   ============================================================ */
+
+/* Tab bar (ניהול | הפקת דוח) — Soft-Minimal underline, motion via tokens only */
+.cm-tabs {
+    display: flex;
+    gap: var(--space-4);
+    border-bottom: 1px solid var(--gray-200);
+    margin: 0 0 var(--space-4);
+    padding: 0;
+}
+
+.cm-tab {
+    appearance: none;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px; /* sit the underline on the tab-bar border */
+    padding: var(--space-3) var(--space-3);
+    font-size: var(--text-md);
+    font-weight: 500;
+    color: var(--gray-500);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color var(--transition-fast), border-color var(--transition-smooth), transform var(--transition-fast);
+}
+
+.cm-tab:hover {
+    color: var(--gray-800);
+}
+
+.cm-tab:active {
+    transform: scale(0.97);
+}
+
+.cm-tab:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.cm-tab--active {
+    color: var(--blue-dark);
+    border-bottom-color: var(--blue);
+}
+
+.cm-tab i {
+    font-size: var(--text-sm);
+}
+
+/* Panels — both stay in the DOM (the injectors scan the hidden management panel) */
+.cm-panel {
+    display: none;
+}
+
+.cm-panel--active {
+    display: block;
+    animation: cmPanelFadeIn var(--transition-smooth);
+}
+
+@keyframes cmPanelFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Report tab — reuses .report-form / .form-section / .report-service-card styling */
+.report-form--tab {
+    padding-top: var(--space-3);
+}
+
+.report-tab-hint {
+    color: var(--gray-500);
+    margin-top: 12px;
+    display: block;
+    font-size: var(--text-sm);
+}
+
+.report-tab-empty {
+    color: var(--gray-500);
+    padding: var(--space-4);
+    text-align: center;
+    font-size: var(--text-md);
+}
+
+.report-tab-actions {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: flex-end;
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--gray-200);
+}
+
+/* A non-selectable card (DA-2: legal_procedure with no active/completed stage) */
+.report-service-card--disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    filter: grayscale(0.3);
+}
+
+.report-card-note {
+    color: var(--gray-500);
+    font-size: var(--text-sm);
+    margin-top: 4px;
+}
+
+/* Keyboard focus ring on the now-focusable selectable report cards (Design Bar) */
+.report-service-card[role="button"] {
+    cursor: pointer;
+}
+
+.report-service-card[role="button"]:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* ============================================================
+   PR-U5b — management modal master-detail (rail + detail)
+   Calm/Emil: semantic tokens, motion via --transition-*, RTL-aware,
+   :focus-visible on the rail rows, no layering over the retired accordion.
+   ============================================================ */
+
+/* Split: rail (sits on the RIGHT in RTL) + detail (fills the rest) */
+.cm-split {
+    /* P1: faint-blue selected-row surface — the feature's semantic tint token (kept local to
+       this versioned stylesheet so it ships atomically with the ?v= bump, without touching the
+       unversioned design-system.css). */
+    --cm-active-surface: rgb(59 130 246 / 8%);
+    display: flex;
+    gap: var(--space-4);
+    align-items: stretch;
+    min-height: 320px;
+}
+
+/* Rail — vertical service navigation */
+.cm-rail {
+    flex: 0 0 220px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding-inline-end: var(--space-4);
+    border-inline-end: 1px solid var(--gray-200);
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.cm-rail-row {
+    appearance: none;
+    position: relative; /* containing block for the active-bar ::before (P1) */
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    text-align: start;
+    padding: var(--space-3);
+    background: none;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--gray-700);
+    font-size: var(--text-md);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.cm-rail-row:hover {
+    background: var(--gray-50);
+    color: var(--gray-900);
+}
+
+.cm-rail-row:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+.cm-rail-row--active {
+    background: var(--cm-active-surface);
+    color: var(--gray-900);
+    font-weight: 600;
+}
+
+/* P1: a thin active-bar on the inline-start (right in RTL) edge of the selected row — a subtle
+   selection cue instead of a heavy solid-blue fill. Pseudo-element → no layout shift; logical
+   inset-inline-start → RTL-correct. */
+.cm-rail-row--active::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    border-radius: 999px;
+    background: var(--blue);
+}
+
+.cm-rail-row-icon {
+    display: inline-flex;
+    width: 1.25rem;
+    justify-content: center;
+    color: var(--gray-400);
+    flex-shrink: 0;
+}
+
+.cm-rail-row--active .cm-rail-row-icon {
+    color: var(--blue);
+}
+
+.cm-rail-row-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Per-service status dot (P1) — a static flex item leading each service row: green (--ok) =
+   healthy, orange (--attention) = needs attention (overdraft/blocked). The general "כללי" row
+   uses an icon instead. NOT color-only: buildRailRow sets the row `title` + a visually-hidden
+   "דורש טיפול" label on attention rows. No animation → reduced-motion safe. */
+.cm-rail-row-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.cm-rail-row-status--ok {
+    background: var(--green);
+}
+
+.cm-rail-row-status--attention {
+    background: var(--orange);
+}
+
+/* P1: hours ratio "used/total" pushed to the inline-end (left in RTL) of a service row via
+   margin-inline-start:auto — an at-a-glance read without opening the service. Tabular figures. */
+.cm-rail-row-ratio {
+    margin-inline-start: auto;
+    flex-shrink: 0;
+    font-size: var(--text-sm);
+    color: var(--gray-500);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Screen-reader-only text carried by an attention row (the non-color-only signal). */
+.cm-rail-row-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Detail — holds the general panel + the per-service cards */
+.cm-detail {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.cm-detail-panel {
+    display: none;
+}
+
+.cm-detail-panel--active {
+    display: block;
+    animation: cmPanelFadeIn var(--transition-smooth);
+}
+
+/* The services list toggles via the [hidden] attribute — override the
+   .management-services-list flex display so [hidden] actually hides it. */
+.management-services-list[hidden] {
+    display: none;
+}
+
+/* One selected card visible at a time (non-selected → display:none). */
+.management-service-card.cm-card-hidden {
+    display: none;
+}
+
+/* In master-detail the selected card is ALWAYS expanded — reuse the accordion `.expanded`
+   reveal but lift the height cap so a long service (many packages) isn't clipped, and
+   neutralize the now-vestigial click-to-toggle affordance (no accordion in this context). */
+.cm-detail .management-service-card.expanded .management-service-body {
+    max-height: none;
+}
+
+.cm-detail .management-service-toggle {
+    display: none;
+}
+
+.cm-detail .management-service-header {
+    cursor: default;
+}
+
+.cm-detail .management-service-header:hover {
+    background: transparent;
+}
+
+/* Narrow screens — stack the rail above the detail; the rail scrolls horizontally. */
+@media (width <= 700px) {
+    .cm-split {
+        flex-direction: column;
+    }
+
+    .cm-rail {
+        flex-basis: auto;
+        flex-direction: row;
+        max-height: none;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-inline-end: 0;
+        padding-bottom: var(--space-3);
+        border-inline-end: none;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .cm-rail-row {
+        flex: 0 0 auto;
+    }
+
+    .cm-detail {
+        max-height: none;
+    }
+}
+
+/* ============================================================
+   PR-R2 — report tab master-detail (rail + detail)
+   Calm/Emil: tokens only, motion via --transition-* (reduced-motion safe),
+   RTL logical properties, :focus-visible on every interactive element,
+   WCAG AA contrast (white text sits on --blue-dark, never plain --blue).
+   Reuses the .cm-split / .cm-rail / .cm-detail shell (PR-R1) — no .cm-* rule
+   is modified here; only additive .report-* classes.
+   ============================================================ */
+
+/* Rail — the report rail reuses .cm-rail; a leading section label heads the rows. */
+.report-rail-label {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--gray-500);
+}
+
+.report-req {
+    color: var(--red);
+}
+
+.report-rail-empty {
+    padding: var(--space-4) var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--gray-500);
+    text-align: center;
+}
+
+/* Detail column. Localized surface/fg tokens (mirrors the .cm-split --cm-active-surface
+   pattern) so the one-off literals ship atomically with this ?v= bump and aren't scattered. */
+.report-detail {
+    --report-on-fg: #fff;
+
+    /* White surface — absent from design-system.css; mirrors the existing --report-on-fg local
+       token so the thumb + date-input surfaces ship atomically with this ?v= bump. */
+    --report-surface: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+/* Empty placeholder before a service is picked. */
+.report-detail-empty {
+    padding: var(--space-6) var(--space-4);
+    font-size: var(--text-md);
+    color: var(--gray-500);
+    text-align: center;
+}
+
+.report-detail-empty i {
+    color: var(--gray-400);
+}
+
+/* Per-service detail pane.
+   flex-shrink: 0 is load-bearing: .report-detail is BOTH a flex column AND the
+   .cm-detail scroll container (max-height: 60vh; overflow-y: auto). The explicit
+   min-height below overrides flex's default min-height:auto, so WITHOUT this line
+   the flex algorithm would shrink this pane toward 96px when the stage list + an
+   open date calendar push the total past 60vh — and the stage rows (overflow
+   visible) would spill DOWN over the period/preset section instead of the
+   container scrolling. Pinning shrink to 0 keeps the pane at its content height;
+   overflow then happens on .cm-detail (scroll), as intended. */
+.report-service-detail {
+    flex-shrink: 0;
+    min-height: 96px;
+}
+
+/* ============================================================
+   PR-1 — report reading-pane: identity band + period segment
+   Calm/Emil: tokens only, motion via --transition-*, RTL logical
+   properties, :focus-visible on every interactive element.
+   ============================================================ */
+
+/* ── Identity band — icon + name + type badge + inline-end hours stat + a 4px meter ── */
+.usc-identity {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-bottom: var(--space-4);
+    margin-bottom: var(--space-4);
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.usc-identity-top {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.usc-identity-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: var(--radius-sm);
+    background: var(--cm-active-surface);
+    color: var(--blue-dark);
+    font-size: var(--text-md);
+}
+
+.usc-identity-name {
+    font-size: var(--text-lg);
+    font-weight: var(--font-semibold);
+    color: var(--gray-900);
+    letter-spacing: var(--letter-spacing-tight);
+}
+
+.usc-identity-badge {
+    flex-shrink: 0;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    background: var(--gray-100);
+    color: var(--gray-600);
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+}
+
+/* (The old `.usc-identity-status` pill was the management card's shared-band status pill; the
+   Track-2 redesign replaced it with the forked `.msc-status` dot, and the report tab never
+   emitted it — so the now-dead pill CSS was removed with the redesign.) */
+
+/* Hours-only stat — pushed to the inline-end (left in RTL). Tabular figures. */
+.usc-identity-stat {
+    margin-inline-start: auto;
+    font-size: var(--text-md);
+    color: var(--gray-600);
+    font-variant-numeric: tabular-nums;
+}
+
+.usc-identity-stat b {
+    color: var(--gray-900);
+    font-weight: var(--font-semibold);
+}
+
+.usc-identity-rem {
+    font-weight: var(--font-semibold);
+}
+
+.usc-identity-rem--good {
+    color: var(--green-dark);
+}
+
+.usc-identity-rem--high {
+    /* --orange-darker (5.18:1 AA) not --orange-dark (3.56:1, fails AA); also matches the
+       management .msc-hours-rem--high so the meter readout is one palette on both tabs (PR-2). */
+    color: var(--orange-darker);
+}
+
+.usc-identity-rem--over {
+    color: var(--red-dark);
+}
+
+/* 4px status meter under the identity row */
+.usc-identity-meter {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--gray-100);
+    overflow: hidden;
+}
+
+.usc-identity-meter-fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    transition: width var(--transition-slow);
+}
+
+.usc-identity-meter-fill--good {
+    background: var(--green);
+}
+
+.usc-identity-meter-fill--high {
+    background: var(--orange);
+}
+
+.usc-identity-meter-fill--over {
+    background: var(--red);
+}
+
+/* ── Period section — one segmented preset control + resolved caption ── */
+
+/* ===== Report detail — two-column layout (V3) =====
+   The detail was a single vertical stack (stage picker → date presets → calendar),
+   which grew past the .cm-detail 60vh cap on a multi-stage legal service. V3 lays it
+   out as a full-width period bar on top, then two columns: the stage picker beside an
+   ALWAYS-VISIBLE calendar. Roughly halves the height (the tallest column is the
+   calendar alone, not stage+presets+calendar summed), so it can't overflow — and the
+   "מותאם" toggle is gone (the calendar is just there). All the wiring is unchanged:
+   the same #mgmtReport* ids, the native date fields stay the source of truth. */
+.report-period--bar {
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.report-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 348px;
+    gap: var(--space-5);
+    align-items: start;
+}
+
+/* Calendar column — 348px holds the 307px calendar + the divider/padding without clipping. */
+.report-cal-col {
+    border-inline-start: 1px solid var(--gray-200);
+    padding-inline-start: var(--space-4);
+}
+
+/* The calendar is ALWAYS visible in its column — drop the collapse cap + the transition
+   (--open is set in the markup; there is no toggle to animate). */
+.report-body .report-custom-dates {
+    max-height: none;
+    overflow: visible;
+    transition: none;
+}
+
+/* Narrow container → stack (calendar under the stage picker); divider off. */
+@media (width <= 720px) {
+    .report-body {
+        grid-template-columns: 1fr;
+    }
+
+    .report-cal-col {
+        border-inline-start: 0;
+        padding-inline-start: 0;
+    }
+}
+
+.report-period {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.report-period-label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    letter-spacing: var(--letter-spacing-wide);
+    color: var(--gray-500);
+}
+
+/* Segmented sliding presets — ONE control; a white thumb slides to the active preset. */
+.report-preset-seg {
+    position: relative;
+    display: inline-flex;
+    align-self: flex-start;
+    max-width: 100%;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    border-radius: var(--radius-md);
+    background: var(--gray-100);
+    overflow-x: auto;
+}
+
+.report-preset-thumb {
+    position: absolute;
+    top: var(--space-1);
+    bottom: var(--space-1);
+    left: 0; /* PHYSICAL — set by _placePresetThumb via offsetLeft (RTL-correct), never a logical inset */
+    width: 0;
+    z-index: 0;
+    border-radius: var(--radius-sm);
+    background: var(--report-surface);
+    box-shadow: var(--shadow-sm);
+    pointer-events: none;
+    transition: left var(--transition-slow), width var(--transition-slow);
+}
+
+.report-preset-seg--custom .report-preset-thumb {
+    opacity: 0;
+}
+
+/* Scope the preset pills — override BOTH the base .btn-quick-date pill and the mobile
+   width:100% rule; segmented buttons are auto-width, borderless, and ride above the thumb. */
+.report-preset-seg .btn-quick-date {
+    position: relative;
+    z-index: 1;
+    width: auto;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--gray-600);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    white-space: nowrap;
+    transition: color var(--transition-fast);
+}
+
+.report-preset-seg .btn-quick-date:hover {
+    background: none;
+    border-color: transparent;
+    color: var(--gray-900);
+    transform: none;
+}
+
+.report-preset-seg .btn-quick-date.active {
+    background: none;
+    border-color: transparent;
+    color: var(--blue-dark);
+}
+
+.report-preset-seg .btn-quick-date:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* Resolved-date caption + "מותאם" disclosure toggle */
+.report-dateline {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    font-variant-numeric: tabular-nums;
+}
+
+.report-dateline > i {
+    flex-shrink: 0;
+    color: var(--gray-400);
+}
+
+.report-dateline-range b {
+    color: var(--gray-900);
+    font-weight: var(--font-semibold);
+}
+
+.report-dateline-dot {
+    color: var(--gray-300);
+}
+
+.report-custom-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    appearance: none;
+    padding: var(--space-1) var(--space-2);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--blue-dark);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.report-custom-toggle:hover {
+    background: var(--cm-active-surface);
+}
+
+.report-custom-toggle:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* Custom date inputs — collapsed by default; the disclosure reveals them. The inputs stay in
+   the DOM at all times (getFormData reads their .value) — only their visibility toggles. */
+.report-custom-dates {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height var(--transition-slow), opacity var(--transition-smooth);
+}
+
+.report-custom-dates--open {
+    /* 480px (was 200px) so the ~340px inline flatpickr calendar isn't clipped by the container's
+       overflow:hidden. The native two-field grid needs far less, but the shared open-height must
+       clear the tallest content (the calendar) in either state. */
+    max-height: 480px;
+    opacity: 1;
+}
+
+.report-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.report-field label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--gray-700);
+}
+
+.report-field .form-input {
+    width: 100%;
+    background: var(--report-surface);
+    font-variant-numeric: tabular-nums;
+}
+
+.report-detail-sub {
+    margin-top: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--gray-500);
+}
+
+.report-detail-note {
+    font-size: var(--text-md);
+    line-height: 1.5;
+    color: var(--gray-600);
+}
+
+/* Stage picker */
+.report-stage-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.report-stage {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    background: var(--gray-50);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.report-stage:hover {
+    border-color: var(--blue-light);
+    background: var(--gray-100);
+}
+
+.report-stage:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+.report-stage--on {
+    border-color: var(--blue);
+    background: var(--cm-active-surface);
+}
+
+.report-stage--locked {
+    cursor: not-allowed;
+    opacity: 0.6;
+    background: var(--gray-100);
+}
+
+.report-stage--locked:hover {
+    border-color: var(--gray-200);
+    background: var(--gray-100);
+}
+
+/* Radio dot */
+.report-stage-radio {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    border: 2px solid var(--gray-400);
+    border-radius: 50%;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.report-stage--on .report-stage-radio {
+    border-color: var(--blue);
+    box-shadow: inset 0 0 0 3px var(--blue);
+}
+
+/* The picker row stacks the name on its own full-width line so it is NEVER truncated,
+   with status + hours on a quiet second line — readable at any column width (calendar open). */
+.report-stage-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.report-stage-name {
+    font-size: var(--text-md);
+    font-weight: 500;
+    color: var(--gray-900);
+    overflow-wrap: anywhere;
+}
+
+.report-stage-status {
+    flex-shrink: 0;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--green-dark);
+}
+
+.report-stage-status--locked {
+    color: var(--gray-500);
+}
+
+.report-stage-lock {
+    font-size: var(--text-xs);
+}
+
+.report-stage-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.report-stage-hours {
+    font-size: var(--text-sm);
+    color: var(--gray-500);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Unassigned-hours info note — quiet: a hairline row (ⓘ + muted text), not a filled box.
+   Read-only information, not an error, so it whispers instead of shouting. */
+.report-unassigned-note {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--gray-500);
+}
+
+.report-unassigned-note i {
+    margin-inline-end: var(--space-1);
+    color: var(--orange-dark);
+}
+
+.report-unassigned-note b {
+    color: var(--gray-900);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Footer — format toggle on one side, actions on the other. */
+.report-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--gray-200);
+}
+
+/* Segmented PDF/Excel toggle — the radio is visually hidden; the <span> is the pill. */
+.report-format-seg {
+    display: inline-flex;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    background: var(--gray-50);
+}
+
+.report-seg-option {
+    display: inline-flex;
+    cursor: pointer;
+}
+
+.report-seg-option input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+.report-seg-option span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--gray-600);
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.report-seg-option:hover span {
+    color: var(--gray-900);
+}
+
+.report-seg-option input:checked + span {
+    background: var(--blue-dark);
+    color: var(--report-on-fg);
+}
+
+.report-seg-option input:focus-visible + span {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+.report-footer-actions {
+    display: flex;
+    gap: var(--space-3);
+}
+
+/* Focus ring on the quick-date chips (the existing .btn-quick-date had none). */
+.btn-quick-date:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* Narrow screens — the footer stacks so the format toggle + actions don't collide. */
+@media (width <= 700px) {
+    .report-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .report-footer-actions {
+        justify-content: flex-end;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PR-R4 — inline flatpickr RANGE calendar (vendored 4.6.13) themed to our tokens.
+   flatpickr is ONLY the input surface; the two native date fields stay the source
+   of truth (getFormData reads them). EVERY .flatpickr-* override is scoped under
+   .report-detail so nothing leaks to the rest of the admin panel. Tokens only —
+   no hardcoded hex beyond the R3 locals --report-surface / --report-on-fg.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* The text anchor is invisible — the inline calendar renders next to it. */
+.report-cal-anchor {
+    display: none;
+}
+
+/* When flatpickr is live, drop the 1fr/1fr two-field grid → single-column full-width so the
+   inline calendar gets the whole row (otherwise it lands in a half-width cell and clips, worse
+   in RTL). Applies only while the calendar is active (the class is JS-added on success). */
+.report-custom-dates--fp {
+    display: block;
+}
+
+/* When flatpickr is live (JS adds .report-custom-dates--fp) hide the native fields.
+   They STAY in the DOM (getFormData + the fallback path still read them). */
+.report-custom-dates--fp .report-field {
+    display: none;
+}
+
+/* Calendar shell */
+.report-detail .flatpickr-calendar {
+    background: var(--report-surface);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
+/* RTL calendar grid — flatpickr.min.css hardcodes `direction:ltr` on
+   .flatpickr-calendar, so inside this Hebrew (RTL) admin the week rendered
+   ראשון-on-the-LEFT (LTR order), reading backwards for a Hebrew user. Flip ONLY
+   the weekday header row + the day grid to rtl → ראשון sits on the right and
+   dates flow right-to-left. The month/year header + prev/next arrows are left
+   untouched on purpose (flipping the whole calendar re-orders the month-dropdown
+   and glitches its chevron). Scoped to .report-detail — no other flatpickr instance. */
+.report-detail .flatpickr-weekdaycontainer,
+.report-detail .dayContainer {
+    direction: rtl;
+}
+
+/* Selected + range endpoints */
+.report-detail .flatpickr-day.selected,
+.report-detail .flatpickr-day.startRange,
+.report-detail .flatpickr-day.endRange {
+    background: var(--blue);
+    color: var(--report-on-fg);
+    border-color: var(--blue);
+}
+
+/* Days within the picked range */
+.report-detail .flatpickr-day.inRange {
+    background: var(--cm-active-surface);
+    border-radius: 2px;
+    box-shadow: none;
+}
+
+/* Day cells */
+.report-detail .flatpickr-day {
+    color: var(--gray-700);
+}
+
+.report-detail .flatpickr-day:hover,
+.report-detail .flatpickr-day:focus {
+    background: var(--gray-100);
+    color: var(--gray-900);
+}
+
+/* "today" cell contrast fix — flatpickr's base sets WHITE text on a gray hover/focus
+   background (.flatpickr-day.today:hover{background:#959ea9;color:#fff}). Our lighter
+   hover background left that white text in place → an invisible number when the mouse
+   passes over today's cell during range selection. Pin dark text (WCAG AA). */
+.report-detail .flatpickr-day.today:hover,
+.report-detail .flatpickr-day.today:focus {
+    background: var(--gray-100);
+    color: var(--gray-900);
+    border-color: var(--gray-300);
+}
+
+/* Adjacent-month days */
+.report-detail .flatpickr-day.prevMonthDay,
+.report-detail .flatpickr-day.nextMonthDay {
+    color: var(--gray-300);
+}
+
+/* Weekday header row */
+.report-detail .flatpickr-weekday {
+    color: var(--gray-400);
+}
+
+/* Month/year nav */
+.report-detail .flatpickr-current-month,
+.report-detail .flatpickr-monthDropdown-months,
+.report-detail .flatpickr-prev-month,
+.report-detail .flatpickr-next-month {
+    color: var(--gray-600);
+}
+
+.report-detail .flatpickr-prev-month:hover,
+.report-detail .flatpickr-next-month:hover {
+    color: var(--gray-900);
+}
+
+/* Keyboard focus rings via --blue (matches the rest of the report surface). */
+.report-detail .flatpickr-day:focus-visible,
+.report-detail .flatpickr-prev-month:focus-visible,
+.report-detail .flatpickr-next-month:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+}
+
+/* Zero flatpickr's OWN hardcoded transitions/animations for reduced-motion users. */
+@media (prefers-reduced-motion: reduce) {
+    .report-detail .flatpickr-calendar,
+    .report-detail .flatpickr-day {
+        transition: none !important;
+        animation: none !important;
     }
 }

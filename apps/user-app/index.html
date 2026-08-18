@@ -149,7 +149,6 @@
     <link rel="stylesheet" href="css/combobox.css?v=esc5fix" />
     <link rel="stylesheet" href="css/notification-system.css?v=esc5fix" />
     <link rel="stylesheet" href="css/user-alerts.css?v=esc5fix" />
-    <link rel="stylesheet" href="css/thread-view.css?v=esc5fix" />
     <link rel="stylesheet" href="css/style-hitech-addon.css?v=esc5fix" />
     <link rel="stylesheet" href="css/tabs.css?v=esc5fix" />
     <link rel="stylesheet" href="css/statistics.css?v=esc5fix" />
@@ -169,9 +168,6 @@
 
     <!-- Virtual Assistant Styles - TEMPORARILY DISABLED -->
     <!-- <link rel="stylesheet" href="js/modules/virtual-assistant/virtual-assistant.css?v=esc5fix" /> -->
-
-    <!-- ===== AI CHAT SYSTEM (NEW) ===== -->
-    <link rel="stylesheet" href="js/modules/ai-system/ai-chat.css?v=esc5fix">
 
     <!-- ===== SYSTEM ANNOUNCEMENT TICKER ===== -->
     <link rel="stylesheet" href="css/system-announcement-ticker.css?v=esc5fix" />
@@ -333,31 +329,9 @@
   </head>
 
   <body>
-    <!-- ===== מערכת התראות (מוסתרת עד כניסה למערכת) ===== -->
-    <!-- NOTIFICATION SYSTEM (Hidden until login) -->
-    <div id="interfaceElements" class="hidden">
-      <div class="notifications-dropdown" id="notificationsDropdown">
-        <div class="notifications-header">
-          <div class="notifications-title">
-            <i class="fas fa-bell"></i>
-            <span>התראות מערכת</span>
-          </div>
-          <button class="clear-all-btn" onclick="clearAllNotifications()">
-            <i class="fas fa-trash"></i>
-            <span class="clear-all-text">נקה הכל</span>
-          </button>
-        </div>
-        <div class="notifications-content" id="notificationsContent">
-          <!-- Dynamic notifications will be inserted here -->
-        </div>
-        <div class="notifications-footer">
-          <button class="clear-all-btn-mobile" onclick="clearAllNotifications()">
-            <i class="fas fa-trash"></i>
-            נקה את כל ההתראות
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- ===== דגל מצב-אפליקציה (מוסתר עד כניסה למערכת) ===== -->
+    <!-- App-visibility flag (hidden until login; toggled by authentication.js, read by main.js isInApp) -->
+    <div id="interfaceElements" class="hidden"></div>
 
     <!-- ===== מכל האפליקציה הראשי ===== -->
     <!-- MAIN APPLICATION CONTAINER -->
@@ -1237,9 +1211,9 @@
     <!-- SCRIPTS AND STYLES -->
     <!-- ===== 🔇 Production Logger - MUST BE FIRST ===== -->
     <!-- מערכת לוגים מרכזית - מצב ייצור (מינימום לוגים) -->
-    <script src="js/modules/logger.js?v=esc5fix"></script>
-    <script src="js/core/system-constants.js?v=esc5fix"></script>
-    <script src="js/core/config-loader.js?v=esc5fix"></script>
+    <script src="js/modules/logger.js?v=sh-36bf79e8"></script>
+    <script src="js/core/system-constants.js?v=sh-98d1260c"></script>
+    <script src="js/core/config-loader.js?v=sh-d09ed9a4"></script>
 
     <!-- ===== ⚡ Lazy Loader - Dynamic Script Loading ===== -->
     <!-- טעינה דינמית של סקריפטים - שיפור ביצועים -->
@@ -1271,12 +1245,10 @@
     <!-- Firebase Functions Migration - Server-side Integration -->
     <script defer src="js/modules/api-client-v2.js?v=esc5fix"></script>
     <script src="js/modules/firebase-server-adapter.js?v=esc5fix"></script>
-    <!-- Employees Management System - ניהול עובדים -->
-    <script type="module" src="js/modules/employees-manager.js?v=esc5fix"></script>
     <!-- ✅ Presence System - מעקב משתמשים בזמן אמת (Realtime Database) -->
     <script defer src="js/modules/presence-system.js?v=esc5fix"></script>
     <!-- ✅ NEW: Idle Timeout Manager - התנתקות אוטומטית אחרי חוסר פעילות -->
-    <script src="js/modules/idle-timeout-manager.js?v=esc5fix"></script>
+    <script src="js/modules/idle-timeout-manager.js?v=sh-f6669b20"></script>
 
     <!-- Cases Management System - ניהול תיקים -->
     <script src="js/cases.js?v=esc5fix"></script>
@@ -1315,7 +1287,7 @@
 
     <!-- ===== Shared Service Card Renderer ===== -->
     <!-- Prevents code duplication between modules -->
-    <script defer src="js/modules/service-card-renderer.js?v=esc5fix"></script>
+    <script defer src="js/modules/service-card-renderer.js?v=sh-2799ffb8"></script>
 
     <!-- ===== Shared Client Search Component ===== -->
     <!-- Unified client search and filtering logic -->
@@ -1376,13 +1348,13 @@
     <!-- Loaded as module by main.js -->
 
     <!-- PR-G.2: shared work-hours constants — must load BEFORE work-hours-calculator + daily-meter -->
-    <script src="js/shared/work-hours-constants.js?v=esc5fix"></script>
+    <script src="js/shared/work-hours-constants.js?v=sh-678f4641"></script>
     <!-- PR-G.3.1: holidays cache — subscribes to system_holidays/{year} on boot.
          Must load AFTER firebase init + work-hours-constants + BEFORE work-hours-calculator -->
-    <script src="js/shared/holidays-cache.js?v=esc5fix"></script>
+    <script src="js/shared/holidays-cache.js?v=sh-f66c2207"></script>
 
     <!-- Work Hours Calculator - Smart Calendar System -->
-    <script defer src="js/modules/work-hours-calculator.js?v=esc5fix"></script>
+    <script defer src="js/modules/work-hours-calculator.js?v=sh-6b56b509"></script>
 
     <!-- ===== KNOWLEDGE BASE 1.0.0 - מרכז עזרה וידע ===== -->
     <!-- ⚡ KB scripts lazy-loaded on first help click (see authentication.js showApp) -->
@@ -1392,13 +1364,6 @@
 
     <!-- ===== Virtual Assistant 3.9.0 - TEMPORARILY DISABLED ===== -->
     <!-- <script src="js/modules/virtual-assistant/virtual-assistant-complete.js?v=esc5fix"></script> -->
-
-    <!-- ===== AI CHAT SYSTEM (NEW) - LAZY LOADED ===== -->
-    <!-- ⚡ NotificationBell is also lazy-loaded (requires authenticated user) -->
-    <!-- ⚡ Performance Optimization: AI Chat scripts are now loaded AFTER login -->
-    <!-- This reduces initial page load time by ~70KB and improves login screen performance -->
-    <!-- Scripts are dynamically loaded in authentication.js after successful login -->
-    <!-- See: authentication.js -> initAIChatSystem() -->
 
     <!-- OLD: Legacy FAQ Bot (backup) -->
     <!-- <script type="module" src="js/modules/smart-faq-bot.js?v=esc5fix"></script> -->
@@ -1649,19 +1614,6 @@
           setDateTimeDefaults();
         }
       })();
-    </script>
-
-    <!-- Notification Bell Helper Functions -->
-    <script>
-      // Global helper function for clearing notifications
-      // NotificationBell is lazy-loaded, so this provides safe fallback
-      function clearAllNotifications() {
-        if (window.notificationBell) {
-          window.notificationBell.clearAllNotifications();
-        } else {
-          console.warn('NotificationBell not loaded yet');
-        }
-      }
     </script>
   </body>
 </html>

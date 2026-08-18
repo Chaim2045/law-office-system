@@ -69,8 +69,6 @@ jest.mock('../shared/validators', () => ({
 
 jest.mock('../timesheet/helpers', () => ({
   createTimeEvent: jest.fn(),
-  checkIdempotency: jest.fn().mockResolvedValue(null),
-  registerIdempotency: jest.fn().mockResolvedValue(undefined),
   createReservation: jest.fn(),
   commitReservation: jest.fn(),
   rollbackReservation: jest.fn()
@@ -284,5 +282,57 @@ describe('D. lastActivity preserved through helper', () => {
     // Helper also wrote lastModifiedAt + lastModifiedBy from auditMeta (additive)
     expect(payload.lastModifiedAt).toBeDefined();
     expect(payload.lastModifiedBy).toBe('manager');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// E. Status gate (A1) — a CLOSED service refuses new hours.
+//    Checked regardless of overrideActive. Throw aborts the txn (no write).
+// ═══════════════════════════════════════════════════════════════
+
+describe('E. Status gate — closed service refuses new hours', () => {
+  function svc(status, extra = {}) {
+    return { ...makeHoursService('svc1', { totalHours: 10, hoursUsed: 0 }), status, ...extra };
+  }
+  const ARGS = {
+    clientId: 'c1', clientName: 'לקוח', date: '2026-05-18',
+    minutes: 60, description: 'עבודה', serviceId: 'svc1'
+  };
+  const clientUpdates = () =>
+    mockTransaction.update.mock.calls.filter(([, p]) => p && Array.isArray(p.services));
+
+  test('archived service → failed-precondition, no client write', async () => {
+    setupTxMocks(makeClientDoc([svc('archived')]));
+    await expect(createQuickLogEntry(ARGS, makeCtx()))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(clientUpdates()).toHaveLength(0);
+  });
+
+  test('completed service → failed-precondition', async () => {
+    setupTxMocks(makeClientDoc([svc('completed')]));
+    await expect(createQuickLogEntry(ARGS, makeCtx()))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(clientUpdates()).toHaveLength(0);
+  });
+
+  test('archived + overrideActive:true → STILL failed-precondition (override does NOT bypass)', async () => {
+    setupTxMocks(makeClientDoc([svc('archived', { overrideActive: true })]));
+    await expect(createQuickLogEntry(ARGS, makeCtx()))
+      .rejects.toMatchObject({ code: 'failed-precondition' });
+    expect(clientUpdates()).toHaveLength(0);
+  });
+
+  test('on_hold service → ALLOWED', async () => {
+    setupTxMocks(makeClientDoc([svc('on_hold')]));
+    const result = await createQuickLogEntry(ARGS, makeCtx());
+    expect(result.success).toBe(true);
+    expect(clientUpdates()).toHaveLength(1);
+  });
+
+  test('active service → ALLOWED', async () => {
+    setupTxMocks(makeClientDoc([svc('active')]));
+    const result = await createQuickLogEntry(ARGS, makeCtx());
+    expect(result.success).toBe(true);
+    expect(clientUpdates()).toHaveLength(1);
   });
 });

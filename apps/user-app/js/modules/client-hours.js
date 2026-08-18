@@ -164,28 +164,6 @@ continue;
         }
       }
     }
-
-    this.updateNotificationBell();
-  }
-
-  updateNotificationBell() {
-    const now = new Date();
-    const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-
-    const urgentTasks = (this.manager.budgetTasks || []).filter(
-      (task) =>
-        task &&
-        task.status === 'פעיל' &&
-        task.deadline &&
-        task.description &&
-        new Date(task.deadline) <= oneDayFromNow
-    );
-
-    notificationBell.updateFromSystem(
-      this.blockedClientsData,  // שולח נתונים מלאים במקום Set
-      this.criticalClientsData, // שולח נתונים מלאים במקום Set
-      urgentTasks
-    );
   }
 
   validateClientSelection(clientName, action = 'רישום') {

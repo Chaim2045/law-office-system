@@ -1,5 +1,22 @@
 # Time-Tracking Flow — Deep Audit
 
+> ## 📌 מסמך תקף — אך מיושן בשני דברים (עודכן 2026-07-23)
+>
+> המנגנונים שמתוארים כאן אומתו מול הקוד ועדיין נכונים. **שתי הסתייגויות לפני שקוראים:**
+>
+> 1. **ההכרזה על "steady-state קנוני" כבר לא נכונה.** המסמך קודם לעיצוב-מחדש של
+>    בעלות יחידה על אגרגטים (`docs/SINGLE-OWNER-AGGREGATE-DESIGN.md`, 2026-06) ולממצאי
+>    2026-07 (`docs/FINDINGS-STAGE-TRANSITION-MECHANISM-2026-07.md`,
+>    `docs/FINDINGS-INTERNAL-OFFICE-BILLING-LEAK-2026-07.md`,
+>    `docs/PLAN-HOURS-STAGE-INTEGRITY-2026-07.md`). המערכת אינה במצב סופי.
+> 2. **שני שמות אוספים במסמך שגויים.** `client_reservations` (שורות 55, 344, 488) ו-
+>    `processed_idempotency` (שורות 56, 117, 321) אינם קיימים בקוד. השמות בפועל הם
+>    `reservations` (`functions/timesheet/helpers.js:147`) ו-`processed_operations`
+>    (`functions/clients/index.js:71`). אל תשאילת אותם בשמות שבמסמך.
+>
+> לסיווג שירותים ראה `docs/architecture/SERVICE_TYPES.md`.
+> מסמכים שהוחלפו לגמרי: [`docs/archive/README.md`](../archive/README.md).
+
 **תאריך:** 2026-05-18
 **מסמך מאת:** Claude (deep audit, read-only)
 **סטטוס:** מסמך סקירה — מקור אמת לזרימת מעקב השעות אחרי PR-A/B/C/D/E
@@ -16,7 +33,7 @@
 - **Three writers:** `createQuickLogEntry`, `createTimesheetEntry_v2`, `addTimeToTask_v2`
 - **One fallback trigger:** `onTimesheetEntryChanged` (UPDATE/DELETE/CREATE-fallback)
 - **Idempotency, optimistic locking, event sourcing, 2-phase commit:** כולם נשמרו בעת המיגרציה
-- **Detection layers:** on-demand audit (`auditClientAggregates`) + nightly cron (Check 6 ב-`dailyInvariantCheck`)
+- **Detection layers:** on-demand audit (`auditClientAggregates`) + nightly cron (Check 6 = client-aggregate I1-I4, Check 7 = package-level consumption drift, ב-`dailyInvariantCheck`)
 - **Alert path:** outbox pattern → hachnasovitz bot → קבוצת "דיווחי מערכת"
 - **Read side:** Admin Panel display-only; אפס כתיבות ישירות ל-Firestore מ-UI
 
@@ -392,6 +409,7 @@ DELETE של timesheet_entry. רק ה-**trigger** מטפל. ה-trigger מחשב `
 | 2026-05-17/18 | PR-B.1–B.14 | 14 callsite migrations to helper | Architecture closure: every write canonical |
 | 2026-05-18 | PR-D #297 | `auditClientAggregates` + `repairClientAggregates` admin callables | On-demand drift fix |
 | 2026-05-18 | PR-C.1 #298 | Check 6 in `dailyInvariantCheck` (I1-I4 drift) | Nightly automated detection |
+| 2026-06-21 | PR-DRIFT-1 | Check 7 in `dailyInvariantCheck` (`package.hoursUsed` vs Σentries-by-packageId + orphan/dangling/duplicate signals) + fixed-service Check-0 false-positive fix | Detect package-level CONSUMPTION drift — the rung Check 5 (capacity) never covered |
 | 2026-05-18 | PR-C.2-fns #299 | outbox trigger on `system_health_checks` FAIL | Alert pipeline (law-office-system side) |
 | 2026-05-18 | PR-C.2-bot #2 (hachnasovitz) | listener + WhatsApp send | Alert pipeline (bot side) |
 | 2026-05-18 | PR-E #300 | discriminated union for services + ClientV2 | Type safety |
@@ -505,7 +523,7 @@ After this audit: **0 known architectural gaps**. The 14 PR-B callsites cover ev
 - [functions/shared/aggregates.js](functions/shared/aggregates.js) — calcClientAggregates + isFixedService + invariants
 - [functions/shared/enforcement-mode.js](functions/shared/enforcement-mode.js) — mode kill-switch
 - [functions/admin/repair-aggregates.js](functions/admin/repair-aggregates.js) — audit + repair callables (PR-D)
-- [functions/scheduled/index.js](functions/scheduled/index.js) — dailyInvariantCheck (Check 6 = I1-I4)
+- [functions/scheduled/index.js](functions/scheduled/index.js) — dailyInvariantCheck (Check 6 = I1-I4 client aggregates, Check 7 = package consumption drift)
 - [functions/src/modules/aggregation/](functions/src/modules/aggregation/) — applyHoursDelta, applyLegalProcedureDelta, etc.
 
 ### TypeScript types

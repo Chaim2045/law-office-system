@@ -3,7 +3,26 @@
 **גרסה:** 1.0.0
 **תאריך יצירה:** 2025-12-07
 **מפתח:** Claude AI
-**סטטוס:** ✅ Production Ready
+**סטטוס:** ⛔ DEPRECATED / RETIRED (H.4, 2026-06-15)
+
+---
+
+> **⛔ DEPRECATED — RETIRED in H.4 (2026-06-15). This document is historical.**
+>
+> The task-**approval** gate described below was a dead/broken scaffold: the
+> `approveTaskBudget` / `rejectTaskBudget` Cloud Functions it calls **never
+> existed**, so clicking approve/reject threw (a latent error). The product never
+> ran an approval gate — tasks were always auto-active.
+>
+> **Model A (smart budget meter)** replaced it: budgets are set upfront with **no
+> gate**; over-budget tasks surface via the worker toast (H.4 PR-b) and the admin
+> **"חריגות תקציב"** feed (H.4 PR-a, #376 — the old "אישורי משימות" panel was
+> repurposed). The dead approve/reject service methods were removed in PR-a, and
+> the user-app twin (`apps/user-app/components/task-approval-system/`) was deleted
+> in PR-b. The remaining code in this folder is an inert stub kept only because two
+> pages still `import` `TaskApprovalDialog`. See `docs/MASTER_PLAN.md` §8.6.
+>
+> The original (now-obsolete) documentation follows for historical reference.
 
 ---
 

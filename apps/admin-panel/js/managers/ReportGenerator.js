@@ -26,7 +26,7 @@
          * הפקת דוח
          */
         async generate(formData) {
-            console.log('📄 Generating report with data:', formData);
+            console.log('📄 Generating report for client:', formData.clientId);
 
             if (!window.ClientsDataManager) {
                 throw new Error('ClientsDataManager not found');
@@ -67,8 +67,8 @@
          * איסוף נתוני הדוח
          */
         async collectReportData(client, formData) {
-            const startDate = new Date(formData.startDate);
-            const endDate = new Date(formData.endDate);
+            const startDate = this._parseLocalDate(formData.startDate);
+            const endDate = this._parseLocalDate(formData.endDate, true);
 
             // Get timesheet entries
             let timesheetEntries = this.dataManager.getClientTimesheetEntries(
@@ -85,7 +85,7 @@
             );
 
             // Filter by service if selected
-            if (formData.service && formData.service !== 'all') {
+            if (formData.service) {
                 const matchService = (entry) => {
                     if (formData.serviceId && entry.serviceId === formData.serviceId) {
 return true;
@@ -101,10 +101,10 @@ return true;
                     if (formData.stage && entry.stage === formData.stage) {
 return true;
 }
-                    if (entry.service === formData.service) {
+                    if ((entry.service || '').trim() === (formData.service || '').trim()) {
 return true;
 }
-                    if (entry.serviceName === formData.service) {
+                    if ((entry.serviceName || '').trim() === (formData.service || '').trim()) {
 return true;
 }
                     return false;
@@ -133,7 +133,7 @@ return true;
          */
         calculateStatistics(client, timesheetEntries, budgetTasks) {
             // Total minutes/hours
-            const totalMinutes = timesheetEntries.reduce((sum, entry) => sum + (entry.minutes || 0), 0);
+            const totalMinutes = timesheetEntries.reduce((sum, entry) => sum + this._mins(entry), 0);
             const totalHours = totalMinutes / 60;
 
             // Group by employee
@@ -149,7 +149,7 @@ return true;
                         entries: 0
                     };
                 }
-                byEmployee[employee].minutes += entry.minutes || 0;
+                byEmployee[employee].minutes += this._mins(entry);
                 byEmployee[employee].hours = byEmployee[employee].minutes / 60;
                 byEmployee[employee].entries++;
             });
@@ -166,7 +166,7 @@ return true;
                         entries: 0
                     };
                 }
-                byService[service].minutes += entry.minutes || 0;
+                byService[service].minutes += this._mins(entry);
                 byService[service].hours = byService[service].minutes / 60;
                 byService[service].entries++;
             });
@@ -200,6 +200,12 @@ return true;
 
             // Open in new window
             const newWindow = window.open('', '_blank');
+            if (!newWindow) {
+                if (window.notify) {
+                    window.notify.error('הדפדפן חסם את החלון. אנא אפשר חלונות קופצים ונסה שוב.', 'שגיאה');
+                }
+                return;
+            }
             newWindow.document.write(html);
             newWindow.document.close();
 
@@ -217,13 +223,17 @@ return true;
         buildHTMLContent(reportData) {
             const { client, formData, timesheetEntries, budgetTasks, stats, generatedAt } = reportData;
 
+            // Fixed-price legal procedures have no hours budget — suppress the running-balance
+            // "remaining" columns (the price/effort picture is shown in the service info + summary).
+            const reportIsFixed = this.resolveServiceHours(client, formData).isFixed;
+
             return `
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>דוח פעילות ללקוח - ${client.fullName}</title>
+    <title>דוח פעילות ללקוח - ${this.escapeHtml(client.fullName)}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         * {
@@ -479,11 +489,11 @@ return true;
             <div class="info-grid">
                 <div class="info-item">
                     <span class="info-label">שם הלקוח</span>
-                    <span class="info-value">${client.fullName}</span>
+                    <span class="info-value">${this.escapeHtml(client.fullName)}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">מספר תיק</span>
-                    <span class="info-value">${client.caseNumber || '-'}</span>
+                    <span class="info-value">${this.escapeHtml(client.caseNumber || '-')}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">תקופת הדוח</span>
@@ -499,7 +509,7 @@ return true;
         <!-- Hours Info (if applicable) -->
         ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' || formData.service ? `
         <div class="section">
-            <h3 class="section-title"><i class="fas fa-clock"></i> מידע על ${formData.service === 'all' ? 'כל השירותים' : formData.service}</h3>
+            <h3 class="section-title"><i class="fas fa-clock"></i> מידע על ${this.escapeHtml(formData.service)}</h3>
             <div class="info-grid">
                 ${this.renderServiceInfo(client, formData)}
             </div>
@@ -524,7 +534,7 @@ return true;
                 <tbody>
                     ${stats.byEmployee.map(emp => `
                         <tr>
-                            <td>${emp.employeeName}</td>
+                            <td>${this.escapeHtml(emp.employeeName)}</td>
                             <td class="highlight">${emp.hours.toFixed(2)} שעות</td>
                             <td>${emp.entries}</td>
                         </tr>
@@ -546,9 +556,9 @@ return true;
                         <th>תיאור פעולה</th>
                         <th>צוות משפטי</th>
                         <th>דקות</th>
-                        ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? '<th>דקות מצטבר</th>' : ''}
-                        ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? '<th>דקות נותרות</th>' : ''}
-                        ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? '<th>שעות נותרות</th>' : ''}
+                        ${(client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure') && !reportIsFixed ? '<th>דקות מצטבר</th>' : ''}
+                        ${(client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure') && !reportIsFixed ? '<th>דקות נותרות</th>' : ''}
+                        ${(client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure') && !reportIsFixed ? '<th>שעות נותרות</th>' : ''}
                     </tr>
                 </thead>
                 <tbody>
@@ -573,7 +583,7 @@ return true;
                 <tbody>
                     ${stats.byService.map(service => `
                         <tr>
-                            <td>${service.service}</td>
+                            <td>${this.escapeHtml(service.service)}</td>
                             <td class="highlight">${service.hours.toFixed(2)} שעות</td>
                             <td>${service.entries}</td>
                         </tr>
@@ -608,77 +618,208 @@ return true;
          * to client-level totals (client.totalHours / client.hoursRemaining) — that
          * fallback was the over-count bug, where a stage report showed the sum of ALL
          * the client's services/stages instead of just the selected one:
-         *   (a) 'all' / 'כל השירותים' -> aggregate of billable (non-archived) services
-         *   (b) formData.stage set     -> the matching legal_procedure stage only
-         *   (c) top-level service match -> that service (hour packages / non-staged)
-         *   (d) no match               -> matchType 'none', zeros. The caller MAY derive
+         *   (a) formData.stage set     -> the matching legal_procedure stage only
+         *   (b) top-level service match -> that service (hour packages / non-staged)
+         *   (c) no match               -> matchType 'none', zeros. The caller MAY derive
          *       used-hours from its own service-scoped timesheet entries, but MUST NOT
          *       borrow client.totalHours.
          *
          * @param {Object} client - client object (already loaded by ClientsDataManager)
          * @param {Object} formData - { service, serviceId, stage, ... }
-         * @returns {{totalHours:number, usedHours:number, remainingHours:number, matchType:string}}
+         * @returns {{totalHours:number, usedHours:number, remainingHours:number, matchType:string, isFixed:boolean, fixedPrice:(number|null), totalFixedPrice:(number|null)}}
          */
+        // Canonical fixed-price predicate. Uses window.ClientTypeDisplay.isFixedService
+        // (shared/business-rules/service-classification) — inline service-type checks are
+        // banned (eslint no-restricted-syntax). If the helper is absent, treat as NOT fixed
+        // (fail-safe: keeps the hourly framing; the null-guard still prevents any crash).
+        _isFixedService(svc) {
+            return !!(svc && window.ClientTypeDisplay
+                && typeof window.ClientTypeDisplay.isFixedService === 'function'
+                && window.ClientTypeDisplay.isFixedService(svc));
+        }
+
+        // Coerces a timesheet entry's `minutes` field to a number, guarding against
+        // string-coerced values (e.g. "60") and null/undefined — never lets `||`
+        // silently treat a numeric 0 or a non-numeric string as a valid amount.
+        _mins(entry) {
+            return Number(entry.minutes) || 0;
+        }
+
+        // Parses "YYYY-MM-DD" → local midnight (or end-of-day when endOfDay=true).
+        // new Date("YYYY-MM-DD") creates UTC midnight which is ~21:00-22:00 the PREVIOUS
+        // day in Israel (UTC+2/+3), silently excluding entries on the boundary day.
+        _parseLocalDate(dateStr, endOfDay = false) {
+            if (!dateStr) {
+return null;
+}
+            const parts = dateStr.split('-');
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10) - 1;
+            const d = parseInt(parts[2], 10);
+            if (isNaN(y) || isNaN(m) || isNaN(d)) {
+return null;
+}
+            return endOfDay
+                ? new Date(y, m, d, 23, 59, 59, 999)
+                : new Date(y, m, d, 0, 0, 0, 0);
+        }
+
+        /**
+         * ONE message for the ambiguous-stage refusal, used by both resolvers.
+         * Wording deliberately says "no unambiguous serviceId RESOLVED" — a serviceId may
+         * well have been supplied and simply not matched any service (a stale id), and a
+         * message claiming it was "not supplied" would send the next debugger the wrong way.
+         * Non-PII by contract: stage id + owner count only — never a client name or an amount.
+         */
+        _warnAmbiguousStage(stage, owners, origin) {
+            console.warn(
+                'ReportGenerator: stage id owned by multiple services and no unambiguous serviceId resolved — refusing to guess.',
+                { stage, owners, origin }
+            );
+        }
+
+        /**
+         * איתור השירות לפי נתוני הטופס — לוגיקת התאמה משותפת (SSOT)
+         * משמש הן ב-resolveServiceHours והן ב-renderPackagesBreakdown
+         */
+        findServiceByFormData(client, formData) {
+            const services = Array.isArray(client && client.services) ? client.services : [];
+            const target = (formData.service || '').trim();
+            if (formData.serviceId) {
+                const byId = services.find(s => s.id === formData.serviceId);
+                if (byId) {
+                    return byId;
+                }
+            }
+            // Stage-id fallback is trustworthy only when exactly ONE service owns the id
+            // (stage_a/b/c are position labels every legal procedure reuses). Two owners
+            // and no serviceId = ambiguous → drop the clause rather than pick whichever
+            // service comes first. Clause order is otherwise preserved.
+            const stageOwners = formData.stage
+                ? services.filter(s => Array.isArray(s.stages) && s.stages.some(st => st.id === formData.stage))
+                : [];
+            if (stageOwners.length > 1) {
+                this._warnAmbiguousStage(formData.stage, stageOwners.length, 'findServiceByFormData');
+            }
+            const uniqueStageOwner = stageOwners.length === 1 ? stageOwners[0] : null;
+            return services.find(s => {
+                const sName = (s.name || '').trim();
+                const sServiceName = (s.serviceName || '').trim();
+                const sDisplayName = (s.displayName || '').trim();
+                return sName === target ||
+                    sServiceName === target ||
+                    sDisplayName === target ||
+                    (s.stage && target.includes(s.stage)) ||
+                    (uniqueStageOwner !== null && uniqueStageOwner === s);
+            }) || null;
+        }
+
         resolveServiceHours(client, formData) {
             const services = Array.isArray(client && client.services) ? client.services : [];
 
-            // (a) All services — the ONLY path allowed to read client-level numbers,
-            // and only as a last resort when the services[] array is empty.
-            if (formData.service === 'all' || formData.service === 'כל השירותים') {
-                if (services.length > 0) {
-                    // PR-G.3.14: exclude archived services (consistent with aggregates.js).
-                    const billable = services.filter(s => (s && s.status || 'active') !== 'archived');
-                    const totalHours = billable.reduce((sum, s) => sum + (s.totalHours || s.hours || 0), 0);
-                    const remainingHours = billable.reduce((sum, s) => sum + (s.hoursRemaining || s.remainingHours || 0), 0);
-                    return { totalHours, usedHours: totalHours - remainingHours, remainingHours, matchType: 'all' };
-                }
-                const totalHours = client.totalHours || 0;
-                const remainingHours = client.hoursRemaining || 0;
-                return { totalHours, usedHours: totalHours - remainingHours, remainingHours, matchType: 'all' };
-            }
-
-            // (b) Legal-procedure stage — scope to the SELECTED stage only.
+            // (a) Legal-procedure stage — scope to the SELECTED stage only.
             if (formData.stage) {
                 let selectedStage = null;
-                for (const s of services) {
-                    if (Array.isArray(s.stages)) {
-                        const match = s.stages.find(st => st.id === formData.stage);
-                        if (match) {
-                            selectedStage = match;
-                            break;
-                        }
-                    }
+                let parentService = null;
+                // Stage ids are POSITION LABELS (stage_a/b/c) that every legal procedure
+                // reuses — they are NOT unique within a client. The previous bare scan
+                // took the first service in services[] that happened to own a matching
+                // id, so on a client with two procedures a stage report could carry the
+                // OTHER matter's pricing type, price and hours (report identity bug).
+                // Scope to the service the form selected; scan only when no serviceId
+                // was supplied, and refuse to guess when that scan is ambiguous — the
+                // caller's matchType 'none' branch then derives used-hours from this
+                // service's own timesheet entries and never borrows a foreign total.
+                const scoped = formData.serviceId
+                    ? services.filter(s => s.id === formData.serviceId)
+                    : services;
+                const stageOwners = scoped.filter(s =>
+                    Array.isArray(s.stages) && s.stages.some(st => st.id === formData.stage)
+                );
+                if (stageOwners.length === 1) {
+                    parentService = stageOwners[0];
+                    selectedStage = parentService.stages.find(st => st.id === formData.stage);
+                } else if (stageOwners.length > 1) {
+                    this._warnAmbiguousStage(formData.stage, stageOwners.length, 'resolveServiceHours');
                 }
                 if (selectedStage) {
-                    const totalHours = selectedStage.totalHours || selectedStage.hours || 0;
-                    const remainingHours = (selectedStage.hoursRemaining !== undefined)
+                    const totalHours = selectedStage.totalHours ?? selectedStage.hours ?? 0;
+                    // Number.isFinite (not `!== undefined`): a stored `null` aggregate
+                    // (legacy/uninitialized stage) must fall through to the recompute,
+                    // not slip past the guard and crash later at `.toFixed()`.
+                    // PRICING-AWARE worked hours. A FIXED stage keeps its figure in
+                    // `totalHoursWorked`; `hoursUsed` is initialised to 0 and the backend
+                    // never touches it (functions/services/index.js:899-909 says so
+                    // explicitly). So `Number.isFinite(hoursUsed)` was TRUE-with-0 on a
+                    // fixed stage: the guard passed, the fallback never ran, and a report
+                    // sent to the client printed 0.0 worked hours. Measured on live data
+                    // 2026-08-18: 26 stages affected, worst case 120.09h shown as 22.5h.
+                    // Canonical rule: js/core/stage-hours.js == backend
+                    // calcStageEffectiveHoursUsed. pricingType is inherited from the parent
+                    // service when the stage predates the field.
+                    const stageForPricing = selectedStage.pricingType
+                        ? selectedStage
+                        : Object.assign({}, selectedStage, {
+                            pricingType: this._isFixedService(parentService) ? 'fixed' : null
+                        });
+                    const SH = (typeof window !== 'undefined' && window.StageHours) ? window.StageHours : null;
+                    const storedWorked = SH
+                        ? SH.stageEffectiveHoursUsed(stageForPricing)
+                        : (stageForPricing.pricingType === 'fixed'
+                            ? (Number.isFinite(selectedStage.totalHoursWorked)
+                                ? selectedStage.totalHoursWorked
+                                : (Number.isFinite(selectedStage.hoursUsed) ? selectedStage.hoursUsed : 0))
+                            : (Number.isFinite(selectedStage.hoursUsed) ? selectedStage.hoursUsed : 0));
+                    const hasStoredWorked = SH
+                        ? SH.stageHasStoredWorkedHours(stageForPricing)
+                        : (stageForPricing.pricingType === 'fixed'
+                            ? (Number.isFinite(selectedStage.totalHoursWorked) || Number.isFinite(selectedStage.hoursUsed))
+                            : Number.isFinite(selectedStage.hoursUsed));
+                    const remainingHours = Number.isFinite(selectedStage.hoursRemaining)
                         ? selectedStage.hoursRemaining
-                        : (totalHours - (selectedStage.hoursUsed || 0));
-                    const usedHours = (selectedStage.hoursUsed !== undefined)
-                        ? selectedStage.hoursUsed
-                        : (totalHours - remainingHours);
-                    return { totalHours, usedHours, remainingHours, matchType: 'stage' };
+                        : (totalHours - storedWorked);
+                    // PRESERVED: when the stage stores NO worked counter at all, the figure
+                    // is still derived from total - remaining. A 0 there would mean
+                    // "unknown", not "none". Only the SOURCE of the counter changed.
+                    const usedHours = hasStoredWorked ? storedWorked : (totalHours - remainingHours);
+                    return {
+                        totalHours, usedHours, remainingHours, matchType: 'stage',
+                        isFixed: this._isFixedService(parentService),
+                        fixedPrice: Number.isFinite(selectedStage.fixedPrice) ? selectedStage.fixedPrice : null,
+                        totalFixedPrice: (parentService && Number.isFinite(parentService.totalFixedPrice)) ? parentService.totalFixedPrice : null,
+                        // Stored worked-hours: stage `hoursUsed`, else the parent service's; `null`
+                        // (legacy/uninitialised) -> the fixed renderer derives it from the ledger.
+                        // Pricing-aware, and still `null` when the stage carries NEITHER
+                        // counter — that null is what lets resolveFixedWorkedHours fall
+                        // back to the ledger for a legacy/uninitialised stage. Reading
+                        // `hoursUsed` alone made a fixed stage look "stored as 0", which
+                        // both printed 0 and suppressed that fallback.
+                        storedUsedHours: hasStoredWorked
+                            ? storedWorked
+                            : ((parentService && Number.isFinite(parentService.hoursUsed)) ? parentService.hoursUsed : null)
+                    };
                 }
             }
 
-            // (c) Top-level service match (hour packages and any non-staged service).
-            const selectedService = services.find(s =>
-                s.name === formData.service ||
-                s.serviceName === formData.service ||
-                s.displayName === formData.service ||
-                (s.stage && formData.service.includes(s.stage)) ||
-                (s.displayName && s.displayName.includes(formData.service))
-            );
+            // (b) Top-level service match (hour packages and any non-staged service).
+            const selectedService = this.findServiceByFormData(client, formData);
             if (selectedService) {
-                const totalHours = selectedService.totalHours || selectedService.hours ||
-                                   selectedService.allocatedHours || selectedService.stageHours || 0;
-                const remainingHours = selectedService.hoursRemaining || selectedService.remainingHours || 0;
-                return { totalHours, usedHours: totalHours - remainingHours, remainingHours, matchType: 'service' };
+                const totalHours = selectedService.totalHours ?? selectedService.hours ??
+                                   selectedService.allocatedHours ?? selectedService.stageHours ?? 0;
+                const remainingHours = selectedService.hoursRemaining ?? selectedService.remainingHours ?? 0;
+                return {
+                    totalHours, usedHours: totalHours - remainingHours, remainingHours, matchType: 'service',
+                    isFixed: this._isFixedService(selectedService),
+                    fixedPrice: null,
+                    totalFixedPrice: Number.isFinite(selectedService.totalFixedPrice) ? selectedService.totalFixedPrice
+                        : (Number.isFinite(selectedService.totalPrice) ? selectedService.totalPrice : null),
+                    storedUsedHours: Number.isFinite(selectedService.hoursUsed) ? selectedService.hoursUsed : null
+                };
             }
 
-            // (d) No match — zeros. Caller may derive used-hours from service-scoped
+            // (c) No match — zeros. Caller may derive used-hours from service-scoped
             // timesheet entries, but MUST NOT fall back to client.totalHours.
-            return { totalHours: 0, usedHours: 0, remainingHours: 0, matchType: 'none' };
+            return { totalHours: 0, usedHours: 0, remainingHours: 0, matchType: 'none', isFixed: false, fixedPrice: null, totalFixedPrice: null };
         }
 
         /**
@@ -720,27 +861,34 @@ return true;
             const serviceRemainingHours = hours.remainingHours;
 
             // Purchase date (display-only; independent of the hours figures).
-            const dateService = client.services?.find(s =>
-                s.name === formData.service ||
-                s.serviceName === formData.service ||
-                s.displayName === formData.service ||
-                (s.stage && formData.service.includes(s.stage)) ||
-                (s.displayName && s.displayName.includes(formData.service)) ||
-                (formData.stage && Array.isArray(s.stages) && s.stages.some(st => st.id === formData.stage)));
+            const dateService = this.findServiceByFormData(client, formData);
             const purchaseDate = (dateService && dateService.purchasedAt)
                 ? this.formatDate(dateService.purchasedAt.toDate())
                 : (client.createdAt ? this.formatDate(client.createdAt.toDate()) : '-');
 
+            // Fixed-price legal procedure: no hours budget exists — show the price + internal
+            // work-hours instead of an (always-overdrawn) hours framing. Payment status
+            // (paid/balance) is intentionally NOT shown: no live source yet, deferred to H.6
+            // (MASTER_PLAN §8.5 D-C). The null-guard below still applies to the hourly path.
+            if (hours.isFixed) {
+                const workedHours = this.resolveFixedWorkedHours(hours, client, formData);
+                return this.renderFixedServiceInfo(hours, purchaseDate, workedHours);
+            }
+
             // (d) Service/stage not matched in client.services: derive USED hours from
             // this service's own timesheet entries. NEVER borrow client.totalHours.
             if (hours.matchType === 'none' && this.dataManager) {
-                console.warn(`Service "${formData.service}" not matched in client.services; deriving used-hours from timesheet (no client-total fallback).`);
+                console.warn('Service not matched in client.services; deriving used-hours from timesheet (no client-total fallback).');
                 const stageMapping = window.SYSTEM_CONSTANTS?.STAGE_NAMES || {
                     'stage_a': 'שלב א',
                     'stage_b': 'שלב ב',
                     'stage_c': 'שלב ג'
                 };
-                const allEntries = this.dataManager.getClientTimesheetEntries(client.fullName);
+                const allEntries = this.dataManager.getClientTimesheetEntries(
+                    client.fullName,
+                    this._parseLocalDate(formData.startDate),
+                    this._parseLocalDate(formData.endDate, true)
+                );
                 const serviceEntries = allEntries.filter(entry =>
                     entry.serviceName === formData.service ||
                     entry.service === formData.service ||
@@ -749,7 +897,7 @@ return true;
                     (entry.serviceId && stageMapping[entry.serviceId] === formData.service)
                 );
                 if (serviceEntries.length > 0) {
-                    const totalMinutes = serviceEntries.reduce((sum, e) => sum + (e.minutes || 0), 0);
+                    const totalMinutes = serviceEntries.reduce((sum, e) => sum + this._mins(e), 0);
                     serviceUsedHours = totalMinutes / 60;
                 }
             }
@@ -781,6 +929,64 @@ return true;
         }
 
         /**
+         * Worked-hours for a FIXED-price service. Prefer the stored stage/service hoursUsed;
+         * when it is null (legacy/uninitialised), derive from the service-scoped timesheet
+         * ledger — the SAME sum the matchType==='none' branch + ClientReportModal use — so the
+         * report matches the SSOT instead of showing a fake 0.0.
+         */
+        resolveFixedWorkedHours(hours, client, formData) {
+            if (Number.isFinite(hours.storedUsedHours)) {
+                return hours.storedUsedHours;
+            }
+            if (this.dataManager && typeof this.dataManager.getClientTimesheetEntries === 'function') {
+                const stageMapping = window.SYSTEM_CONSTANTS?.STAGE_NAMES || {
+                    'stage_a': 'שלב א', 'stage_b': 'שלב ב', 'stage_c': 'שלב ג'
+                };
+                const allEntries = this.dataManager.getClientTimesheetEntries(client.fullName) || [];
+                const serviceEntries = allEntries.filter(entry =>
+                    entry.serviceName === formData.service ||
+                    entry.service === formData.service ||
+                    entry.serviceId === formData.service ||
+                    (formData.stage && entry.serviceId === formData.stage) ||
+                    (entry.serviceId && stageMapping[entry.serviceId] === formData.service)
+                );
+                const totalMinutes = serviceEntries.reduce((sum, e) => sum + this._mins(e), 0);
+                return totalMinutes / 60;
+            }
+            return 0;
+        }
+
+        /**
+         * Render service info for a FIXED-price legal procedure.
+         * תצוגת מידע לשירות פיקס — מחיר + שעות עבודה (מדידה פנימית), בלי תקרת/יתרת שעות.
+         * Payment status (paid/balance) is deferred to H.6 (no live source — MASTER_PLAN §8.5 D-C).
+         */
+        renderFixedServiceInfo(hours, purchaseDate, workedHours) {
+            const price = Number.isFinite(hours.fixedPrice) ? hours.fixedPrice
+                : (Number.isFinite(hours.totalFixedPrice) ? hours.totalFixedPrice : null);
+            const priceStr = price !== null ? '₪' + price.toLocaleString('he-IL') : '—';
+            const worked = Number.isFinite(workedHours) ? workedHours : 0;
+            return `
+                <div class="info-item">
+                    <span class="info-label">תמחור</span>
+                    <span class="info-value">מחיר קבוע (פיקס)</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">מחיר</span>
+                    <span class="info-value">${priceStr}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">תאריך רכישה</span>
+                    <span class="info-value">${purchaseDate}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">שעות עבודה (מדידה פנימית)</span>
+                    <span class="info-value">${worked.toFixed(1)} שעות</span>
+                </div>
+            `;
+        }
+
+        /**
          * Render timesheet rows with running balance
          * רינדור שורות שעתון עם יתרה רצה
          */
@@ -797,16 +1003,18 @@ return true;
             // Initial balance = budget of the SELECTED service/stage only (SSOT helper).
             // For a single service/stage this never uses client.totalHours (the over-count
             // bug where the running balance counted down from the sum of all services).
+            // Fixed-price has no hours budget → no running-balance columns (matches the header gating).
+            const resolvedHours = this.resolveServiceHours(client, formData);
+            const showBalance = (client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure') && !resolvedHours.isFixed;
             let serviceTotalMinutes = 0;
-            if (client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure') {
-                const hours = this.resolveServiceHours(client, formData);
-                serviceTotalMinutes = (hours.totalHours || 0) * 60;
+            if (showBalance) {
+                serviceTotalMinutes = (resolvedHours.totalHours || 0) * 60;
             }
 
             let accumulatedMinutes = 0;
 
             return sortedEntries.map(entry => {
-                const minutes = entry.minutes || 0;
+                const minutes = this._mins(entry);
 
                 // Calculate accumulated minutes
                 accumulatedMinutes += minutes;
@@ -816,7 +1024,7 @@ return true;
                 const remainingHours = remainingMinutes / 60;
 
                 let balanceClass = '';
-                if (client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure') {
+                if (showBalance) {
                     if (remainingMinutes <= 0) {
                         balanceClass = 'danger';
                     } else if (remainingMinutes < serviceTotalMinutes * 0.2) {
@@ -829,12 +1037,12 @@ return true;
                 return `
                     <tr>
                         <td>${this.formatDate(entry.date)}</td>
-                        <td>${entry.action || entry.taskDescription || entry.description || '-'}</td>
-                        <td>${this.dataManager.getEmployeeName(entry.employee)}</td>
+                        <td>${this.escapeHtml(entry.action || entry.taskDescription || entry.description || '-')}</td>
+                        <td>${this.escapeHtml(this.dataManager.getEmployeeName(entry.employee))}</td>
                         <td class="highlight">${minutes}</td>
-                        ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td>${accumulatedMinutes}</td>` : ''}
-                        ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td class="${balanceClass}">${remainingMinutes}</td>` : ''}
-                        ${client.type === 'hours' || client.type === 'legal_procedure' || client.procedureType === 'legal_procedure' ? `<td class="${balanceClass}">${remainingHours.toFixed(2)}</td>` : ''}
+                        ${showBalance ? `<td>${accumulatedMinutes}</td>` : ''}
+                        ${showBalance ? `<td class="${balanceClass}">${remainingMinutes}</td>` : ''}
+                        ${showBalance ? `<td class="${balanceClass}">${remainingHours.toFixed(2)}</td>` : ''}
                     </tr>
                 `;
             });
@@ -852,6 +1060,14 @@ return true;
 
             // SSOT: resolve hours scoped to the selected service/stage (shared helper).
             const hours = this.resolveServiceHours(client, formData);
+
+            // Fixed-price: show price + internal work-hours, never an hours overdraft.
+            // ONE SSOT sourcing path — the SAME resolveFixedWorkedHours renderServiceInfo uses —
+            // so the service-info card and this summary line can never disagree on worked-hours.
+            if (hours.isFixed) {
+                return this.renderFixedFinalSummary(hours, this.resolveFixedWorkedHours(hours, client, formData));
+            }
+
             let serviceTotalHours = hours.totalHours;
             let serviceUsedHours = hours.usedHours;
             let serviceRemainingHours = hours.remainingHours;
@@ -859,7 +1075,7 @@ return true;
             // (d) Not matched: derive used-hours from the already service-scoped timesheet
             // entries passed in (collectReportData filters them). NEVER borrow client.totalHours.
             if (hours.matchType === 'none') {
-                serviceUsedHours = timesheetEntries.reduce((sum, e) => sum + ((e.minutes || 0) / 60), 0);
+                serviceUsedHours = timesheetEntries.reduce((sum, e) => sum + (this._mins(e) / 60), 0);
                 serviceTotalHours = 0;
                 serviceRemainingHours = -serviceUsedHours;
             }
@@ -874,6 +1090,25 @@ return true;
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: #374151;">
                 <span style="font-weight: 500;">סיכום:</span>
                 <span>תקציב ${serviceTotalHours.toFixed(1)} שעות | בוצעו ${serviceUsedHours.toFixed(1)} שעות | יתרה ${serviceRemainingHours.toFixed(1)} שעות${hasOverdraft ? ' (חריגה)' : ''}</span>
+            </div>
+        </div>
+            `;
+        }
+
+        /**
+         * Final summary for a FIXED-price legal procedure — price + internal work-hours.
+         * סיכום לשירות פיקס: מחיר + שעות עבודה (מדידה פנימית), בלי תקרת/יתרת/חריגת שעות.
+         */
+        renderFixedFinalSummary(hours, workedHours) {
+            const price = Number.isFinite(hours.fixedPrice) ? hours.fixedPrice
+                : (Number.isFinite(hours.totalFixedPrice) ? hours.totalFixedPrice : null);
+            const priceStr = price !== null ? '₪' + price.toLocaleString('he-IL') : '—';
+            const worked = Number.isFinite(workedHours) ? workedHours : 0;
+            return `
+        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: #374151;">
+                <span style="font-weight: 500;">סיכום:</span>
+                <span>תמחור פיקס | מחיר ${priceStr} | שעות עבודה (מדידה פנימית) ${worked.toFixed(1)}</span>
             </div>
         </div>
             `;
@@ -904,12 +1139,16 @@ return true;
 
             const { client, timesheetEntries, budgetTasks, stats } = reportData;
 
+            if (!this.ensureCsvSafe()) {
+                return;
+            }
+
             // Build CSV content
             let csv = '\uFEFF'; // BOM for Hebrew support
 
             // Header
-            csv += `דוח פעילות ללקוח - ${client.fullName}\n`;
-            csv += `מספר תיק: ${client.caseNumber || '-'}\n`;
+            csv += `דוח פעילות ללקוח - ${window.CsvSafe.cell(client.fullName)}\n`;
+            csv += `מספר תיק: ${window.CsvSafe.cell(client.caseNumber || '-')}\n`;
             csv += `תקופה: ${this.formatDate(reportData.formData.startDate)} - ${this.formatDate(reportData.formData.endDate)}\n`;
             csv += '\n';
 
@@ -923,7 +1162,7 @@ return true;
             csv += 'פירוט שעות:\n';
             csv += 'תאריך,חבר צוות,שירות,זמן (דקות),תיאור\n';
             timesheetEntries.forEach(entry => {
-                csv += `"${this.formatDate(entry.date)}","${this.dataManager.getEmployeeName(entry.employee)}","${entry.serviceName || entry.service || '-'}","${entry.minutes}","${entry.action || entry.taskDescription || entry.description || ''}"\n`;
+                csv += `"${this.formatDate(entry.date)}","${window.CsvSafe.cell(this.dataManager.getEmployeeName(entry.employee))}","${window.CsvSafe.cell(entry.serviceName || entry.service || '-')}","${entry.minutes}","${window.CsvSafe.cell(entry.action || entry.taskDescription || entry.description || '')}"\n`;
             });
             csv += '\n';
 
@@ -931,7 +1170,7 @@ return true;
             csv += 'משימות:\n';
             csv += 'שם המשימה,סטטוס,זמן מתוכנן (שעות),זמן בפועל (דקות),תאריך יעד\n';
             budgetTasks.forEach(task => {
-                csv += `"${task.taskName || task.title}","${this.getTaskStatusText(task.status)}","${task.estimatedHours || 0}","${task.actualMinutes || 0}","${task.deadline ? this.formatDate(task.deadline) : '-'}"\n`;
+                csv += `"${window.CsvSafe.cell(task.taskName || task.title)}","${window.CsvSafe.cell(this.getTaskStatusText(task.status))}","${task.estimatedHours || 0}","${task.actualMinutes || 0}","${window.CsvSafe.cell(task.deadline ? this.formatDate(task.deadline) : '-')}"\n`;
             });
 
             // Download
@@ -981,6 +1220,10 @@ return '-';
             } else if (typeof date === 'string') {
                 d = new Date(date);
             } else {
+                return '-';
+            }
+
+            if (isNaN(d.getTime())) {
                 return '-';
             }
 
@@ -1040,34 +1283,26 @@ return '0:00';
          * פירוט חבילות שעות לשלב
          */
         renderPackagesBreakdown(client, formData) {
-            // Only show for legal procedures or hour packages
-            if (formData.service === 'all' || formData.service === 'כל השירותים') {
-                return ''; // Don't show packages breakdown for "all services"
-            }
-
-            // Find the service
-            const service = client.services?.find(s => {
-                return s.name === formData.service ||
-                       s.serviceName === formData.service ||
-                       s.displayName === formData.service;
-            });
+            // Find the service (SSOT — same matcher as resolveServiceHours)
+            const service = this.findServiceByFormData(client, formData);
 
             if (!service) {
                 return '';
             }
 
             // Parse date range from formData
-            const startDate = formData.startDate ? new Date(formData.startDate) : null;
-            const endDate = formData.endDate ? new Date(formData.endDate) : null;
+            const startDate = this._parseLocalDate(formData.startDate);
+            const endDate = this._parseLocalDate(formData.endDate, true);
 
             // Check if it's a legal procedure
             if (service.type === 'legal_procedure') {
-                // Find the specific stage
-                const stage = service.stages?.find(s => {
-                    const stageName = s.name || s.id;
-                    return formData.service.includes(stageName) ||
-                           formData.service.includes(s.id);
-                });
+                // עדיפות להתאמה מדויקת לפי מזהה השלב מהטופס; נפילה חזרה להתאמת שם (legacy)
+                const stage = service.stages?.find(s => formData.stage && s.id === formData.stage)
+                    || service.stages?.find(s => {
+                        const stageName = s.name || s.id;
+                        return formData.service.includes(stageName) ||
+                               formData.service.includes(s.id);
+                    });
 
                 if (!stage || !stage.packages || stage.packages.length === 0) {
                     return '';
@@ -1080,7 +1315,7 @@ return '0:00';
                     return ''; // No packages in this date range
                 }
 
-                return this.renderPackagesTable(filteredPackages, formData.service, startDate, endDate);
+                return this.renderPackagesTable(filteredPackages, stage.packages, formData.service, startDate, endDate);
             }
 
             // For hour packages (non-legal procedures)
@@ -1092,7 +1327,7 @@ return '0:00';
                     return ''; // No packages in this date range
                 }
 
-                return this.renderPackagesTable(filteredPackages, formData.service, startDate, endDate);
+                return this.renderPackagesTable(filteredPackages, service.packages, formData.service, startDate, endDate);
             }
 
             return '';
@@ -1113,13 +1348,24 @@ return '0:00';
             }
 
             return packages.filter(pkg => {
+                // חבילה פעילה עם יתרת שעות מוצגת תמיד — סינון תאריכים חל רק על חבילות שמוצו
+                // Active packages always shown (they still contribute hours).
+                const isActive = (pkg.hoursRemaining ?? 0) > 0 ||
+                                 ((pkg.hours ?? 0) - (pkg.hoursUsed ?? 0)) > 0;
+                if (isActive) {
+                    return true;
+                }
+
                 // Get package purchase date
                 const pkgDate = pkg.purchaseDate || pkg.createdAt;
                 if (!pkgDate) {
                     return true; // Include packages without date (shouldn't happen)
                 }
 
-                const packageDate = new Date(pkgDate);
+                const packageDate = pkgDate?.toDate ? pkgDate.toDate() : new Date(pkgDate);
+                if (isNaN(packageDate.getTime())) {
+                    return true;
+                }
 
                 // Check if package is within date range
                 if (startDate && packageDate < startDate) {
@@ -1138,15 +1384,18 @@ return '0:00';
          * Render packages table HTML
          * יצירת טבלת חבילות
          */
-        renderPackagesTable(packages, serviceName, startDate, endDate) {
+        renderPackagesTable(packages, allPackages, serviceName, startDate, endDate) {
             if (!packages || packages.length === 0) {
                 return '';
             }
 
-            // Calculate totals
-            const totalHours = packages.reduce((sum, pkg) => sum + (pkg.hours || 0), 0);
-            const totalUsed = packages.reduce((sum, pkg) => sum + (pkg.hoursUsed || 0), 0);
-            const totalRemaining = packages.reduce((sum, pkg) => sum + (pkg.hoursRemaining || pkg.hours - (pkg.hoursUsed || 0)), 0);
+            // סיכום מלא — מכלל החבילות בשירות (לא מהמסוננות) כדי שיתאים לכותרת הדוח
+            const fullList = Array.isArray(allPackages) && allPackages.length > 0 ? allPackages : packages;
+            const totalHours = fullList.reduce((sum, pkg) => sum + (pkg.hours ?? 0), 0);
+            const totalUsed = fullList.reduce((sum, pkg) => sum + (pkg.hoursUsed ?? 0), 0);
+            const totalRemaining = fullList.reduce((sum, pkg) =>
+                sum + (Number.isFinite(pkg.hoursRemaining) ? pkg.hoursRemaining : (pkg.hours ?? 0) - (pkg.hoursUsed ?? 0)), 0);
+            const hiddenCount = fullList.length - packages.length;
 
             // Create date range subtitle
             let dateRangeText = '';
@@ -1162,7 +1411,7 @@ return '0:00';
         <div class="section" style="margin-top: 2rem;">
             <h3 class="section-title">
                 <i class="fas fa-boxes"></i>
-                פירוט חבילות שעות - ${serviceName}${dateRangeText}
+                פירוט חבילות שעות - ${this.escapeHtml(serviceName)}${dateRangeText}
             </h3>
             <table>
                 <thead>
@@ -1178,9 +1427,11 @@ return '0:00';
                 <tbody>
                     ${packages.map(pkg => {
                         const pkgType = pkg.type === 'initial' || pkg.type === 'חבילה ראשונית' ? 'ראשונית' : 'נוספת';
-                        const pkgHours = pkg.hours || 0;
-                        const pkgUsed = pkg.hoursUsed || 0;
-                        const pkgRemaining = pkg.hoursRemaining !== undefined ? pkg.hoursRemaining : (pkgHours - pkgUsed);
+                        const pkgHours = pkg.hours ?? 0;
+                        const pkgUsed = pkg.hoursUsed ?? 0;
+                        // Number.isFinite (not `!== undefined`): a stored `null` package
+                        // aggregate must fall through to (pkgHours - pkgUsed), not reach .toFixed().
+                        const pkgRemaining = Number.isFinite(pkg.hoursRemaining) ? pkg.hoursRemaining : (pkgHours - pkgUsed);
                         const pkgDate = pkg.purchaseDate || pkg.createdAt || '-';
                         const pkgDescription = pkg.description || pkg.reason || '-';
 
@@ -1191,14 +1442,14 @@ return '0:00';
                             <td class="highlight">${pkgHours.toFixed(1)}</td>
                             <td>${pkgUsed.toFixed(1)}</td>
                             <td>${pkgRemaining.toFixed(1)}</td>
-                            <td style="max-width: 200px; word-wrap: break-word;">${pkgDescription}</td>
+                            <td style="max-width: 200px; word-wrap: break-word;">${this.escapeHtml(pkgDescription)}</td>
                         </tr>
                         `;
                     }).join('')}
 
                     <tr class="summary-row" style="font-weight: bold; background-color: #f8f9fa; border-top: 2px solid #dee2e6;">
                         <td>סה"כ</td>
-                        <td>${packages.length} חבילות</td>
+                        <td>${fullList.length} חבילות</td>
                         <td class="highlight">${totalHours.toFixed(1)}</td>
                         <td>${totalUsed.toFixed(1)}</td>
                         <td>${totalRemaining.toFixed(1)}</td>
@@ -1206,6 +1457,12 @@ return '0:00';
                     </tr>
                 </tbody>
             </table>
+
+            ${hiddenCount > 0 ? `
+            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #6b7280;">
+                <i class="fas fa-filter"></i>
+                מציג ${packages.length} מתוך ${fullList.length} חבילות בטווח התאריכים — שורת הסה"כ משקפת את כלל חבילות השירות.
+            </div>` : ''}
 
             <div style="margin-top: 1rem; padding: 0.75rem; background-color: #e3f2fd; border-right: 4px solid #1877F2; border-radius: 4px;">
                 <p style="margin: 0; font-size: 0.9rem; color: #1976d2;">
@@ -1593,8 +1850,13 @@ return '0.00';
 
             const { employee, period, summary, clientBreakdown, entries } = reportData;
 
-            // RFC 4180: escape double quotes by doubling them
-            const csvEscape = (val) => String(val || '').replace(/"/g, '""');
+            if (!this.ensureCsvSafe()) {
+                return;
+            }
+
+            // RFC 4180 quote-doubling + OWASP CSV/formula-injection neutralization,
+            // via the shared SSOT encoder window.CsvSafe.cell (js/core/csv-safe.js).
+            const csvEscape = (val) => window.CsvSafe.cell(val);
 
             let csv = '\uFEFF'; // BOM for Hebrew/Excel support
 
@@ -1661,14 +1923,33 @@ return '0.00';
         }
 
         /**
+         * Fail-secure precondition for CSV exports: the shared SSOT encoder
+         * (js/core/csv-safe.js → window.CsvSafe.cell) MUST be loaded before any CSV
+         * is built. It neutralizes OWASP CSV / formula injection (prefixes a leading
+         * `= + - @` / TAB / CR / LF with a single quote) + preserves RFC-4180
+         * quote-doubling. If it is missing (the script did not load), ABORT the
+         * export rather than emit an un-neutralized CSV — and tell the user in Hebrew.
+         * @returns {boolean} true if the encoder is available
+         */
+        ensureCsvSafe() {
+            if (window.CsvSafe && typeof window.CsvSafe.cell === 'function') {
+                return true;
+            }
+            console.error('ReportGenerator: CsvSafe encoder not loaded (js/core/csv-safe.js must load before ReportGenerator.js)');
+            if (window.notify) {
+                window.notify.error('שגיאה בייצוא הקובץ — רכיב אבטחה חסר. רענן את הדף ונסה שוב', 'ייצוא נכשל');
+            }
+            return false;
+        }
+
+        /**
          * Helper: Escape HTML characters for employee reports
          */
         escapeHtml(text) {
-            if (!text) {
-return '';
-}
-            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-            return String(text).replace(/[&<>"']/g, c => map[c]);
+            // Routed to the shared SSOT escaper (js/core/escape-html.js).
+            // Entity output unchanged (already 5-entity); null-guard narrows to null/undefined
+            // (0/false now stringify rather than blank).
+            return window.escapeHtml(text);
         }
 
         /**
@@ -1676,7 +1957,7 @@ return '';
          * שליפת נתוני דוח ללא יצירת הדוח
          */
         async fetchReportData(formData) {
-            console.log('📊 Fetching report data for preview...', formData);
+            console.log('📊 Fetching report data for preview...');
 
             try {
                 if (!window.ClientsDataManager) {
@@ -1691,12 +1972,12 @@ return '';
                     throw new Error('Client not found');
                 }
 
-                console.log('✅ Client found:', client.name);
+                console.log('✅ Client found:', formData.clientId);
 
                 // Collect data
                 const reportData = await this.collectReportData(client, formData);
 
-                console.log('✅ Report data collected:', reportData);
+                console.log('✅ Report data collected, entries:', reportData.timesheetEntries?.length ?? 0);
 
                 // Add client to reportData
                 reportData.client = client;

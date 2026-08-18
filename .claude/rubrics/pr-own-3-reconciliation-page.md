@@ -1,0 +1,52 @@
+# Rubric — OWN-3: the "סנכרון שעות" Hours-Reconciliation control page
+
+**Title:** A NEW admin-only `apps/admin-panel/reconciliation.html` — the frontend control page for the OWN-3 reconciliation loop (#401 backend, already merged + deployed). It lets an admin SEE the current mode (off / dry_run / enforce), FLIP it (off/dry_run immediately; enforce behind a typed-"תיקון" confirm), RUN the loop on demand (`runReconciliationNow`) and review recent `PACKAGE_RECONCILE_RUN` audit docs + the latest run's deferrals. This is the UI through which `dry_run→enforce` is promoted instead of the Firebase console. FRONTEND-ONLY.
+**Branch:** `feat/own-3-reconciliation-page`
+**Base:** `main` (#401 — `setReconciliationMode` + `runReconciliationNow` callables merged + deployed)
+**App / Env:** Admin Panel (frontend). DEV (`main`). A NEW page (NOT grandfathered → full Design Bar). NO backend/rules/claims change → the backend (#401) built + gated the callables; this PR only READS the flag doc + audit_log and INVOKES the two admin-gated callables. devils-advocate NOT required (zero `.rules`/auth/claims/schema/PII-on-doc change; the mutation gate is the backend's audit-first callable).
+**Effort:** MEDIUM. Investigation: read the #401 contract (`functions/reconciliation/index.js`) + the loop counters (`functions/scheduled/reconcile-package-drift.js`) + the gold-standard pages (ProfitabilityPage / EmployeeCostsPage).
+
+**Context:** §8.2.5 OWN-* track / the Aggregate single-owner redesign. The page CONTROLS a production-write enabler — flipping to `enforce` lets the loop write to production. So the danger is an accidental/unconfirmed enforce flip, NOT cost PII (the run docs are non-PII: ids + counts + hours only, never clientName). The flag doc is authed-readable + `audit_log` is admin-readable per firestore.rules — no read callable needed. `client_profitability`-style cost-PII is NOT in scope here.
+
+## MUST criteria (block on FAIL)
+
+### M1 — Fail-closed admin render gate (not just authentication)
+**Rule:** After `initAuthGuard` (authentication-only), the page re-verifies `getIdTokenResult().claims.role === 'admin'` BEFORE rendering any control UI or making any flag read / callable. The gate FAILS CLOSED (any token error → non-admin → `renderAccessDenied`, no control UI). Mirrors employee-costs.html / profitability.html. The backend callables are independently admin-gated (`claims.role==='admin'`) — this UI gate mirrors that; a non-admin who reaches the page sees only the Hebrew access-denied state.
+**Evidence:** `reconciliation.html` gate (mirrors employee-costs.html:126-151); `ReconciliationPage.init` runs only post-gate.
+
+### M2 — 🔴 enforce requires a typed-"תיקון" confirm + sends `confirmToken:'enforce'`
+**Rule:** Selecting `off` or `dry_run` flips immediately. Selecting `enforce` opens a `ModalManager` confirm modal whose confirm button is DISABLED until the admin types the Hebrew word **"תיקון"** exactly; on confirm the page calls `setReconciliationMode({ mode:'enforce', confirmToken:'enforce' })` — sending the LITERAL string `'enforce'` (the backend's required token), NOT the Hebrew word (the typed "תיקון" only gates the UI button). The typed word is re-checked at click-time (defence in depth). The kill-switch "כבה (off)" is ALWAYS visible and flips to off WITHOUT a typed-confirm (only ON-to-enforce is gated).
+**Evidence:** `_openEnforceConfirm` (typed-word gate + `ENFORCE_CONFIRM_TOKEN='enforce'` sent) + `_commitMode`; the kill-switch button in `_modePanel` calls `_onSetMode('off')` directly.
+
+### M3 — escapeHtml on EVERY interpolated value + Hebrew error-by-code
+**Rule:** Every value interpolated into innerHTML routes through `_escapeHtml` (→ `window.escapeHtml` SSOT) — caseNumbers, ids, counts, labels, mode strings. Every callable failure surfaces a Hebrew message via `_errorMessage(error)` keyed on the HttpsError code — NEVER a raw FirebaseError / English / stack / `[object Object]`. The backend's Hebrew HttpsError text is surfaced ONLY when it is actually Hebrew (the `/[֐-׿]/` test), else a generic Hebrew fallback.
+**Evidence:** grep `ReconciliationPage.js` for unescaped `+ <var> +` in an `innerHTML` string (none); `_errorMessage` covers unauthenticated / permission-denied / failed-precondition / invalid-argument / unavailable / internal / default.
+
+### M4 — Reads are direct admin-read with client-side sort; NO new index; NO onSnapshot
+**Rule:** The current mode is a one-shot `system_settings/package_reconciliation` `.get()` (missing doc → 'off', fail-safe); the recent runs are a `audit_log.where('action','==','PACKAGE_RECONCILE_RUN').limit(N).get()` with **NO `.orderBy()`** and **NO composite index** — the docs are SORTED CLIENT-SIDE descending by `timestamp` (`sortRunsDesc`). There is NO `onSnapshot` anywhere (on-demand reads only; a refresh re-reads after a mutation). `teardown()` clears the in-flight flags.
+**Evidence:** `_loadMode` / `_loadRuns` (no `.orderBy`); `sortRunsDesc` in `reconciliation-format.js`; grep for `onSnapshot` (none); `firestore.indexes.json` untouched.
+
+### M5 — Pure-format module unit-tested
+**Rule:** All display logic lives in `reconciliation-format.js` (NO DOM/Firebase; dual-export `module.exports` + `window`): `modeLabel`/`modeLabelShort` (all 3 modes), `formatRunRow` (run-row display strings), `runStatusLevel` (failed>0 → error; clean → ok; deferral/scanError → warning), `sortRunsDesc` (client-side desc), `formatDeferral` (non-PII id/before/after), plus `formatInt`/`formatHoursDelta`. `reconciliation-format.test.ts` covers EVERY helper incl. all 3 mode labels, failed>0→error, a clean run→ok, empty/missing details, the sort order + non-mutation, and the non-array-input defensive path.
+**Evidence:** `reconciliation-format.test.ts`; root vitest green.
+
+### M6 — Kill-switch always visible + persistent enforce banner; Design Bar; scope clean; suite + lint green
+**Rule:** The "כבה (off)" kill-switch is ALWAYS rendered (disabled only when already off). A persistent token-styled warning banner ("המצב: תיקון — כל הרצה כותבת לפרודקשן") shows whenever the live mode is `enforce`. `reconciliation.html` mirrors the gold-standard shell (RTL `lang="he" dir="rtl"`, `noindex`, auth-guard + Navigation lifecycle, `?v=` cache-bust on the new scripts); the confirm is a `ModalManager` modal (no inline `<div class="modal">`); CSS uses `design-system.css` tokens ONLY (status tints via the sanctioned channel-derivation + `#fff`, `-dark` accent text for AA — documented in the CSS header); every interactive element (mode cards, kill-switch, run button, confirm input/buttons) has a `:focus-visible` style + accessible name; one `<h1>`; transitions via `--transition-*`. "הרץ עכשיו" disables + spins while running and renders the returned counters + refreshes the runs list on completion. The diff touches ONLY `apps/admin-panel/**` + the test + the rubric — no `functions/`, no `firestore.rules`, no `firestore.indexes.json`, no claims; no CRLF/dist drift staged. Root vitest green; lint 0 on the new JS/CSS.
+**Evidence:** `_modePanel` (kill-switch always rendered) + `_enforceBanner`; `git diff --name-only main...HEAD`; grep the CSS for hex/px beyond the documented tints + `class="modal"` (none); vitest + lint output in the PR body.
+
+## SHOULD criteria (warn on FAIL)
+### S1 — The runs table has an honest Hebrew empty-state ("אין הרצות להצגה עדיין… ההרצה היומית מתבצעת ב-07:00, או הרץ ידנית"); the deferrals panel has its own empty-state ("אין דחיות בהרצה האחרונה"); a successful flip/run toasts a Hebrew confirmation (no PII).
+### S2 — The page degrades gracefully when `window.firebaseDB` is unavailable (a Hebrew load-error state, not a blank page); a refresh failure after a successful mutation surfaces a non-fatal toast rather than wiping the page.
+### S3 — A supervised post-merge live-smoke is documented in the PR body Test plan: admin opens `reconciliation.html` → sees the current mode + recent runs → flips dry_run (immediate) → attempts enforce (button locked until "תיקון" typed) → "הרץ עכשיו" → counters render + the runs table gains a row → "כבה (off)" returns to off.
+
+## PRODUCT-GRADE GATES (G1–G7)
+- **G1 errors:** PASS — Hebrew loading/empty/error/access-denied states; every callable failure → `_errorMessage` Hebrew-by-code (unauthenticated/permission-denied/failed-precondition/invalid-argument/unavailable/internal/default), never a raw FirebaseError / English / stack / `[object Object]`.
+- **G2 rollback:** PASS — `git revert` removes the new page + JS/CSS + test + the one additive nav entry (additive; no existing page/route/collection/index changed). Code-only frontend, ≤5 min. (No CF/rules/index to delete — this PR is pure frontend; the #401 callables it invokes already exist and are untouched.)
+- **G3 monitoring:** N/A — the page only READS (flag doc + audit_log, on-demand) + INVOKES the existing audited callables. The MUTATION is the backend's responsibility: `setReconciliationMode` is audit-FIRST in a transaction and `runReconciliationNow` audits WHO triggered the run BEFORE invoking (#401). The client adds no data-mutation path of its own and logs only counts + error.code.
+- **G4 customer test:** PASS — `reconciliation-format.test.ts` covers every pure helper (the mode-label / run-status / sort / deferral customer-render rules) + a documented manual live-smoke (admin → flip dry_run → locked-enforce → run → counters → kill-switch). Listed in the PR Test plan.
+- **G5 Hebrew UI:** PASS — every customer-facing string Hebrew, RTL; the literal mode VALUES (off/dry_run/enforce) stay English because they ARE the backend contract, but every DISPLAYED label is Hebrew.
+- **G6 breaking change:** PASS — additive (a new page + new JS/CSS + ONE nav item). No existing page, route, callable, collection, index, or token changed/removed. The one declared display change is the additive `סנכרון שעות` nav label (an admin-display addition; no existing tab/behavior touched — ADMIN SAFETY).
+- **G7 security:** N/A — no auth/PII/rules change. The gate is the backend's: both callables are admin-only (`claims.role==='admin'`) and enforce additionally requires `confirmToken==='enforce'`; this UI mirrors the admin gate (fail-closed render gate) and the typed-"תיקון" confirm, but introduces no new permission/rule/PII surface. The run docs are non-PII (ids/counts/hours, never clientName), so there is no §7.6 cost-PII surface on this page.
+
+## VERDICT
+`outcomes-grader` must return **PASS** / **PASS_WITH_WARNINGS** before `gh pr create`.

@@ -35,6 +35,20 @@ import { initAddTaskSystem } from '../components/add-task/index.js';
 import { createTimesheetEntryV2 } from './modules/timesheet-adapter.js';
 import { buildErrorFromResult } from './modules/error-utils.js';
 
+// H.4 PR-b (Model A): moment-of-overrun detector — fires the budget-crossing
+// toast once per crossing at the canonical 85% / 100% thresholds (pure helper,
+// pinned to the admin budget-status.js by a drift-guard test).
+import { detectBudgetCrossing } from './modules/budget-crossing.js';
+// Wrong-service-prevention spec §4.3/§4.4: pure, testable helper deciding whether
+// a client has 1 (auto-select) or ≥2 (task-open confirmation must fire) active
+// services. Extracted so the billing-critical gating logic has direct test
+// coverage (tests/unit/user-app/service-count.test.ts).
+import { countSelectableServices } from './modules/service-count.js';
+
+// PR-1 (duplicate-timesheet fix): per-submission idempotency key + offline guard
+// for addTimeToTask. Pure helpers (unit-tested in tests/unit/user-app).
+import { mintIdempotencyKey, isOffline } from './modules/submit-guard.js';
+
 // System Announcement Ticker - News-style ticker for system announcements
 import SystemAnnouncementTicker from './modules/system-announcement-ticker.js';
 
@@ -43,10 +57,6 @@ import SystemAnnouncementPopup from './modules/system-announcement-popup.js';
 
 // Break Manager - Floating break button with timer and timesheet recording
 import BreakManager from './modules/break-manager.js';
-
-// Notification System
-// NotificationBellSystem is loaded via script tag and available on window.notificationBell
-// No import needed here - it's initialized globally
 
 // Firebase Operations
 import * as FirebaseOps from './modules/firebase-operations.js';
@@ -164,7 +174,6 @@ class LawOfficeManager {
 
     // Module Instances
     this.domCache = new DOMCache();
-    this.notificationBell = window.notificationBell; // Use globally initialized instance
     this.clientValidation = new ClientValidation(this); // Pass 'this' as manager
     this.announcementTicker = new SystemAnnouncementTicker(); // System Announcement Ticker
     this.announcementPopup = new SystemAnnouncementPopup(); // System Announcement Popup
@@ -247,9 +256,8 @@ class LawOfficeManager {
     // Always show login screen - login only happens on manual button click
     this.showLogin();
 
-    // ✅ CRITICAL: Setup permanent auth state listener for NotificationBell
-    // This ensures NotificationBell starts even if page loads after login
-    this.setupNotificationBellListener();
+    // ✅ Setup permanent auth-state listener for system services (announcement ticker + popup)
+    this.setupServicesAuthListener();
 
     Logger.log('✅ System initialized');
   }
@@ -279,30 +287,6 @@ class LawOfficeManager {
 
         UIComponents.updateUserDisplay(this.currentUsername);
 
-        // ✅ CRITICAL: Start listening to admin messages in notification bell
-        console.log('🔍 [DEBUG] About to start NotificationBell listener...');
-        console.log('🔍 [DEBUG] this.notificationBell:', !!this.notificationBell);
-        console.log('🔍 [DEBUG] window.firebaseDB:', !!window.firebaseDB);
-        console.log('🔍 [DEBUG] user:', user);
-
-        if (this.notificationBell && window.firebaseDB) {
-          console.log('🔔 Starting NotificationBell listener for', user.email);
-          try {
-            this.notificationBell.startListeningToAdminMessages(user, window.firebaseDB);
-            console.log('✅ NotificationBell listener started successfully');
-            console.log('✅ [DEBUG] Listener confirmed active:', !!this.notificationBell.messagesListener);
-          } catch (error) {
-            console.error('❌ Failed to start NotificationBell listener:', error);
-          }
-        } else {
-          console.error('⚠️ CRITICAL: Cannot start NotificationBell listener!', {
-            hasNotificationBell: !!this.notificationBell,
-            hasFirebaseDB: !!window.firebaseDB,
-            notificationBell: this.notificationBell,
-            firebaseDB: window.firebaseDB
-          });
-        }
-
         // Load data and show app
         await this.loadData();
         this.showApp();
@@ -321,30 +305,15 @@ class LawOfficeManager {
   }
 
   /**
-   * Setup permanent NotificationBell auth listener
+   * Setup permanent auth-state listener for system services (announcement ticker + popup)
    * ✅ CRITICAL: This runs ALWAYS, even after page refresh
    */
-  setupNotificationBellListener() {
-    console.log('🔔 Setting up permanent NotificationBell listener...');
+  setupServicesAuthListener() {
+    console.log('🔔 Setting up permanent services auth listener...');
 
     firebase.auth().onAuthStateChanged((user) => {
       if (user && window.firebaseDB) {
         console.log('🔔 Auth state changed - User logged in:', user.email);
-
-        // ✅ Start NotificationBell if available
-        if (this.notificationBell) {
-          console.log('🔔 Starting NotificationBell listener...');
-          try {
-            // Start listening (safe to call multiple times - it checks internally)
-            this.notificationBell.startListeningToAdminMessages(user, window.firebaseDB);
-            console.log('✅ NotificationBell listener started successfully');
-            console.log('✅ Listener active:', !!this.notificationBell.messagesListener);
-          } catch (error) {
-            console.error('❌ Failed to start NotificationBell listener:', error);
-          }
-        } else {
-          console.log('ℹ️ NotificationBell not yet loaded - will auto-init when ready');
-        }
 
         // ✅ Start System Announcement Ticker - ONLY if user is inside the app (not on login screen)
         const interfaceElements = document.getElementById('interfaceElements');
@@ -367,9 +336,6 @@ class LawOfficeManager {
         }
       } else if (!user) {
         console.log('🔔 Auth state changed - User logged out, cleaning up...');
-        if (this.notificationBell) {
-          this.notificationBell.cleanup();
-        }
         // ✅ Cleanup System Announcement Ticker
         if (this.announcementTicker) {
           this.announcementTicker.cleanup();
@@ -504,10 +470,6 @@ class LawOfficeManager {
       clearInterval(this.refreshInterval);
     }
 
-    if (this.notificationBell?.cleanup) {
-      this.notificationBell.cleanup();
-    }
-
     // ✅ Stop real-time listeners
     this.stopRealTimeListeners();
 
@@ -592,11 +554,6 @@ class LawOfficeManager {
 
   async loginWithApple() {
     await Auth.loginWithApple.call(this);
-  }
-
-  // ⚡ Lazy Loading - AI Chat System
-  async initAIChatSystem() {
-    await Auth.initAIChatSystem.call(this);
   }
 
   /* ========================================
@@ -898,25 +855,6 @@ class LawOfficeManager {
         this.clientValidation.updateBlockedClients();
       }
 
-      // Update notifications bell with urgent tasks and critical clients
-      if (this.notificationBell) {
-        const urgentTasks = budgetTasks.filter(task => {
-          if (task.status === 'הושלם') {
-return false;
-}
-          const deadline = new Date(task.deadline);
-          const now = new Date();
-          const daysUntilDeadline = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
-          return daysUntilDeadline <= 3 && daysUntilDeadline >= 0;
-        });
-
-        // Get blocked/critical clients from validation
-        const blockedClients = this.clientValidation?.blockedClients || [];
-        const criticalClients = this.clientValidation?.criticalClients || [];
-
-        this.notificationBell.updateFromSystem(blockedClients, criticalClients, urgentTasks);
-      }
-
       // ✅ Initialize Daily Meter (sidebar ring)
       this.initDailyMeter();
 
@@ -1122,6 +1060,25 @@ return false;
     }
   }
 
+  /**
+   * Wrong-service-prevention spec §4.3/§4.4: count how many services/stages are
+   * currently active on a client's case doc. Mirrors the exact-one-vs-ambiguous
+   * logic in ClientCaseSelector.renderServiceCards (client-case-selector.js) so
+   * the task-open confirmation (§4.4) fires under the SAME condition that skipped
+   * auto-selection — never a duplicated, drifting count.
+   *
+   * Thin delegator: the actual (pure, unit-tested) logic lives in
+   * `countSelectableServices` (./modules/service-count.js) — extracted so this
+   * billing-critical gating decision is reachable from a test, per the adversarial
+   * review of aaf6006 (Finding 1). Kept as a method (not inlined at the call
+   * site) so the call in `addBudgetTask` below stays unchanged.
+   * @param {object} caseData - the case/client doc (selectorValues.caseData)
+   * @returns {number} total active services (hours + fixed + legal_procedure stages)
+   */
+  _countActiveServicesOnClient(caseData) {
+    return countSelectableServices(caseData);
+  }
+
   async addBudgetTask() {
     // ✅ Prevent race conditions - block if operation already in progress
     if (this.isTaskOperationInProgress) {
@@ -1186,6 +1143,30 @@ return false;
       return;
     }
 
+      // ✅ Wrong-service-prevention spec §4.4: ONE confirmation, at task-open submit
+      // only — never on routine hour-logging (addTimeToTask) — naming the specific
+      // service. Fires ONLY when the client has ≥2 services (where a wrong pick is
+      // actually possible); a single-service client already auto-selected, so the
+      // §4.2 banner alone is enough and a confirmation here would be pure noise
+      // (NN/g confirmation-fatigue).
+      const activeServiceCount = this._countActiveServicesOnClient(selectorValues.caseData);
+      if (activeServiceCount >= 2) {
+        const serviceLabel = selectorValues.serviceName || 'השירות שנבחר';
+        if (typeof window.showConfirm === 'function') {
+          const confirmedService = await window.showConfirm({
+            title: 'לפתוח משימה על השירות הזה?',
+            message: `המשימה תיפתח על שירות "${serviceLabel}" של ${selectorValues.clientName}. כל השעות שתרשום על המשימה ייכנסו לשירות הזה.`,
+            confirmText: `כן, פתח על "${serviceLabel}"`,
+            cancelText: 'חזרה לבחירה'
+          });
+          if (!confirmedService) {
+            return;
+          }
+        } else if (typeof Logger !== 'undefined' && Logger.warn) {
+          Logger.warn('showConfirm unavailable — skipping wrong-service confirmation dialog');
+        }
+      }
+
       // ✅ NEW: Use ActionFlowManager for consistent UX with NotificationMessages
       const msgs = window.NotificationMessages.tasks;
 
@@ -1228,6 +1209,12 @@ return false;
           // Architecture v2.0 - FirebaseService with retry
           Logger.log('  🚀 [v2.0] Using FirebaseService.call');
 
+          // PR-3a (idempotency): mint ONE key per submission, OUTSIDE the retry,
+          // so every one of FirebaseService.call's 3 retries carries the SAME key.
+          // If the first (slow) server call already created the task, the retry
+          // short-circuits server-side → no duplicate task.
+          taskData.idempotencyKey = mintIdempotencyKey();
+
           const result = await window.FirebaseService.call('createBudgetTask', taskData, {
             retries: 3,
             timeout: 15000
@@ -1268,7 +1255,9 @@ return false;
         onSuccess: () => {
           // ✅ הצג דיאלוג אישור עם כפתור "הבנתי"
           if (window.NotificationSystem && window.NotificationSystem.alert) {
-            const alertMessage = msgs.success.created(selectorValues.clientName, description, estimatedMinutes);
+            const alertMessage = msgs.success.created(
+              selectorValues.clientName, description, estimatedMinutes, selectorValues.serviceName
+            );
             window.NotificationSystem.alert(
               alertMessage,
               () => {
@@ -2987,8 +2976,39 @@ return;
       guidedInput.saveToRecent();
     }
 
+    // PR-1 (offline guard): block the submit when there is no network connection.
+    // Firing addTimeToTask offline would time out and auto-retry 3x with no server
+    // reachable — a confusing failure. Show a clean Hebrew popup and RETURN (no CF
+    // call, no retry, no queue). BEHAVIORAL CHANGE: submitting while offline is now
+    // blocked instead of attempted. Scope: submitTimeEntry / addTimeToTask only.
+    if (isOffline()) {
+      if (window.NotificationSystem && window.NotificationSystem.alert) {
+        window.NotificationSystem.alert(
+          'נראה שאין כרגע חיבור לאינטרנט. הדיווח לא נשלח — נסה שוב כשהחיבור יחזור.',
+          null,
+          // Calm gray cloud — a benign "no connection" state, not an error.
+          { title: 'אין חיבור לאינטרנט', okText: 'הבנתי', type: 'info', icon: 'fas fa-cloud', color: '#94a3b8' }
+        );
+      } else {
+        this.showNotification('אין חיבור לאינטרנט. הדיווח לא נשלח — נסה שוב כשהחיבור יחזור.', 'warning');
+      }
+      return;
+    }
+
+    // PR-1 (idempotency): mint ONE key per submission, reused across the 3 retries
+    // (created OUTSIDE the action closure so a retry sends the SAME key). If the first
+    // server call succeeded but was slow, the retry short-circuits server-side and no
+    // duplicate time entry is created.
+    const idempotencyKey = mintIdempotencyKey();
+
     // Direct call to Cloud Function - clean and simple with NotificationMessages
     const msgs = window.NotificationMessages.tasks;
+
+    // H.4 PR-b: capture the authoritative post-entry actual (the addTimeToTask
+    // transaction's newActualMinutes) so the budget-crossing toast can fire AFTER
+    // the success message (in onSuccess), with the BEFORE derived as after − this
+    // entry's minutes. Stays null if the CF omits it → no toast (fail-quiet).
+    let budgetActualMinutesAfter = null;
 
     await ActionFlowManager.execute({
       operationKey: `submitTimeEntry_${taskId}`,
@@ -3001,7 +3021,8 @@ return;
           taskId,
           minutes: workMinutes,
           description: workDescription,
-          date: workDate
+          date: workDate,
+          idempotencyKey
         }, {
           retries: 3,
           timeout: 15000
@@ -3009,6 +3030,12 @@ return;
 
         if (!result.success) {
           throw buildErrorFromResult(result, 'שגיאה בהוספת זמן');
+        }
+
+        // Authoritative post-increment total from the CF transaction (used by the
+        // moment-of-overrun toast). Captured before loadData() overwrites task data.
+        if (typeof result.newActualMinutes === 'number') {
+          budgetActualMinutesAfter = result.newActualMinutes;
         }
 
         // Invalidate clients cache so loadData() fetches fresh from Firestore
@@ -3036,8 +3063,49 @@ return;
       closeDelay: 500,
       onSuccess: () => {
         this.closeExpandedCard();
+        // H.4 PR-b: surface a budget-crossing toast AFTER the success message.
+        this._notifyBudgetCrossing(task, workMinutes, budgetActualMinutesAfter);
       }
     });
+  }
+
+  /**
+   * H.4 PR-b (Model A — smart budget meter): show a one-time toast the moment a
+   * time entry pushes a task across the canonical 85% / 100% budget thresholds.
+   * "Once per crossing" is stateless — the BEFORE (authoritative after − this
+   * entry) below the line and the AFTER at/above it. A failure here NEVER affects
+   * the (already-succeeded) time-entry save.
+   * @param {object} task - the budget task (carries estimatedMinutes, clientName)
+   * @param {number} workMinutes - minutes added by this entry
+   * @param {number|null} afterMinutes - authoritative post-entry actual minutes
+   */
+  _notifyBudgetCrossing(task, workMinutes, afterMinutes) {
+    try {
+      if (typeof afterMinutes !== 'number' || !isFinite(afterMinutes)) {
+        return;
+      }
+      const estimatedMinutes = task?.estimatedMinutes;
+      const beforeMinutes = afterMinutes - workMinutes;
+      const crossing = detectBudgetCrossing(beforeMinutes, afterMinutes, estimatedMinutes);
+      if (!crossing) {
+        return;
+      }
+      const warn = window.NotificationMessages?.tasks?.warning;
+      if (!warn) {
+        return;
+      }
+      const clientName = task?.clientName || '';
+      if (crossing === 'over') {
+        window.NotificationSystem?.warning?.(warn.budgetOver(clientName), 5000);
+      } else {
+        window.NotificationSystem?.info?.(warn.budgetApproaching(clientName), 4000);
+      }
+    } catch (err) {
+      // A soft notification must never break the time-entry success path.
+      if (typeof Logger !== 'undefined') {
+        Logger.warn?.('[budget-crossing] toast skipped:', err?.code || 'error');
+      }
+    }
   }
 
   async submitTaskCompletion(taskId) {
@@ -3127,6 +3195,13 @@ return;
 
     const msgs = window.NotificationMessages.tasks;
 
+    // PR-3a (idempotency): mint ONE key per submission, OUTSIDE the retry (and
+    // outside the action closure), so every one of FirebaseService.call's 3
+    // retries carries the SAME key. If the first (slow) server call already
+    // applied the budget adjustment, the retry short-circuits server-side → no
+    // duplicate budgetAdjustments entry.
+    const idempotencyKey = mintIdempotencyKey();
+
     await ActionFlowManager.execute({
       operationKey: `submitBudgetAdjustment_${taskId}`,
       ...msgs.loading.updateBudget(),
@@ -3137,7 +3212,8 @@ return;
         const result = await window.FirebaseService.call('adjustTaskBudget', {
           taskId,
           newEstimate: newBudgetMinutes,
-          reason
+          reason,
+          idempotencyKey
         }, {
           retries: 3,
           timeout: 10000
@@ -3235,14 +3311,8 @@ window.addEventListener('pagehide', () => {
   manager.cleanup();
 });
 
-// Expose notification systems globally
-window.notificationBell = manager.notificationBell;
-// window.notificationSystem already exists from notification-system.js (global instance)
-
 // Expose navigation functions globally (for onclick handlers)
 window.switchTab = Navigation.switchTab;
-window.toggleNotifications = Navigation.toggleNotifications;
-window.clearAllNotifications = Navigation.clearAllNotifications;
 window.openSmartForm = Navigation.openSmartForm;
 window.logout = Auth.logout;
 window.confirmLogout = Auth.confirmLogout;

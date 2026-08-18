@@ -172,10 +172,21 @@ The system uses **NotificationBellSystem** only (`js/modules/notification-bell.j
 
 ### Server-Side (Cloud Functions)
 
+> **⚠️ CORRECTION (H.4, 2026-06-15):** `approveTaskBudget` and `rejectTaskBudget`
+> were **never implemented** — no such Cloud Functions exist (the line references
+> below are stale; `functions/index.js` has no such functions). The task-approval
+> gate they belonged to was a dead/broken scaffold; the frontend call-sites that
+> invoked them were removed in H.4 (PR-a #376 admin, PR-b user-app folder delete).
+> Model A (smart budget meter) replaced the approval gate — budgets are set upfront
+> with no gate, and over-budget tasks surface via the worker toast + the admin
+> "חריגות תקציב" feed. See `docs/MASTER_PLAN.md` §8.6.
+
+_(historical — these never existed):_
+
 | Function | File | Lines | Purpose |
 |----------|------|-------|---------|
-| **approveTaskBudget** | `functions/index.js` | 5760-5850 | Creates approval message |
-| **rejectTaskBudget** | `functions/index.js` | 5860-5940 | Creates rejection message |
+| ~~**approveTaskBudget**~~ | ~~`functions/index.js`~~ | ~~5760-5850~~ | ~~Creates approval message~~ (never existed) |
+| ~~**rejectTaskBudget**~~ | ~~`functions/index.js`~~ | ~~5860-5940~~ | ~~Creates rejection message~~ (never existed) |
 
 ### Admin Panel
 

@@ -382,3 +382,76 @@ describe('E. Conditional invocation matches prior gate', () => {
     expect(mockHelperSpy).not.toHaveBeenCalled();
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// F. OWN-0(b) — entry stamps the DEDUCTION-TARGET packageId (incl. overdraft)
+// ═══════════════════════════════════════════════════════════════
+
+describe('F. OWN-0(b) — deduction-target stamp (supersedes DRIFT-0 fresh-only)', () => {
+  // The timesheet entry is written via transaction.set; find it among the set
+  // calls (it carries serviceId + minutes + a packageId field; the cost doc does not).
+  function entrySetPayload() {
+    const call = mockTransaction.set.mock.calls.find(
+      (c) => c[1] && c[1].minutes !== undefined && c[1].serviceId !== undefined && 'packageId' in c[1]
+    );
+    return call ? call[1] : null;
+  }
+
+  test('overage-on-depleted (override): deduction overdraws a depleted package → entry packageId = that package (NOT null)', async () => {
+    // A depleted HOURS service is BLOCKED unless override active — so the
+    // overage-on-depleted path (the orphan-minting case OWN-0(b) fixes) is the
+    // override scenario.
+    const svc = {
+      id: 'svc_1', type: ST.HOURS, name: 'שירות svc_1', status: 'active', overrideActive: true,
+      totalHours: 10, hoursUsed: 10, hoursRemaining: 0,
+      packages: [{ id: 'p_dep', type: 'initial', hours: 10, hoursUsed: 10, hoursRemaining: 0, status: 'depleted', purchaseDate: '2026-01-01T00:00:00.000Z' }]
+    };
+    const taskDoc = makeTaskDoc({ serviceId: 'svc_1' });
+    const clientDoc = makeClientDoc([svc]);
+    mockTransaction.get
+      .mockResolvedValueOnce(taskDoc)
+      .mockResolvedValueOnce(clientDoc)
+      .mockResolvedValueOnce(clientDoc);
+
+    const result = await addTimeToTaskWithTransaction(mockDb, defaultData, defaultUser);
+    expect(result.success).toBe(true);
+
+    const entry = entrySetPayload();
+    expect(entry).not.toBeNull();
+    // Pre-OWN-0 (DRIFT-0 fresh-only) stamped null here = a package-counted-null orphan.
+    expect(entry.packageId).toBe('p_dep');
+    expect(entry.deductedInTransaction).toBe(true);
+  });
+
+  test('fresh package: entry packageId = the active package', async () => {
+    const taskDoc = makeTaskDoc({ serviceId: 'svc_1' });
+    const clientDoc = makeClientDoc([makeHoursService('svc_1', { totalHours: 50, hoursUsed: 0 })]);
+    mockTransaction.get
+      .mockResolvedValueOnce(taskDoc)
+      .mockResolvedValueOnce(clientDoc)
+      .mockResolvedValueOnce(clientDoc);
+
+    const result = await addTimeToTaskWithTransaction(mockDb, defaultData, defaultUser);
+    expect(result.success).toBe(true);
+
+    expect(entrySetPayload().packageId).toBe('svc_1_pkg_initial');
+  });
+
+  test('zero-package HOURS service (override) → entry packageId stays null (genuine service-only; Check-7(d) detects)', async () => {
+    const svc = {
+      id: 'svc_1', type: ST.HOURS, name: 'שירות svc_1', status: 'active', overrideActive: true,
+      totalHours: 0, hoursUsed: 0, hoursRemaining: 0, packages: []
+    };
+    const taskDoc = makeTaskDoc({ serviceId: 'svc_1' });
+    const clientDoc = makeClientDoc([svc]);
+    mockTransaction.get
+      .mockResolvedValueOnce(taskDoc)
+      .mockResolvedValueOnce(clientDoc)
+      .mockResolvedValueOnce(clientDoc);
+
+    const result = await addTimeToTaskWithTransaction(mockDb, defaultData, defaultUser);
+    expect(result.success).toBe(true);
+
+    expect(entrySetPayload().packageId).toBeNull();
+  });
+});

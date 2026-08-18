@@ -137,10 +137,20 @@ service cloud.firestore {
     // Direct browser writes (SimpleClientDialog.js creates new clients with
     // ONLY orthogonal fields: fullName/phone/email/idNumber/address/notes/
     // status/createdAt/createdBy/caseNumber — verified safe under this rule).
+    // Derived fields a browser may never write directly — they are produced
+    // exclusively by writeClientWithCanonicalAggregates and are mirrored in that
+    // file's RESTRICTED_KEYS. The two lists must stay in step; a drift-guard
+    // test pins them.
+    //
+    // 2026-08-16: added `plan` and `hoursCapacity`. `plan` was a pre-existing
+    // gap — H.3 PR1 put it in RESTRICTED_KEYS but never here, so a browser
+    // could set the profitability Plan directly. Same bypass class as the 23
+    // wrongly-blocked clients of the 2026-05-13 audit.
     function clientAggregateKeys() {
       return ['isBlocked', 'isCritical', 'services',
               'totalHours', 'hoursUsed', 'hoursRemaining',
-              'minutesUsed', 'minutesRemaining'];
+              'minutesUsed', 'minutesRemaining',
+              'plan', 'hoursCapacity'];
     }
 
     match /clients/{clientId} {
@@ -238,6 +248,75 @@ service cloud.firestore {
       allow read, write: if false; // CF-only — access via getEmployeeCost callable
     }
 
+    // ✅ timesheet_entry_costs: CF-only per-entry cost snapshots (Phase 2 H.2).
+    // Keyed by the timesheet entry id; holds { entryId, employee, costPerHour,
+    // costSource } — the employee's confidential cost-per-hour. Stored HERE (not on
+    // the timesheet_entries doc, which the owning employee can read) precisely so an
+    // employee NEVER sees their own cost rate (MASTER_PLAN §7.6 "NOT exposed to
+    // employee self"; §10 revision 2026-06-10 "Option A"). Same lockdown as
+    // employee_costs: nothing reads/writes from a client SDK; the CF write paths +
+    // the H.3 forecast aggregation use the Admin SDK (which bypasses rules).
+    match /timesheet_entry_costs/{entryId} {
+      allow read, write: if false; // CF-only (Admin SDK)
+    }
+
+    // ✅ tofes_export_deadletter: CF-only operational log (Phase 2 H.1.c).
+    // The hourly BigQuery exporter (exportSalesToBigQuery) writes one doc here per
+    // sales_record that fails to map — { salesRecordId, errorCode, failedAt,
+    // expireAt, schemaVersion } only, NEVER PII. A Firestore TTL policy on the
+    // `expireAt` field (NOT failedAt — it's already in the past) auto-reaps docs
+    // after 90d; see docs/PHASE_2_FOUNDATIONS.md "Retention & TTL". Default-deny
+    // like employee_costs: nothing reads/writes from a client SDK; the CF writes
+    // via the Admin SDK (bypasses rules). Forensics + alerting surface only.
+    match /tofes_export_deadletter/{entryId} {
+      allow read, write: if false; // CF-only (Admin SDK)
+    }
+
+    // 🔒 client_profitability: CF-only Forecast cost/profit aggregate (Phase 2 H.3 PR3).
+    // Holds the per-case actualCost / actualHours / un-costed-coverage — a
+    // single-employee case's actualCost÷actualHours = that employee's confidential
+    // cost-per-hour, so it MUST NOT sit on the world-readable clients doc (line 147).
+    //
+    // Read is gated to admins + partners — the FIRST production isPartner() consumer
+    // (Pre-H.0.0.D deferred the consumer to here; dormant + fail-secure: resolves
+    // admin-only TODAY since no user holds role=='partner'). The admin||partner READ
+    // (vs a fully-locked `if false` like employee_costs) is precisely what permits the
+    // real-time onSnapshot profitability dashboard (PR4) WITHOUT leaking cost to
+    // employees. Write is CF-only (the Admin SDK aggregation job bypasses rules).
+    //
+    // UI stays admin-only; the partner CLAIM grant is a separate future auth PR
+    // (MASTER_PLAN §8.5 D-E). Writer: aggregateClientProfitability (scheduled) +
+    // recomputeProfitability (callable), both functions/src-ts/profitability/.
+    match /client_profitability/{caseNumber} {
+      allow read: if isAdmin() || isPartner();
+      allow write: if false; // CF-only (Admin SDK aggregation job)
+    }
+
+    // 🔒 sales_record_links: CF-only link/snapshot doc (Phase 2 H.6 — the cutover).
+    // Keyed by the tofes-mecher salesRecordId, written by createClientFromSalesRecord
+    // when a client is created from a sale. Holds the FINANCIAL snapshot
+    // ({ caseNumber, serviceId, agreedFeeSnapshot, feeFieldUsed, salesRecordTimestampIso,
+    // snapshotAt, confirmedBy, state, schemaVersion }) OFF the world-readable clients doc
+    // (§7.6 / DLR §8.2.5 D-A) — a single-employee/fixed case's agreed fee must not sit
+    // where any authenticated user can read it. FULLY CF-only (stricter than
+    // client_profitability's admin||partner read): nothing reads/writes from a client
+    // SDK; admins will read via a future callable, never directly. The CF writes via the
+    // Admin SDK (bypasses rules). Same lockdown class as employee_costs / timesheet_entry_costs.
+    match /sales_record_links/{linkId} {
+      allow read, write: if false; // CF-only (Admin SDK)
+    }
+
+    // 🔒 pending_signature_intents: CF-only idempotency marker (Phase 2 H.6.c-1).
+    // Keyed by the tofes-mecher salesRecordId, .create()d by createClientFromSalesRecord
+    // in the SAME txn as the pending client — the race-safe backstop guaranteeing exactly
+    // one pending_signature client per sale. Holds only non-PII business ids
+    // ({ salesRecordId, caseNumber, serviceId, createdBy, createdAt, schemaVersion }) — no
+    // fee/amount/PII. FULLY CF-only (same lockdown class as sales_record_links /
+    // employee_costs); the CF writes via the Admin SDK (bypasses rules).
+    match /pending_signature_intents/{salesRecordId} {
+      allow read, write: if false; // CF-only (Admin SDK) — H.6.c-1 phase-1 idempotency marker
+    }
+
     // ✅ System Settings: Read-only for authenticated users
     // Note: Only admins can modify through Cloud Functions
     match /system_settings/{settingId} {
@@ -251,26 +330,14 @@ service cloud.firestore {
       allow write: if false; // Only through Cloud Functions
     }
 
-    // ✅ Sessions: Admin dashboard tracking (authenticated admins only)
-    // TODO: Replace with Realtime DB Presence in the future
-    match /sessions/{sessionId} {
-      allow read, write: if isAuthenticated();
-    }
-
-    // ✅ Function Monitor Logs: System monitoring data
-    // Read: All authenticated users (for analytics dashboard)
-    // Write: Authenticated users (client-side monitor auto-saves)
+    // 🔒 Function Monitor Logs: locked CF-only — POC retired (PR-S1).
+    // The unwired client POC exposed function stack traces to any authenticated
+    // user. No client reader/writer remains; if monitoring is ever revived it
+    // writes via the Admin SDK (which bypasses rules). Same lockdown class as
+    // employee_costs. (`sessions` presence moved to Realtime DB; the phantom
+    // `function_monitor_errors` block was removed — both fall to default-deny.)
     match /function_monitor_logs/{logId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
-    }
-
-    // ✅ Function Monitor Errors: Critical error tracking
-    // Read: All authenticated users
-    // Write: Authenticated users (automatic error reporting)
-    match /function_monitor_errors/{errorId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read, write: if false; // CF-only — POC retired (PR-S1)
     }
 
     // ✅ Messages: Admin-to-user messaging system
@@ -298,64 +365,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ✅ User Messages: Simple alert-based communication system + Thread Replies
-    // Purpose: Admin sends alerts/messages to users, users can respond
-    // Supports both: single response (legacy) + thread-based replies (new)
-    match /user_messages/{messageId} {
-      // Create: Only admins can create messages
-      allow create: if isAdmin();
-
-      // Read: Users can read messages sent to them, admins can read all
-      allow read: if isAuthenticated() && (
-        resource.data.to == request.auth.token.email ||
-        isAdmin()
-      );
-
-      // Update: Users can update response fields, admins can update any field (including archive, thread metadata)
-      allow update: if isAuthenticated() && (
-        // Users can only update their own messages (response fields only)
-        (resource.data.to == request.auth.token.email &&
-         request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['response', 'status', 'respondedAt'])) ||
-        // Admins can update any field (including archived, archivedBy, archivedAt, repliesCount, lastReplyAt, lastReplyBy)
-        isAdmin()
-      );
-
-      // Delete: Only admins can delete messages
-      allow delete: if isAdmin();
-
-      // ✅ Replies subcollection (NEW - Thread-based messaging)
-      // Purpose: Support back-and-forth conversation threads
-      match /replies/{replyId} {
-        // Helper: Get parent message data
-        function getParentMessage() {
-          return get(/databases/$(database)/documents/user_messages/$(messageId)).data;
-        }
-
-        // Helper: Check if user is the message recipient
-        function isRecipient() {
-          let msg = getParentMessage();
-          return msg != null && msg.to == request.auth.token.email;
-        }
-
-        // Read: User can read replies if they're the message recipient, admins can read all
-        allow read: if isAuthenticated() && (
-          isRecipient() || isAdmin()
-        );
-
-        // Create: User can create reply if they're the recipient, admins can always create
-        allow create: if isAuthenticated() && (
-          (isRecipient() && request.resource.data.from == request.auth.token.email) ||
-          isAdmin()
-        );
-
-        // Update/Delete: Only the sender of the reply (or admin) can update/delete
-        allow update, delete: if isAuthenticated() && (
-          resource.data.from == request.auth.token.email ||
-          isAdmin()
-        );
-      }
-    }
 
     // ✅ Conversations: Two-way chat system (WhatsApp-style)
     // Purpose: Chat conversations between admin and employees

@@ -130,37 +130,6 @@ reportsTab.classList.add('active');
   window.currentActiveTab = tabName;
 }
 
-function toggleNotifications() {
-  if (window.notificationBell) {
-    window.notificationBell.toggleDropdown();
-  }
-}
-
-function clearAllNotifications() {
-  const notificationSystem = window.notificationSystem || new NotificationSystem();
-
-  notificationSystem.confirm(
-    'כל ההתראות יימחקו ולא ניתן יהיה לשחזר אותן.',
-    () => {
-      // אישור - מחק הכל
-      if (window.notificationBell) {
-        window.notificationBell.clearAllNotifications();
-        notificationSystem.show('כל ההתראות נמחקו בהצלחה', 'success');
-      }
-    },
-    () => {
-      // ביטול - לא עושים כלום
-      Logger.log('ביטול מחיקת התראות');
-    },
-    {
-      title: '⚠️ מחיקת כל ההתראות',
-      confirmText: 'מחק הכל',
-      cancelText: 'ביטול',
-      type: 'warning'
-    }
-  );
-}
-
 function openSmartForm() {
   const plusButton = document.getElementById('smartPlusBtn');
   const activeTab = window.currentActiveTab || 'budget';
@@ -227,7 +196,5 @@ plusButton.classList.remove('active');
 // Exports
 export {
   switchTab,
-  toggleNotifications,
-  clearAllNotifications,
   openSmartForm
 };

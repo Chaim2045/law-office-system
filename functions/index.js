@@ -27,19 +27,27 @@ const feeAgreements = require('./fee-agreements');
 exports.uploadFeeAgreement = feeAgreements.uploadFeeAgreement;
 exports.deleteFeeAgreement = feeAgreements.deleteFeeAgreement;
 
+// getFeeAgreementUrl: admin-gated, on-demand SHORT-LIVED signed URL for viewing a
+// fee-agreement PDF (security remediation — replaces the world-readable public-ACL
+// URLs). Compiled from functions/src-ts/fee-agreements/get-fee-agreement-url.ts.
+const getFeeAgreementUrlModule = require('./lib/fee-agreements/get-fee-agreement-url');
+exports.getFeeAgreementUrl = getFeeAgreementUrlModule.getFeeAgreementUrl;
+
 // Scheduled Functions (imported from ./scheduled)
 const scheduled = require('./scheduled');
 exports.dailyTaskReminders = scheduled.dailyTaskReminders;
 exports.dailyBudgetWarnings = scheduled.dailyBudgetWarnings;
 exports.dailyInvariantCheck = scheduled.dailyInvariantCheck;
 exports.holidaysCalendarSync = scheduled.holidaysCalendarSync;  // PR-G.1
-
-// WhatsApp Functions (imported from ./whatsapp)
-const whatsapp = require('./whatsapp');
-exports.sendBroadcastMessage = whatsapp.sendBroadcastMessage;
-exports.sendWhatsAppApprovalNotification = whatsapp.sendWhatsAppApprovalNotification;
-exports.whatsappWebhook = whatsapp.whatsappWebhook;
-exports.onApprovalCreated = whatsapp.onApprovalCreated;
+// OWN-2: the live package/service reconciliation loop (self-healing half of the
+// single-owner redesign). Gated by system_settings/package_reconciliation
+// (default OFF → inert on deploy); calls the OWN-1 owner in enforce mode.
+exports.reconcilePackageDrift = require('./scheduled/reconcile-package-drift').reconcilePackageDrift;
+// OWN-3 admin control: admin-gated callables to operate the loop from the Admin
+// Panel (set off/dry_run/enforce + Run-now). The page reads mode + runs directly.
+const reconciliationModule = require('./reconciliation');
+exports.setReconciliationMode = reconciliationModule.setReconciliationMode;
+exports.runReconciliationNow = reconciliationModule.runReconciliationNow;
 
 // Metrics Functions (imported from ./metrics)
 const metrics = require('./metrics');
@@ -88,6 +96,14 @@ exports.setAdminClaims = setAdminClaimsModule.setAdminClaims;
 const initializeAdminClaimsModule = require('./lib/initialize-admin-claims');
 exports.initializeAdminClaims = initializeAdminClaimsModule.initializeAdminClaims;
 
+// syncRoleClaims (TS — Pre-H.0.0.F). Admin-gated v2 onCall that reconciles each
+// employee's Auth role claim to the employees.role SSOT: writes the first
+// {role:'partner'} claims, removes residual {role:'lawyer'}, read-merge-write
+// (never clobbers other claim fields). DRY-RUN by default; --apply is a
+// supervised PROD-Auth action. Closes Phase 1.
+const syncRoleClaimsModule = require('./lib/sync-role-claims');
+exports.syncRoleClaims = syncRoleClaimsModule.syncRoleClaims;
+
 // Employee Costs (TS — Pre-H.0.0.G). CF-only employee_costs/{email} collection.
 // setEmployeeCost: admin-gated write, audit-first. getEmployeeCost: admin-gated read.
 // Both compiled from functions/src-ts/. Consumed by Phase 2 H.2 (cost foundation).
@@ -96,22 +112,90 @@ exports.setEmployeeCost = setEmployeeCostModule.setEmployeeCost;
 const getEmployeeCostModule = require('./lib/get-employee-cost');
 exports.getEmployeeCost = getEmployeeCostModule.getEmployeeCost;
 
-// tofes-mecher bridge (TS — Phase 2 H.0 foundation). Admin-gated v2 onCall that
-// proves the cross-project wiring (Secret Manager → SA key → named app → 1 read).
+// tofes-mecher bridge (TS — Phase 2 H.1.b, Pattern A live read). Admin-gated v2
+// onCall that reads ONE specific sales_record from the tofes-mecher project via
+// the cross-project named app and returns a FIELD-MINIMIZED snapshot for the H.6
+// cutover flow. Every lookup writes a NON-PII access audit (DLR §8.2.5).
 // ⚠️ DEPLOY PREREQUISITE: the secret TOFES_MECHER_SA_KEY must exist in Secret
 // Manager BEFORE any functions deploy, else the WHOLE deploy fails (defineSecret).
-// ⚠️ REPURPOSE-OR-DELETE in H.1 once the real validateSalesRecordExists ships.
+// It is set (Secret Manager versions/1, H.0 console setup) — landmine disarmed.
 //
-// 🔴 TEMPORARILY DISABLED (2026-06-04 — deploy-unblock incident). Exporting this
-// function loaded connectivity-check.ts, whose top-level defineSecret('TOFES_MECHER_SA_KEY')
-// made EVERY PROD functions deploy abort ("In non-interactive mode but have no value
-// for the secret: TOFES_MECHER_SA_KEY") because the secret was never set. Both the
-// require AND the export are commented so the module is never loaded and defineSecret
-// never runs — restoring PROD deployability without the secret. The cross-project SA +
-// secret are provisioned in H.1; RE-ENABLE these two lines there, where this function
-// then validates the deployed wiring as originally designed (MASTER_PLAN §8.2).
-// const connectivityCheckModule = require('./lib/tofes-mecher/connectivity-check');
-// exports.tofesMecherConnectivityCheck = connectivityCheckModule.connectivityCheck;
+// This SUPERSEDES + DELETES the H.0 tofesMecherConnectivityCheck: it proves the
+// identical wiring (Secret → named app → tofes Firestore read) AND does real work
+// (the H.0 REPURPOSE-OR-DELETE debt, MASTER_PLAN §8.3, resolved here).
+const validateSalesRecordModule = require('./lib/tofes-mecher/validate-sales-record');
+exports.validateSalesRecordExists = validateSalesRecordModule.validateSalesRecordExists;
+
+// tofes-mecher Pattern-D analytical export (TS — Phase 2 H.1.c). Scheduled hourly
+// CF: reads tofes-mecher sales_records (cross-project) → WRITE_TRUNCATE-loads the
+// BigQuery mirror law_office_analytics.sales_records (MAIN project, ADC). Hardened:
+// all-or-nothing read, never-truncate-to-empty, reconciliation counts + run audit,
+// dead-letter (non-PII), no-PII-in-logs. @google-cloud/bigquery is lazy-imported.
+// ⚠️ RUNTIME PREREQUISITE: the Functions runtime SA needs roles/bigquery.dataEditor
+// (dataset) + roles/bigquery.jobUser (project) — fails at FIRST RUN, not deploy.
+const exportSalesToBigQueryModule = require('./lib/tofes-mecher/export-sales-to-bigquery');
+exports.exportSalesToBigQuery = exportSalesToBigQueryModule.exportSalesToBigQuery;
+const listUnlinkedSalesRecordsModule = require('./lib/tofes-mecher/list-unlinked-sales-records');
+exports.listUnlinkedSalesRecords = listUnlinkedSalesRecordsModule.listUnlinkedSalesRecords;
+
+// Profitability — Forecast layer (TS — Phase 2 H.3 PR3). The dynamic per-case
+// cost/profit aggregate in the CF-only client_profitability/{caseNumber} collection
+// (firestore.rules: read isAdmin()||isPartner(), write false — the cost MUST stay OFF
+// the world-readable clients doc, §7.6 / §8.5 D-A).
+//   • aggregateClientProfitability — scheduled daily 06:30 (staggered after the
+//     dailyInvariantCheck full-client scan). Σ(entry.minutes/60 × snapshot cost),
+//     joined by entryId, null≠0, un-costed-coverage %. Admin SDK (bypasses rules).
+//   • recomputeProfitability — admin||partner callable: on-demand single-case recompute
+//     (the PR4 "refresh now" path). Audit-FIRST (mutation).
+//   • getProfitability — admin||partner callable: AUDITED single-case read (the live
+//     grid uses onSnapshot directly; this is the audited deliberate fetch).
+const forecastAggregationModule = require('./lib/profitability/forecast-aggregation');
+exports.aggregateClientProfitability = forecastAggregationModule.aggregateClientProfitability;
+const recomputeProfitabilityModule = require('./lib/profitability/recompute-profitability');
+exports.recomputeProfitability = recomputeProfitabilityModule.recomputeProfitability;
+const getProfitabilityModule = require('./lib/profitability/get-profitability');
+exports.getProfitability = getProfitabilityModule.getProfitability;
+
+// Signature-presence check (TS — Phase 2 H.5). Admin-gated v2 onCall: downloads a
+// stored fee-agreement (PDF/image) from Storage (Admin SDK) and asks Claude whether
+// the page VISUALLY contains a client + a lawyer signature (presence, NOT fraud).
+// Returns the two booleans + confidence + Hebrew reasoning + a derived `passed`
+// gate for the future H.6 cutover. AUDIT-FIRST/egress-second (the document is sent
+// to Anthropic only AFTER a non-PII access audit). @anthropic-ai/sdk is lazy-imported.
+// ⚠️ DEPLOY PREREQUISITE: the secret ANTHROPIC_API_KEY must exist in Secret Manager
+// BEFORE any functions deploy, else the WHOLE deploy fails (defineSecret) — same
+// landmine class as TOFES_MECHER_SA_KEY. See docs/PHASE_2_FOUNDATIONS.md.
+// ⚠️ PII EGRESS (H.5 checkpoint): ships as PLUMBING — no live consumer until H.6;
+// a DPA / privacy-law basis is an H.6 prerequisite before wiring to real PROD data.
+const verifySignaturePresenceModule = require('./lib/signatures/verify-signature-presence');
+exports.verifySignaturePresence = verifySignaturePresenceModule.verifySignaturePresence;
+
+// Cutover — deterministic client creation from a tofes-mecher sale (TS — Phase 2
+// H.6, the core). Admin-gated v2 onCall: LIVE-reads ONE sales_record via the SSOT
+// readSalesRecordSnapshot (the same named-app read + 9-field projection as
+// validateSalesRecordExists), then in ONE transaction idempotently creates a
+// client + a fixed-price service (fixedPrice = the sale's amountBeforeVat, DLR §8.2.5
+// D1) EXACTLY as createClient's `fixed` branch, with plan = computeClientPlan. The
+// agreed-fee snapshot lives in the CF-only sales_record_links/{salesRecordId} doc —
+// OFF the world-readable clients doc (§7.6 / DLR D-A). Audit-FIRST IN-TXN (the audit
+// commits atomically with the create); re-calling for the same sale is a no-op
+// ({ created:false }). NO PDF / AI egress here — Option A defers the H.5 signature
+// gate to a later H.6 increment.
+const createClientFromSalesRecordModule = require('./lib/cutover/create-client-from-sales-record');
+exports.createClientFromSalesRecord = createClientFromSalesRecordModule.createClientFromSalesRecord;
+
+// Cutover — signature-gated release from pending (TS — Phase 2 H.6.c-3). Admin-gated
+// v2 onCall: resolves salesRecordId -> {caseNumber, serviceId} via the c-1
+// pending_signature_intents marker, verifies the LAST-uploaded feeAgreement via the
+// SHARED H.5 core (verifySignatureCore — no CallableRequest fabrication), and on a
+// passed verdict LIVE-reads the sale, checks the fee hasn't drifted (₪1 tolerance),
+// then ATOMICALLY flips the client to 'active' + writes the permanent
+// sales_record_links fee-snapshot doc (the write c-1 deferred to this CF). NEVER
+// returns the H.5 `reasoning` (PII risk). Audit-FIRST in-txn; TOCTOU-safe (a
+// concurrent re-release is an idempotent {released:false, reason:'CLIENT_ALREADY_
+// RELEASED'} no-op, not an error).
+const releaseClientFromPendingSignatureModule = require('./lib/cutover/release-client-from-pending-signature');
+exports.releaseClientFromPendingSignature = releaseClientFromPendingSignatureModule.releaseClientFromPendingSignature;
 
 // Budget Tasks Functions (imported from ./budget-tasks)
 const budgetTasks = require('./budget-tasks');
@@ -144,6 +228,7 @@ exports.moveToNextStage = services.moveToNextStage;
 exports.completeService = services.completeService;
 exports.changeServiceStatus = services.changeServiceStatus;
 exports.deleteService = services.deleteService;
+exports.updatePackagePurchaseDate = services.updatePackagePurchaseDate;
 
 // Timesheet Functions (imported from ./timesheet)
 const timesheet = require('./timesheet');

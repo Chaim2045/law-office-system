@@ -1,0 +1,55 @@
+# Shared-code mechanism (PR-SHARE-1) — pin LF so the content-hash cache-bust
+# token computed by shared-web/emit.js is OS-deterministic. Without this, a
+# Windows working tree (core.autocrlf=true) would check these out as CRLF, whose
+# hash differs from the LF bytes git/CI(Linux)/Netlify store and serve — breaking
+# the drift-guard's token==content-hash invariant. Scoped to these paths only
+# (no repo-wide rule) to avoid churning the rest of the repo's line endings.
+shared-web/** text eol=lf
+apps/admin-panel/js/modules/idle-timeout-manager.js text eol=lf
+apps/user-app/js/modules/idle-timeout-manager.js text eol=lf
+# PR-SHARE-2 — W1 trivial pairs (2-6): pin the emitted copies to LF so the
+# content-hash token is OS-deterministic (same reason as idle-timeout above).
+apps/admin-panel/js/modules/work-hours-calculator.js text eol=lf
+apps/user-app/js/modules/work-hours-calculator.js text eol=lf
+apps/admin-panel/js/shared/business-rules-adapter.js text eol=lf
+apps/user-app/js/shared/business-rules-adapter.js text eol=lf
+apps/admin-panel/js/shared/holidays-cache.js text eol=lf
+apps/user-app/js/shared/holidays-cache.js text eol=lf
+apps/admin-panel/js/shared/work-hours-constants.js text eol=lf
+apps/user-app/js/shared/work-hours-constants.js text eol=lf
+apps/admin-panel/js/core/system-constants.js text eol=lf
+apps/user-app/js/core/system-constants.js text eol=lf
+# PR-SHARE-3 — W2 parameterized pair (config-loader): pin the emitted copies to
+# LF so the per-target content-hash tokens are OS-deterministic. (admin and user
+# copies differ by the injected APP_CONTEXT literal → different tokens by design.)
+apps/admin-panel/js/core/config-loader.js text eol=lf
+apps/user-app/js/core/config-loader.js text eol=lf
+# PR-SHARE-4 — W2 parameterized pair (logger): pin the emitted copies to LF so
+# the per-target content-hash tokens are OS-deterministic. (admin and user copies
+# differ by the injected APP_CONTEXT literal + the user-only PROD Console Override
+# → different tokens by design.)
+apps/admin-panel/js/modules/logger.js text eol=lf
+apps/user-app/js/modules/logger.js text eol=lf
+# PR-SHARE-6 — W3 parameterized pair (service-card-renderer): pin the emitted
+# copies to LF so the per-target content-hash tokens are OS-deterministic. (admin
+# and user copies differ by the injected APP_CONTEXT literal + the §7.6
+# SHOW_FINANCIALS-gated fixed-price branch → different tokens by design.)
+apps/admin-panel/js/modules/service-card-renderer.js text eol=lf
+apps/user-app/js/modules/service-card-renderer.js text eol=lf
+
+# גל-3ה TS-1: logger JS→TS migration — pin generated + source to LF
+# (tsc emits LF; without this a Windows checkout would flip the committed output)
+functions/shared/logger.js text eol=lf
+functions/shared/logger.d.ts text eol=lf
+functions/shared/ts/logger.ts text eol=lf
+functions/shared/tsconfig.json text eol=lf
+
+# גל-3ה TS-2: claim-writer JS→TS migration — pin generated + source to LF
+functions/shared/claim-writer.js text eol=lf
+functions/shared/claim-writer.d.ts text eol=lf
+functions/shared/ts/claim-writer.ts text eol=lf
+
+# גל-3ה TS-3: validators JS→TS migration — pin generated + source to LF
+functions/shared/validators.js text eol=lf
+functions/shared/validators.d.ts text eol=lf
+functions/shared/ts/validators.ts text eol=lf

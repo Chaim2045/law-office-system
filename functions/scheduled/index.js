@@ -8,8 +8,19 @@ const ST = SYSTEM_CONSTANTS.SERVICE_TYPES;
 const PT = SYSTEM_CONSTANTS.PRICING_TYPES;
 
 // PR-C.1 (2026-05-18): nightly companion to PR-D's on-demand audit.
-const { calcClientAggregates } = require('../shared/aggregates');
+const { calcClientAggregates, round2, NON_AGGREGATING_STATUSES } = require('../shared/aggregates');
 const { _recomputeTotalHours } = require('../shared/client-writer');
+// PR-3d: recompute capacity independently of whoever wrote it, so the nightly
+// check can catch a stale or wrong `hoursCapacity`.
+const { computeClientCapacity } = require('../shared/stage-capacity');
+// SHOULD S2 (adversarial-review follow-up, 2026-07-22): status vocabulary
+// centralized so the outbox trigger + any future consumer (PR-IG-B) import
+// rather than re-declare the PASS/FAIL/PARTIAL/ERROR literals.
+const { HEALTH_CHECK_STATUS } = require('../shared/health-check-status');
+// PR-IG-C2 (2026-07-26): pure semantic detector (PR-IG-C1) wired in DETECT-ONLY
+// mode — see the `stageInvariants` census field below. Findings are kept
+// strictly OUT of `discrepancies[]` / `status` (see call site + write site).
+const { detectStageInvariants } = require('../shared/stage-invariants');
 
 const db = admin.firestore();
 
@@ -40,6 +51,10 @@ function detectAggregateDrift(clientData) {
   const canonicalTotalHours = _recomputeTotalHours(services);
   const canonical = calcClientAggregates(services, canonicalTotalHours);
 
+  // NOTE: capacity drift is NOT checked here — see `detectCapacityDrift` below.
+  // It is deliberately kept off this function's result, because this result
+  // reaches `discrepancies[]` → `status` → the outbox → the bot.
+
   const drifts = [];
   const numericFields = [
     { key: 'totalHours', expected: canonicalTotalHours },
@@ -48,6 +63,7 @@ function detectAggregateDrift(clientData) {
     { key: 'minutesUsed', expected: canonical.minutesUsed },
     { key: 'minutesRemaining', expected: canonical.minutesRemaining }
   ];
+
 
   for (const { key, expected } of numericFields) {
     const stored = typeof clientData[key] === 'number' ? clientData[key] : 0;
@@ -78,6 +94,64 @@ function detectAggregateDrift(clientData) {
   }
 
   return drifts;
+}
+
+/**
+ * Capacity drift — a SEPARATE detector, on purpose.
+ *
+ * 🔴 Why this is not part of `detectAggregateDrift`:
+ *
+ * That function's result flows into `discrepancies[]`; `discrepanciesCount > 0`
+ * forces `status = FAIL`; and the outbox trigger forwards any non-PASS run to
+ * the WhatsApp bot verbatim. PR-IG-C2 set the precedent below — stage-invariant
+ * findings live in their OWN field and NEVER enter `discrepancies[]` or affect
+ * `status`, so the bot and its vocabulary stay untouched until a coordinated
+ * change. A brand-new field must EARN its way onto the alerting path rather
+ * than arrive there by default.
+ *
+ * (A first attempt attached this to the returned array as an extra property.
+ * Six existing tests failed on `toEqual([])` — an array carrying an own
+ * property is not deep-equal to a bare one. The contract of
+ * `detectAggregateDrift` is "returns a plain array", and it stays that way.)
+ *
+ * A MISSING `hoursCapacity` is NOT drift: absent by design on exempt clients
+ * and on every document written before the field existed. Only a
+ * present-but-wrong value is a finding.
+ *
+ * @param {Object} clientData
+ * @returns {Array} findings, empty when the field is absent, malformed, or correct
+ */
+function detectCapacityDrift(clientData) {
+  const services = Array.isArray(clientData && clientData.services)
+    ? clientData.services.filter(Boolean)
+    : [];
+  if (services.length === 0) {
+    return [];
+  }
+
+  const stored = clientData && clientData.hoursCapacity;
+  if (!stored || typeof stored !== 'object') {
+    return [];
+  }
+
+  const canonical = computeClientCapacity(services);
+  const out = [];
+
+  for (const key of ['activeHours', 'contractHours', 'phantomHours']) {
+    const current = typeof stored[key] === 'number' ? stored[key] : 0;
+    const expected = canonical[key];
+    const diff = Math.abs(current - expected);
+    if (diff > AGG_DRIFT_TOLERANCE) {
+      out.push({
+        field: `hoursCapacity.${key}`,
+        current: parseFloat(current.toFixed(2)),
+        canonical: parseFloat(expected.toFixed(2)),
+        diff: parseFloat(diff.toFixed(2))
+      });
+    }
+  }
+
+  return out;
 }
 
 /**
@@ -283,25 +357,344 @@ const dailyBudgetWarnings = onSchedule({
 // TODO: כשישודרג Twilio — להוסיף שליחת SMS בפער
 // מספר יעד: +972549539238
 
+// PR-DRIFT-1 (2026-06-21): package-level CONSUMPTION tolerance. Matches Check 5's
+// PKG_DRIFT_TOLERANCE (0.05h / 3min) — the package grain accumulates round2 noise
+// per deduction, so the 0.02 service-grain tolerance would false-fire here.
+const PKG_HOURSUSED_TOLERANCE = 0.05;
+
+/**
+ * Pure helper — Check 0 "card" hours-used for a service, by type.
+ * PR-DRIFT-1: a top-level `fixed` service stores logged hours in
+ * `work.totalMinutesWorked` (its `service.hoursUsed` is always 0 — fixed services
+ * are excluded from billing aggregation). Without the ST.FIXED branch, Check 0
+ * compared 0 against Σ(entries) and false-flagged every fixed service with logged
+ * time. `legal_procedure`-fixed (pricingType===FIXED) keeps its stages-sum branch.
+ * Exposed via `_test`.
+ */
+function computeCardHoursUsed(service) {
+  if (service.type === ST.FIXED) {
+    const m = service.work && typeof service.work.totalMinutesWorked === 'number'
+      ? service.work.totalMinutesWorked : 0;
+    return m / 60;
+  }
+  if (service.pricingType === PT.FIXED) {
+    return (service.stages || []).reduce((sum, st) => sum + (st.totalHoursWorked || 0), 0);
+  }
+  return service.hoursUsed || 0;
+}
+
+/**
+ * Pure helper — Check 7 (PR-DRIFT-1): package-level CONSUMPTION drift + internal
+ * consistency for HOURS services. Read-only; returns an array of discrepancy
+ * objects (the caller stamps clientId/clientName). Empty array = clean.
+ *
+ * Closes the unmonitored rung in the invariant ladder: `package.hoursUsed` had no
+ * check against Σ(entries by packageId). Complements Check 5 (CAPACITY:
+ * service.totalHours vs Σpkg.hours), which never covered CONSUMPTION.
+ *
+ * SCOPE (PR-DRIFT-1): HOURS services only. `legal_procedure` STAGE packages are
+ * deferred to PR-DRIFT-3 — their ids ARE catalogued here (so stage entries are not
+ * mis-flagged as dangling) but their hoursUsed is NOT drift-checked.
+ *
+ * Archived services are SKIPPED for the drift/consistency checks — consistent with
+ * NON_AGGREGATING_STATUSES (their frozen hoursUsed is intentionally outside billing
+ * aggregation; archived drift is covered by the PR-DRIFT-2 repair full-scan).
+ *
+ * @param {Object} clientData             - the client document data
+ * @param {Object} packageMinutes         - { [packageId]: minutes } from the client's entries
+ * @param {Object} orphanMinutesByService - { [effectiveServiceId]: minutes } for entries with NO packageId
+ * @returns {Array<Object>} discrepancies (possibly empty)
+ */
+function detectPackageInvariants(clientData, packageMinutes, orphanMinutesByService, orphanMinutesByStage) {
+  const out = [];
+  const services = Array.isArray(clientData && clientData.services)
+    ? clientData.services.filter(Boolean)
+    : [];
+  const pkgMin = packageMinutes || {};
+  const orphanMin = orphanMinutesByService || {};
+  const orphanMinByStage = orphanMinutesByStage || {}; // OWN-0(d): orphan minutes per stageId
+
+  // Pass 1: catalogue EVERY package id anywhere on the client (HOURS packages +
+  // legal_procedure stage packages, ALL statuses) so the dangling-id check below
+  // does not mis-flag a legal-stage or archived package as "no such package".
+  // Count occurrences too — `pkg_<ts>` ids are not globally unique (millisecond
+  // timestamp), so a same-client collision makes the packageMinutes bucket
+  // ambiguous and the value compare must be skipped.
+  const occurrences = {};
+  for (const svc of services) {
+    for (const pkg of (Array.isArray(svc.packages) ? svc.packages : [])) {
+      if (pkg && pkg.id) occurrences[pkg.id] = (occurrences[pkg.id] || 0) + 1;
+    }
+    for (const stage of (Array.isArray(svc.stages) ? svc.stages : [])) {
+      for (const pkg of (stage && Array.isArray(stage.packages) ? stage.packages : [])) {
+        if (pkg && pkg.id) occurrences[pkg.id] = (occurrences[pkg.id] || 0) + 1;
+      }
+    }
+  }
+  const knownPkgIds = new Set(Object.keys(occurrences));
+
+  // Pass 2: per-service + per-package checks — HOURS + non-archived only.
+  for (const svc of services) {
+    if (NON_AGGREGATING_STATUSES.includes(svc.status || 'active')) continue; // skip archived
+    const isHours = svc.type === ST.HOURS || svc.serviceType === ST.HOURS;
+    if (!isHours) continue;
+    const serviceId = svc.id;
+    const packages = Array.isArray(svc.packages) ? svc.packages : [];
+
+    // (B) orphan signal — entries with NO packageId on a service that HAS packages
+    if (packages.length > 0) {
+      const om = orphanMin[serviceId] || 0;
+      if (om > 0) {
+        out.push({
+          type: 'orphan_entries_on_packaged_service',
+          serviceId,
+          orphanMinutes: om,
+          orphanHours: round2(om / 60)
+        });
+      }
+    } else {
+      // (B2) OWN-0(d) — HOURS service with ZERO packages but logged (orphan) hours.
+      // OWN-0(b) cannot stamp these (no package exists) and the forward-replay repair
+      // skips them ('no_packages'), so they stay packageId:null at service level by
+      // design. Detection-only signal so the "no new orphans" claim is MEASURED.
+      const om = orphanMin[serviceId] || 0;
+      if (om > 0) {
+        out.push({
+          type: 'orphan_entries_on_packageless_service',
+          serviceId,
+          orphanMinutes: om,
+          orphanHours: round2(om / 60)
+        });
+      }
+    }
+
+    for (const pkg of packages) {
+      if (!pkg || !pkg.id) continue;
+      const packageId = pkg.id;
+
+      // non-unique id on this client → ambiguous bucket; signal + skip value compares
+      if ((occurrences[packageId] || 0) > 1) {
+        out.push({ type: 'duplicate_package_id', serviceId, packageId });
+        continue;
+      }
+
+      const cardUsed = pkg.hoursUsed || 0;
+      const entriesUsed = (pkgMin[packageId] || 0) / 60;
+
+      // (A) CONSUMPTION drift: package.hoursUsed vs Σ(entries by packageId)/60.
+      // Signed: + = card over-counts logged entries (the dominant phantom case).
+      const usedDrift = round2(cardUsed - entriesUsed);
+      if (Math.abs(usedDrift) > PKG_HOURSUSED_TOLERANCE) {
+        out.push({
+          type: 'package_hoursUsed_drift',
+          serviceId,
+          packageId,
+          card: round2(cardUsed),
+          entries: round2(entriesUsed),
+          drift: usedDrift
+        });
+      }
+
+      // (consistency) hoursRemaining == hours - hoursUsed (pure arithmetic)
+      if (typeof pkg.hoursRemaining === 'number') {
+        const expectedRemaining = round2((pkg.hours || 0) - cardUsed);
+        const remDrift = round2(pkg.hoursRemaining - expectedRemaining);
+        if (Math.abs(remDrift) > PKG_HOURSUSED_TOLERANCE) {
+          out.push({
+            type: 'package_hoursRemaining_arithmetic',
+            serviceId,
+            packageId,
+            stored: round2(pkg.hoursRemaining),
+            expected: expectedRemaining,
+            drift: remDrift
+          });
+        }
+      }
+
+      // (consistency) status <-> hoursRemaining coherence. Conservative to avoid
+      // noise: `depleted` must have remaining <= 0; `active`/`pending` flagged only
+      // BELOW the -10h controlled-overdraft floor (a package inside the window may
+      // legitimately stay active/pending).
+      const rem = typeof pkg.hoursRemaining === 'number'
+        ? pkg.hoursRemaining
+        : round2((pkg.hours || 0) - cardUsed);
+      const status = pkg.status || 'active';
+      let statusIncoherent = false;
+      if (status === 'depleted' && rem > PKG_HOURSUSED_TOLERANCE) statusIncoherent = true;
+      if ((status === 'active' || status === 'pending') && rem <= -10) statusIncoherent = true;
+      if (statusIncoherent) {
+        out.push({
+          type: 'package_status_incoherent',
+          serviceId,
+          packageId,
+          status,
+          hoursRemaining: round2(rem)
+        });
+      }
+    }
+  }
+
+  // Pass 2b (OWN-0(d)): legal_procedure stage orphans — entries with NO packageId on
+  // an HOURLY stage that HAS packages (a packageId SHOULD have been assigned). Fixed
+  // stages legitimately carry no packageId, so only hourly-with-packages stages count.
+  // Detection-only: legal_procedure repair is DRIFT-3; this MEASURES the open surface
+  // that OWN-0(a)/(b) (HOURS-only) deliberately leave for now.
+  for (const svc of services) {
+    if (NON_AGGREGATING_STATUSES.includes(svc.status || 'active')) continue; // skip archived
+    if (svc.type !== ST.LEGAL_PROCEDURE && svc.serviceType !== ST.LEGAL_PROCEDURE) continue;
+    for (const stage of (Array.isArray(svc.stages) ? svc.stages : [])) {
+      if (!stage || !stage.id) continue;
+      const isHourlyStage = stage.pricingType !== PT.FIXED;
+      const stagePackages = Array.isArray(stage.packages) ? stage.packages : [];
+      if (!isHourlyStage || stagePackages.length === 0) continue;
+      const om = orphanMinByStage[stage.id] || 0;
+      if (om > 0) {
+        out.push({
+          type: 'orphan_entries_on_legal_procedure_stage',
+          serviceId: svc.id,
+          stageId: stage.id,
+          orphanMinutes: om,
+          orphanHours: round2(om / 60)
+        });
+      }
+    }
+  }
+
+  // Pass 3: dangling packageId — an entry references a package id that exists
+  // NOWHERE on the client (deleted/renamed package, or a write bug). The inverse
+  // of the orphan signal (entry HAS a packageId, but it points to nothing).
+  for (const packageId of Object.keys(pkgMin)) {
+    if (!knownPkgIds.has(packageId)) {
+      out.push({
+        type: 'dangling_packageId',
+        packageId,
+        entries: round2((pkgMin[packageId] || 0) / 60)
+      });
+    }
+  }
+
+  return out;
+}
+
+// PR-IG-A1 (2026-07-22): result-document schema version. schemaVersion 2 adds
+// the census fields + PASS|FAIL|PARTIAL|ERROR vocabulary below. `type:'invariant_check'`
+// is UNCHANGED — the external hachnasovitz WhatsApp bot keys off it.
+const RESULT_SCHEMA_VERSION = 2;
+
+// PR-IG-A1: cap the embedded discrepancies[] array so the result document stays
+// well under Firestore's 1 MiB limit even in a mass-drift event; discrepanciesCount
+// always carries the true total. Mirrors the precedent in
+// `functions/scheduled/reconcile-package-drift.js` (`deferrals.slice(0, 200)`).
+const MAX_EMBEDDED_DISCREPANCIES = 200;
+
+// PR-IG-A1-FIX5 (2026-07-22, adversarial-review response): same cap precedent,
+// applied to the list of client ids whose per-client scan phase errored, so a
+// standing nightly PARTIAL is diagnosable in one read instead of requiring a
+// log dig. Ids only — no names (repo is PUBLIC, CI logs world-readable).
+const MAX_ERRORED_CLIENT_IDS = 200;
+
+// PR-IG-A1-FIX2 (2026-07-22, adversarial-review response): replaces the old
+// `CHECKS_RUN = 8` constant, which was written into BOTH the PARTIAL document
+// (when every per-client check errored, i.e. `clientsScanChecked === 0`) and
+// the ERROR document (when the run crashed before a single check executed) —
+// asserting "8 checks ran" on exactly the two paths this whole PR exists to
+// make truthful. `checksExecuted` below is a real counter, incremented only
+// as each check MECHANISM actually completes this run. `MAX_POSSIBLE_CHECKS`
+// is documentation only — it is never written to a result document.
+//
+// PR-IG-C2 (2026-07-26): 8 → 9. The per-client stage-invariants detector call
+// (detectStageInvariants, DETECT-ONLY — see call site below) is a 3rd
+// per-client check mechanism, alongside the per-service hours-comparison and
+// Check 7 package invariants. Its findings never enter `discrepancies[]` and
+// never affect `status`, but it IS a real check that runs and is counted here
+// so `checksExecuted` stays truthful about what actually executed.
+const MAX_POSSIBLE_CHECKS = 9;
+
 const dailyInvariantCheck = onSchedule({
   schedule: '0 6 * * *',
   timeZone: 'Asia/Jerusalem',
-  region: 'us-central1'
+  region: 'us-central1',
+  // PR-IG-A1-FIX3 (2026-07-22, adversarial-review response): explicit
+  // timeout/memory so a timeout or OOM kill is less likely — this run does
+  // one Firestore query PER client across 200+ clients, plus two unbounded
+  // collection scans (`timesheet_entries` per client + a `taskId != null`
+  // scan for Check 3), accumulating minutes-maps in memory. The v2 defaults
+  // (60s / 256MiB) are sized for a simple callable, not this workload.
+  //
+  // Values are justified directly by this run's own workload above — NOT by
+  // precedent from another function (corrected 2026-07-22, review response:
+  // an earlier version of this comment cited `functions/reconciliation/index.js:199`
+  // as precedent, but that function, `runReconciliationNow`, is an `onCall`,
+  // not a scheduled per-client-iteration job like this one, and it also
+  // carries `maxInstances:1`, which was never copied here — this function
+  // needs no such cap, since Cloud Scheduler invokes it at most once per
+  // firing. The function actually analogous to this one's shape,
+  // `reconcilePackageDrift` in `functions/scheduled/reconcile-package-drift.js`,
+  // declares NEITHER `timeoutSeconds` NOR `memory` at all). This does NOT
+  // detect a run that never fired at all (Cloud Scheduler disabled, quota
+  // exhausted, etc.) — that absence-alarm is PR-IG-B's job
+  // (docs/PLAN-INTEGRITY-GUARD-LAYER-2026-07.md §3, PR-IG-B2's ">26h since
+  // last run" banner). This PR only removes the single most likely cause of
+  // the crash going undetected by simply not crashing on a resource limit.
+  timeoutSeconds: 540,
+  memory: '512MiB'
 }, async () => {
   const SKIP_CLIENTS = ['2025003'];
   const TOLERANCE = 0.02;
   const discrepancies = [];
+  const startTime = Date.now();
+
+  // PR-IG-A1: census counters — a crashed/partial scan must never look identical
+  // to a clean one. Declared outside the try so the outer catch can still report
+  // whatever was counted before the crash.
+  //
+  // PR-IG-A1-FIX4 (2026-07-22, adversarial-review response): renamed
+  // clientsChecked/clientsErrored → clientsScanChecked/clientsScanErrored.
+  // These count coverage of the PER-CLIENT TIMESHEET-SCAN PHASE ONLY (the
+  // per-service hours-comparison + Check 7 package invariants, both inside
+  // the per-client try below) — NOT the whole run. A client counted in
+  // clientsScanErrored is still covered by Checks 2, 5 and 6, which iterate
+  // every client in `clientsSnapshot.docs` directly and do not sit inside
+  // this per-client try (Checks 2 and 5 don't even honour SKIP_CLIENTS; only
+  // Check 6 does). The old names + the old Hebrew message below ("X לקוחות
+  // לא נסרקו") read as "not examined at all", which overstated what was
+  // actually missed.
+  let clientsTotal = 0;
+  let clientsScanChecked = 0;
+  let clientsSkippedConfig = 0;
+  let clientsEmptySkipped = 0;
+  let clientsScanErrored = 0;
+  // PR-IG-A1-FIX5: ids only, capped — see MAX_ERRORED_CLIENT_IDS above.
+  const clientsScanErroredIds = [];
+  let entriesRead = 0;
+  // PR-IG-A1-FIX2: see MAX_POSSIBLE_CHECKS above.
+  let checksExecuted = 0;
+
+  // PR-IG-C2 (2026-07-26): run-level accumulators for the stage-invariants
+  // detector (DETECT-ONLY — see call site + write site below). Kept STRICTLY
+  // separate from `discrepancies` — never merged into it.
+  const stageInvariantDiscrepancies = [];
+  let stageInvariantUnresolved = 0;
+  let stageInvariantSkippedDates = 0;
+
+  // PR-3d: capacity-drift findings. Same discipline as the line above — kept
+  // STRICTLY separate from `discrepancies`, never merged into it, so the run
+  // status, the outbox trigger and the bot are untouched by a field they have
+  // never seen.
+  const capacityDriftFindings = [];
 
   try {
     console.log('🔍 Starting daily invariant check...');
 
     const clientsSnapshot = await db.collection('clients').get();
+    clientsTotal = clientsSnapshot.size;
     console.log(`📊 Checking ${clientsSnapshot.size} clients`);
 
     for (const clientDoc of clientsSnapshot.docs) {
       const clientId = clientDoc.id;
 
       if (SKIP_CLIENTS.includes(clientId)) {
+        clientsSkippedConfig += 1;
         continue;
       }
 
@@ -311,6 +704,7 @@ const dailyInvariantCheck = onSchedule({
         const services = clientData.services || [];
 
         if (services.length === 0) {
+          clientsEmptySkipped += 1;
           continue;
         }
 
@@ -318,14 +712,35 @@ const dailyInvariantCheck = onSchedule({
         const timesheetSnapshot = await db.collection('timesheet_entries')
           .where('clientId', '==', clientId)
           .get();
+        entriesRead += timesheetSnapshot.size;
 
-        // Group minutes by effective serviceId (parentServiceId for legal_procedure stages)
+        // Group minutes by effective serviceId (parentServiceId for legal_procedure stages).
+        // PR-DRIFT-1: from the SAME single read, also group by packageId (Check 7) and
+        // accumulate orphan (no-packageId) minutes per effective service.
         const serviceMinutes = {};
+        const packageMinutes = {};
+        const orphanMinutesByService = {};
+        const orphanMinutesByStage = {}; // OWN-0(d): orphan minutes keyed by stageId (legal_procedure)
+        // PR-IG-C2: materialize the raw entries array ONCE per client, from
+        // the SAME already-read `timesheetSnapshot` — no new Firestore query.
+        // Fed to detectStageInvariants below (DETECT-ONLY).
+        const clientEntries = timesheetSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         timesheetSnapshot.forEach(doc => {
           const entry = doc.data();
           const effectiveServiceId = entry.parentServiceId || entry.serviceId;
           if (effectiveServiceId) {
             serviceMinutes[effectiveServiceId] = (serviceMinutes[effectiveServiceId] || 0) + (entry.minutes || 0);
+          }
+          if (entry.packageId) {
+            packageMinutes[entry.packageId] = (packageMinutes[entry.packageId] || 0) + (entry.minutes || 0);
+          } else if (effectiveServiceId) {
+            orphanMinutesByService[effectiveServiceId] = (orphanMinutesByService[effectiveServiceId] || 0) + (entry.minutes || 0);
+            // OWN-0(d): also bucket by stage so legal_procedure hourly-stage orphans
+            // can be detected per stage (orphanMinutesByService is keyed by the parent
+            // service, which mixes fixed + hourly stages).
+            if (entry.stageId) {
+              orphanMinutesByStage[entry.stageId] = (orphanMinutesByStage[entry.stageId] || 0) + (entry.minutes || 0);
+            }
           }
         });
 
@@ -334,9 +749,7 @@ const dailyInvariantCheck = onSchedule({
           const serviceId = service.id;
           if (!serviceId) continue;
 
-          const cardHoursUsed = service.pricingType === PT.FIXED
-            ? (service.stages || []).reduce((sum, st) => sum + (st.totalHoursWorked || 0), 0)
-            : (service.hoursUsed || 0);
+          const cardHoursUsed = computeCardHoursUsed(service);
           const timesheetMinutes = serviceMinutes[serviceId] || 0;
           const timesheetHoursUsed = timesheetMinutes / 60;
           const gap = Math.abs(cardHoursUsed - timesheetHoursUsed);
@@ -353,10 +766,72 @@ const dailyInvariantCheck = onSchedule({
             });
           }
         }
+
+        // ── Check 7 (PR-DRIFT-1): package-level consumption + consistency drift ──
+        // Reuses the per-client entries already read above (packageMinutes /
+        // orphanMinutesByService / orphanMinutesByStage). Read-only — only pushes
+        // to `discrepancies`. OWN-0(d) adds the 4th arg for legal_procedure stage orphans.
+        const pkgDiscrepancies = detectPackageInvariants(clientData, packageMinutes, orphanMinutesByService, orphanMinutesByStage);
+        for (const d of pkgDiscrepancies) {
+          discrepancies.push({ ...d, clientId, clientName });
+        }
+
+        // ── PR-IG-C2: stage-invariants detector (DETECT-ONLY) ──
+        // Pure/synchronous (functions/shared/stage-invariants.js). Runs inside
+        // this per-client try, so any throw is already contained (caught
+        // below → clientsScanErrored++ → PARTIAL, never a crash). Findings
+        // are accumulated into the run-level `stageInvariant*` variables
+        // ONLY — they are NEVER merged into `discrepancies` and NEVER affect
+        // `status` (see the write site further down).
+        const stageResult = detectStageInvariants(clientData, clientEntries);
+        if (stageResult && Array.isArray(stageResult.discrepancies)) {
+          // Adversarial-review FIX 1 (MAJOR): attach clientId ONLY — never
+          // clientName (this new path stays PII-clean; the repo is PUBLIC) —
+          // so a finding in the written stageInvariants.discrepancies array
+          // can actually be located to a client. Mirrors the sibling pushes
+          // above (`discrepancies.push({ ...d, clientId, clientName })`),
+          // minus clientName by design.
+          for (const d of stageResult.discrepancies) stageInvariantDiscrepancies.push({ ...d, clientId });
+          stageInvariantUnresolved += stageResult.unresolvedCount || 0;
+          stageInvariantSkippedDates += stageResult.skippedUnparseableDates || 0;
+        }
+
+        clientsScanChecked += 1;
       } catch (clientError) {
+        // PR-IG-A1: this used to be swallowed with no counter — a run where every
+        // client read failed still wrote PASS. Now counted so PASS can never be
+        // claimed while clients went unscanned (see the status decision below).
+        clientsScanErrored += 1;
+        // PR-IG-A1-FIX5: capture WHICH client, bounded — a standing nightly
+        // PARTIAL used to record only the count; the id lived solely in this
+        // console.error, invisible to anyone reading the result document.
+        if (clientsScanErroredIds.length < MAX_ERRORED_CLIENT_IDS) {
+          clientsScanErroredIds.push(clientId);
+        }
         console.error(`⚠️ Error checking client ${clientId}:`, clientError.message);
         // Continue to next client
       }
+    }
+
+    // PR-IG-A1-FIX2: the per-service hours-comparison + Check 7 package
+    // invariants above ran (for at least one client) only if the per-client
+    // scan phase actually reached at least one client successfully. If every
+    // client errored, neither mechanism executed even once this run.
+    // PR-IG-C2: +=3, not +=2 — the stage-invariants detector call is a 3rd
+    // per-client check mechanism (see MAX_POSSIBLE_CHECKS above).
+    if (clientsScanChecked > 0) {
+      checksExecuted += 3;
+    }
+
+    // PR-IG-C2: detect-only visibility — ids/counts only (no PII), so the
+    // stage-invariants signal is visible in Cloud Logging without opening
+    // Firestore, even though it never touches `discrepancies`/`status`.
+    if (stageInvariantDiscrepancies.length > 0) {
+      console.warn('STAGE_INVARIANTS_DETECTED', {
+        discrepanciesCount: stageInvariantDiscrepancies.length,
+        unresolvedCount: stageInvariantUnresolved,
+        skippedUnparseableDates: stageInvariantSkippedDates
+      });
     }
 
     // Check 1: tasks without serviceId
@@ -375,6 +850,7 @@ const dailyInvariantCheck = onSchedule({
         });
       }
     });
+    checksExecuted += 1; // Check 1
 
     // Check 2: stages missing required fields
     const REQUIRED_STAGE_FIELDS = ['id', 'pricingType', 'status', 'order'];
@@ -400,12 +876,14 @@ const dailyInvariantCheck = onSchedule({
         }
       });
     });
+    checksExecuted += 1; // Check 2
 
     // Check 3: task.actualMinutes vs SUM entries
     const taskMinutes = {};
     const allEntriesSnapshot = await db.collection('timesheet_entries')
       .where('taskId', '!=', null)
       .get();
+    entriesRead += allEntriesSnapshot.size;
     allEntriesSnapshot.forEach(doc => {
       const entry = doc.data();
       if (entry.taskId) {
@@ -427,6 +905,7 @@ const dailyInvariantCheck = onSchedule({
         });
       }
     });
+    checksExecuted += 1; // Check 3
 
     // Check 4: task.actualHours vs task.actualMinutes (drift between aggregates)
     // Tolerance: 1 minute (0.0167h). Catches:
@@ -450,6 +929,7 @@ const dailyInvariantCheck = onSchedule({
         });
       }
     });
+    checksExecuted += 1; // Check 4
 
     // Check 5: package drift — service.totalHours vs Σ(packages.hours)
     // Catches the regression pattern fixed in commit 974152d (renewServiceHours
@@ -486,6 +966,7 @@ const dailyInvariantCheck = onSchedule({
         }
       });
     });
+    checksExecuted += 1; // Check 5
 
     // Check 6: client-aggregate drift (PR-C.1 — I1-I4 invariants).
     // Companion to PR-D's on-demand audit (admin/repair-aggregates.js).
@@ -506,45 +987,144 @@ const dailyInvariantCheck = onSchedule({
           driftFields
         });
       }
+      // PR-3d: capacity drift travels in its OWN channel — detect-only, never
+      // into `discrepancies[]`, never affecting `status`, never reaching the
+      // outbox or the bot. Mirrors the PR-IG-C2 treatment of stage invariants.
+      // No client name: the field id is enough to look a case up, and this
+      // array is not on the alerting path that already carries names.
+      const capacityFields = detectCapacityDrift(data);
+      if (capacityFields.length > 0) {
+        capacityDriftFindings.push({ clientId, driftFields: capacityFields });
+      }
+    });
+    checksExecuted += 1; // Check 6
+
+    // PR-IG-A1: status vocabulary is PASS | FAIL | PARTIAL | ERROR.
+    // PASS requires clientsScanErrored === 0 — a scan that missed clients can
+    // never report green, even if the clients it DID reach were clean. This is
+    // the core fix for the "crashed scan reports green" defect (any client read
+    // failure used to be swallowed with no counter and no status impact).
+    const discrepanciesCount = discrepancies.length;
+    const durationMs = Date.now() - startTime;
+    let status;
+    if (clientsScanErrored > 0) {
+      status = HEALTH_CHECK_STATUS.PARTIAL;
+    } else if (discrepanciesCount > 0) {
+      status = HEALTH_CHECK_STATUS.FAIL;
+    } else {
+      status = HEALTH_CHECK_STATUS.PASS;
+    }
+
+    const census = {
+      clientsTotal,
+      clientsScanChecked,
+      clientsSkippedConfig,
+      clientsEmptySkipped,
+      clientsScanErrored,
+      // PR-IG-A1-FIX5: capped id list — see MAX_ERRORED_CLIENT_IDS above.
+      clientsScanErroredIds: clientsScanErroredIds.slice(0, MAX_ERRORED_CLIENT_IDS),
+      // PR-IG-A1-FIX2: real executed-check counter, replaces the old lying
+      // `checksRun: CHECKS_RUN` constant. Max possible this run = MAX_POSSIBLE_CHECKS (9).
+      checksExecuted,
+      entriesRead,
+      durationMs
+    };
+
+    // PR-IG-A1-FIX4: wording describes the PER-CLIENT TIMESHEET-SCAN PHASE
+    // specifically ("לא הושלמה בדיקת שעות/חבילות") — not "לא נסרקו" (not
+    // scanned at all). Checks 2, 5 and 6 still ran over every client above,
+    // including the ones counted here; only the per-service hours-comparison
+    // + Check 7 package invariants were skipped for them.
+    let message;
+    if (status === HEALTH_CHECK_STATUS.PASS) {
+      message = 'כל הנתונים תקינים';
+    } else if (status === HEALTH_CHECK_STATUS.PARTIAL) {
+      message = discrepanciesCount > 0
+        ? `הבדיקה הושלמה חלקית — ל-${clientsScanErrored} לקוחות לא הושלמה בדיקת שעות/חבילות (שאר הבדיקות בוצעו עבורם), ונמצאו ${discrepanciesCount} פערים בלקוחות שכן הושלמה עבורם הבדיקה`
+        : `הבדיקה הושלמה חלקית — ל-${clientsScanErrored} לקוחות לא הושלמה בדיקת שעות/חבילות (שאר הבדיקות בוצעו עבורם)`;
+    } else {
+      message = `נמצאו ${discrepanciesCount} פערים בנתוני שעות`;
+    }
+
+    await db.collection('system_health_checks').add({
+      type: 'invariant_check',
+      schemaVersion: RESULT_SCHEMA_VERSION,
+      status,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      discrepanciesCount,
+      // PR-IG-A1: cap the embedded array (Firestore 1 MiB doc limit); the true
+      // count always travels in discrepanciesCount above.
+      discrepancies: discrepancies.slice(0, MAX_EMBEDDED_DISCREPANCIES),
+      ...census,
+      // PR-IG-C2: SEPARATE field — stage-invariant findings NEVER enter
+      // `discrepancies[]` above and NEVER affect `status`. This keeps the
+      // outbox trigger + the WhatsApp bot (which key off `discrepancies[]`
+      // and the vocabulary in `message`) completely untouched. Enforcement
+      // + the coordinated bot change are a later PR.
+      // PR-3d: capacity drift — SEPARATE field, same discipline as
+      // stageInvariants below. Never enters `discrepancies[]`, never affects
+      // `status`, never reaches the outbox or the bot. Detect-only: it exists
+      // so a stale or wrong `hoursCapacity` is VISIBLE, not so it pages anyone.
+      // Promoting it to the alerting path is a later, coordinated decision.
+      capacityDrift: {
+        findings: capacityDriftFindings.slice(0, MAX_EMBEDDED_DISCREPANCIES),
+        findingsCount: capacityDriftFindings.length,
+        mode: 'detect_only',
+        schemaVersion: 1
+      },
+      stageInvariants: {
+        discrepancies: stageInvariantDiscrepancies.slice(0, MAX_EMBEDDED_DISCREPANCIES),
+        discrepanciesCount: stageInvariantDiscrepancies.length,
+        unresolvedCount: stageInvariantUnresolved,
+        skippedUnparseableDates: stageInvariantSkippedDates,
+        mode: 'detect_only',
+        schemaVersion: 1
+      },
+      message
     });
 
-    // Save result to system_health_checks
-    if (discrepancies.length > 0) {
-      await db.collection('system_health_checks').add({
-        type: 'invariant_check',
-        status: 'FAIL',
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        discrepanciesCount: discrepancies.length,
-        discrepancies,
-        message: `נמצאו ${discrepancies.length} פערים בנתוני שעות`
-      });
-      console.log(`❌ Invariant check FAILED — ${discrepancies.length} discrepancies found`);
-    } else {
-      await db.collection('system_health_checks').add({
-        type: 'invariant_check',
-        status: 'PASS',
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        discrepanciesCount: 0,
-        discrepancies: [],
-        message: 'כל הנתונים תקינים'
-      });
+    if (status === HEALTH_CHECK_STATUS.PASS) {
       console.log('✅ Invariant check PASSED — no discrepancies');
+    } else if (status === HEALTH_CHECK_STATUS.PARTIAL) {
+      console.log(`⚠️ Invariant check PARTIAL — ${clientsScanErrored} client scan-phase errors, ${discrepanciesCount} discrepancies`);
+    } else {
+      console.log(`❌ Invariant check FAILED — ${discrepanciesCount} discrepancies found`);
     }
 
   } catch (error) {
     console.error('❌ Invariant check ERROR:', error);
+    const durationMs = Date.now() - startTime;
     try {
       await db.collection('system_health_checks').add({
         type: 'invariant_check',
-        status: 'ERROR',
+        schemaVersion: RESULT_SCHEMA_VERSION,
+        status: HEALTH_CHECK_STATUS.ERROR,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        discrepanciesCount: 0,
-        discrepancies: [],
+        discrepanciesCount: discrepancies.length,
+        discrepancies: discrepancies.slice(0, MAX_EMBEDDED_DISCREPANCIES),
+        clientsTotal,
+        clientsScanChecked,
+        clientsSkippedConfig,
+        clientsEmptySkipped,
+        clientsScanErrored,
+        clientsScanErroredIds: clientsScanErroredIds.slice(0, MAX_ERRORED_CLIENT_IDS),
+        // PR-IG-A1-FIX2: whatever completed before the crash — zero if the
+        // crash happened at the very first `clients.get()`, as it did for the
+        // documented defect (the ERROR document used to claim all 8 ran).
+        checksExecuted,
+        entriesRead,
+        durationMs,
         message: `שגיאה בבדיקת תקינות: ${error.message}`
       });
     } catch (saveError) {
       console.error('❌ Failed to save error status:', saveError);
     }
+    // PR-IG-A1: rethrow so Cloud Scheduler's failure metric fires. Previously
+    // this function returned normally on total crash, so a crashed run had
+    // NO operator-visible signal beyond a document nobody was reading.
+    // BEHAVIORAL CHANGE: this function can now throw where it previously
+    // always returned normally.
+    throw error;
   }
 });
 
@@ -620,11 +1200,25 @@ module.exports = {
   dailyBudgetWarnings,
   dailyInvariantCheck,
   holidaysCalendarSync,
-  // Exported for unit testing only (PR-C.1 + PR-G.1).
+  // Exported for unit testing only (PR-C.1 + PR-G.1 + PR-DRIFT-1).
   _test: {
     detectAggregateDrift,
+    // PR-3d: the capacity detector is SEPARATE from detectAggregateDrift on
+    // purpose — its findings must never reach `discrepancies[]`/`status`/the bot.
+    detectCapacityDrift,
+    detectPackageInvariants,
+    computeCardHoursUsed,
     AGG_DRIFT_TOLERANCE,
+    PKG_HOURSUSED_TOLERANCE,
     syncHolidaysForYear,
-    _hashHolidays
+    _hashHolidays,
+    // PR-IG-A1
+    RESULT_SCHEMA_VERSION,
+    MAX_EMBEDDED_DISCREPANCIES,
+    // PR-IG-A1-FIX2 / FIX5 (2026-07-22, adversarial-review response)
+    MAX_POSSIBLE_CHECKS,
+    MAX_ERRORED_CLIENT_IDS,
+    // SHOULD S2 (2026-07-22, adversarial-review response)
+    HEALTH_CHECK_STATUS
   }
 };

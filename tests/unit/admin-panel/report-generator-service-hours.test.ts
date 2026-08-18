@@ -135,43 +135,6 @@ describe('resolveServiceHours — hour packages (non-staged)', () => {
   });
 });
 
-describe('resolveServiceHours — all services', () => {
-  it('sums billable services for "all"', () => {
-    const client = {
-      totalHours: 0,
-      hoursRemaining: 0,
-      services: [
-        hourPackageService(),
-        hourPackageService({ id: 'p2', name: 'p2', totalHours: 5, hoursRemaining: 5, hoursUsed: 0 })
-      ]
-    };
-    const r = reportGenerator.resolveServiceHours(client, { service: 'all', stage: '' });
-    expect(r.matchType).toBe('all');
-    expect(r.totalHours).toBe(20); // 15 + 5
-    expect(r.remainingHours).toBe(15); // 10 + 5
-    expect(r.usedHours).toBe(5); // 20 - 15
-  });
-
-  it('excludes archived services from "all" (PR-G.3.14)', () => {
-    const client = {
-      services: [
-        hourPackageService(),
-        hourPackageService({ id: 'arch', name: 'arch', status: 'archived', totalHours: 100, hoursRemaining: 100, hoursUsed: 0 })
-      ]
-    };
-    const r = reportGenerator.resolveServiceHours(client, { service: 'כל השירותים', stage: '' });
-    expect(r.totalHours).toBe(15); // archived 100 excluded
-    expect(r.remainingHours).toBe(10);
-  });
-
-  it('falls back to client totals for "all" only when services[] is empty', () => {
-    const client = { totalHours: 42, hoursRemaining: 7, services: [] };
-    const r = reportGenerator.resolveServiceHours(client, { service: 'all', stage: '' });
-    expect(r.totalHours).toBe(42);
-    expect(r.remainingHours).toBe(7);
-  });
-});
-
 describe('resolveServiceHours — no match (the safety property)', () => {
   it('returns zeros and matchType "none" — never borrows client.totalHours', () => {
     const client = { totalHours: 999, hoursRemaining: 888, services: [hourPackageService()] };
@@ -187,5 +150,174 @@ describe('resolveServiceHours — no match (the safety property)', () => {
     const r = reportGenerator.resolveServiceHours({}, { service: 'x', stage: '' });
     expect(r.matchType).toBe('none');
     expect(r.totalHours).toBe(0);
+  });
+});
+
+describe('resolveServiceHours — zero values preserved (A1/A2 fix)', () => {
+  it('totalHours: 0 is preserved, not replaced by fallback', () => {
+    const client = {
+      services: [{
+        id: 'svc1', name: 'test', type: 'hours', status: 'active',
+        totalHours: 0, hoursUsed: 0, hoursRemaining: 0
+      }]
+    };
+    const r = reportGenerator.resolveServiceHours(client, { service: 'test', serviceId: 'svc1' });
+    expect(r.totalHours).toBe(0);
+    expect(r.usedHours).toBe(0);
+    expect(r.remainingHours).toBe(0);
+  });
+});
+
+describe('formatDate — Invalid Date guard (G1-INV fix)', () => {
+  it('returns dash for hyphen input, not "Invalid Date"', () => {
+    expect(reportGenerator.formatDate('-')).toBe('-');
+  });
+  it('returns dash for empty string', () => {
+    expect(reportGenerator.formatDate('')).toBe('-');
+  });
+  it('returns dash for garbage string', () => {
+    expect(reportGenerator.formatDate('not-a-date')).toBe('-');
+  });
+  it('returns a valid date string for a real date', () => {
+    const result = reportGenerator.formatDate('2026-01-15');
+    expect(result).not.toBe('-');
+    expect(result).not.toContain('Invalid');
+  });
+});
+
+describe('_mins — entry.minutes coercion (E2 fix)', () => {
+  it('converts string minutes to number', () => {
+    expect(reportGenerator._mins({ minutes: '60' })).toBe(60);
+  });
+  it('preserves number minutes', () => {
+    expect(reportGenerator._mins({ minutes: 60 })).toBe(60);
+  });
+  it('returns 0 for undefined minutes', () => {
+    expect(reportGenerator._mins({})).toBe(0);
+  });
+  it('returns 0 for null minutes', () => {
+    expect(reportGenerator._mins({ minutes: null })).toBe(0);
+  });
+  it('returns 0 for zero minutes (not falsy-trapped)', () => {
+    expect(reportGenerator._mins({ minutes: 0 })).toBe(0);
+  });
+});
+
+// --- PR-REPORT-3: Service matching SSOT + cross-service bleed fix --------
+
+describe('findServiceByFormData — cross-service bleed (BLEED1 fix)', () => {
+  it('exact match wins over partial substring: "ייעוץ" does NOT match "ייעוץ מס"', () => {
+    const client = {
+      services: [
+        { id: 'svc_a', name: 'ייעוץ', displayName: 'ייעוץ', status: 'active' },
+        { id: 'svc_b', name: 'ייעוץ מס', displayName: 'ייעוץ מס', status: 'active' }
+      ]
+    };
+    const result = reportGenerator.findServiceByFormData(client, { service: 'ייעוץ' });
+    expect(result).toBeTruthy();
+    expect(result.id).toBe('svc_a');
+  });
+
+  it('"ייעוץ מס" matches only itself, not the shorter "ייעוץ"', () => {
+    const client = {
+      services: [
+        { id: 'svc_a', name: 'ייעוץ', displayName: 'ייעוץ', status: 'active' },
+        { id: 'svc_b', name: 'ייעוץ מס', displayName: 'ייעוץ מס', status: 'active' }
+      ]
+    };
+    const result = reportGenerator.findServiceByFormData(client, { service: 'ייעוץ מס' });
+    expect(result).toBeTruthy();
+    expect(result.id).toBe('svc_b');
+  });
+
+  it('no includes() fallback: a displayName that contains target does NOT match', () => {
+    const client = {
+      services: [
+        { id: 'svc_long', name: 'ייעוץ משפטי כללי', displayName: 'ייעוץ משפטי כללי', status: 'active' }
+      ]
+    };
+    const result = reportGenerator.findServiceByFormData(client, { service: 'ייעוץ' });
+    expect(result).toBeNull();
+  });
+});
+
+describe('findServiceByFormData — whitespace trim', () => {
+  it('trailing space in stored name still matches trimmed formData', () => {
+    const client = {
+      services: [
+        { id: 'svc_ws', name: 'ייעוץ ', displayName: 'ייעוץ ', status: 'active' }
+      ]
+    };
+    const result = reportGenerator.findServiceByFormData(client, { service: 'ייעוץ' });
+    expect(result).toBeTruthy();
+    expect(result.id).toBe('svc_ws');
+  });
+
+  it('leading space in formData still matches clean stored name', () => {
+    const client = {
+      services: [
+        { id: 'svc_clean', name: 'ייעוץ', displayName: 'ייעוץ', status: 'active' }
+      ]
+    };
+    const result = reportGenerator.findServiceByFormData(client, { service: ' ייעוץ' });
+    expect(result).toBeTruthy();
+    expect(result.id).toBe('svc_clean');
+  });
+});
+
+// --- PR-REPORT-4: Timezone / date boundary fix (TZ1) --------
+
+describe('_parseLocalDate — local midnight parsing (TZ1 fix)', () => {
+  it('creates local midnight, not UTC midnight, for a date string', () => {
+    const d = reportGenerator._parseLocalDate('2026-07-13');
+    expect(d).toBeInstanceOf(Date);
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(6); // July = 6 (0-indexed)
+    expect(d.getDate()).toBe(13);
+    expect(d.getHours()).toBe(0);
+    expect(d.getMinutes()).toBe(0);
+    expect(d.getSeconds()).toBe(0);
+    expect(d.getMilliseconds()).toBe(0);
+  });
+
+  it('creates local end-of-day when endOfDay=true', () => {
+    const d = reportGenerator._parseLocalDate('2026-07-13', true);
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(6);
+    expect(d.getDate()).toBe(13);
+    expect(d.getHours()).toBe(23);
+    expect(d.getMinutes()).toBe(59);
+    expect(d.getSeconds()).toBe(59);
+    expect(d.getMilliseconds()).toBe(999);
+  });
+
+  it('returns null for empty/falsy input', () => {
+    expect(reportGenerator._parseLocalDate('')).toBeNull();
+    expect(reportGenerator._parseLocalDate(null)).toBeNull();
+    expect(reportGenerator._parseLocalDate(undefined)).toBeNull();
+  });
+
+  it('returns null for unparseable string', () => {
+    expect(reportGenerator._parseLocalDate('not-a-date')).toBeNull();
+  });
+
+  it('endDate includes an entry at 23:30 on the same day', () => {
+    const endDate = reportGenerator._parseLocalDate('2026-07-13', true);
+    const entryAt2330 = new Date(2026, 6, 13, 23, 30, 0, 0); // 23:30 local
+    expect(entryAt2330.getTime()).toBeLessThanOrEqual(endDate.getTime());
+  });
+
+  it('endDate excludes an entry at 00:30 on the next day', () => {
+    const endDate = reportGenerator._parseLocalDate('2026-07-13', true);
+    const entryNextDay = new Date(2026, 6, 14, 0, 30, 0, 0); // 00:30 next day local
+    expect(entryNextDay.getTime()).toBeGreaterThan(endDate.getTime());
+  });
+
+  it('regression: new Date("YYYY-MM-DD") would fail the 23:30 test', () => {
+    const utcMidnight = new Date('2026-07-13'); // UTC midnight
+    const entryAt2330Local = new Date(2026, 6, 13, 23, 30, 0, 0);
+    // UTC midnight = some hour on July 13 in local time (e.g., 03:00 for UTC+3)
+    // An entry at 23:30 local has a higher timestamp than UTC midnight of that date
+    expect(entryAt2330Local.getTime()).toBeGreaterThan(utcMidnight.getTime());
   });
 });

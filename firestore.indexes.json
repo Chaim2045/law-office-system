@@ -244,42 +244,7 @@
         }
       ]
     },
-    {
-      "collectionGroup": "user_messages",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "to",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "user_messages",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "from",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "respondedAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
+
     {
       "collectionGroup": "pending_task_approvals",
       "queryScope": "COLLECTION",
@@ -326,24 +291,7 @@
         }
       ]
     },
-    {
-      "collectionGroup": "user_messages",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "to",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "type",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
+
     {
       "collectionGroup": "budget_tasks",
       "queryScope": "COLLECTION",
@@ -372,34 +320,7 @@
         }
       ]
     },
-    {
-      "collectionGroup": "user_messages",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "from",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "user_messages",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "to",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
+
     {
       "collectionGroup": "activity_log",
       "queryScope": "COLLECTION",
